@@ -306,6 +306,9 @@ public class MainController extends BaseController {
             stage.setTitle("Tetris - " + modeName);
             stage.setResizable(false);
             
+            // 화면 크기 CSS 클래스 적용
+            settingsService.applyScreenSizeClass();
+            
             // 새 Scene 크기 가져오기
             stage.sizeToScene();
             double newWidth = stage.getWidth();

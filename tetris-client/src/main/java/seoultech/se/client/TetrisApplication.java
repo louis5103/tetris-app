@@ -75,6 +75,10 @@ public class TetrisApplication extends Application {
         primaryStage.setTitle("Tetris Project");
         primaryStage.setScene(scene);
         primaryStage.setResizable(false);  // 창 크기 조절 불가
+        
+        // 화면 크기 CSS 클래스 적용
+        settingsService.applyScreenSizeClass();
+        
         primaryStage.show();
 
         System.out.println("✅ JavaFX UI started with main-view.fxml");

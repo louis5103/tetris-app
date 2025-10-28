@@ -28,16 +28,16 @@
 
 .mode-settings-icon {
     -fx-font-size: 1.2em;
-    -fx-min-width: 30px;
-    -fx-max-width: 30px;
-    -fx-min-height: 30px;
-    -fx-max-height: 30px;
+    -fx-min-width: 2.5em;
+    -fx-max-width: 2.5em;
+    -fx-min-height: 2.5em;
+    -fx-max-height: 2.5em;
     -fx-background-color: rgba(74, 158, 255, 0.2);
     -fx-text-fill: #4a9eff;
     -fx-border-color: #4a9eff;
-    -fx-border-width: 1px;
-    -fx-border-radius: 5px;
-    -fx-background-radius: 5px;
+    -fx-border-width: 0.083em;
+    -fx-border-radius: 0.417em;
+    -fx-background-radius: 0.417em;
 }
 
 .mode-settings-icon:hover {

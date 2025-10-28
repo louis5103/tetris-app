@@ -1,3 +1,29 @@
+/* ========== 화면 크기별 CSS 변수 정의 ========== */
+/* XSMALL (Extra Small) */
+.root.screenSizeXS {
+    -fx-font-size: 8px;
+}
+
+/* SMALL */
+.root.screenSizeS {
+    -fx-font-size: 10px;
+}
+
+/* MEDIUM (기본) */
+.root.screenSizeM {
+    -fx-font-size: 12px;
+}
+
+/* LARGE */
+.root.screenSizeL {
+    -fx-font-size: 14px;
+}
+
+/* XLARGE (Extra Large) */
+.root.screenSizeXL {
+    -fx-font-size: 16px;
+}
+
 /* ========== 기본 배경 ========== */
 .root {
     -fx-background-color: #1a1a1a;
