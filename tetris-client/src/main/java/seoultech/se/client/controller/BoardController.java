@@ -128,7 +128,11 @@ public class BoardController {
     }
 
     private GameState handleRotateCommand(RotateCommand command) {
-        return GameEngine.tryRotate(gameState, command.getDirection());
+        // GameModeConfig에서 SRS 설정 가져오기
+        boolean srsEnabled = getConfig().isSrsEnabled();
+        
+        // GameEngine에 SRS 설정 전달
+        return GameEngine.tryRotate(gameState, command.getDirection(), srsEnabled);
     }
 
     private GameState handleHardDropCommand() {

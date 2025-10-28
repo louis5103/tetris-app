@@ -97,9 +97,10 @@ public class GameEngine {
      * 
      * @param state 현재 게임 상태
      * @param direction 회전 방향 (시계/반시계)
+     * @param srsEnabled SRS 활성화 여부 (true: Wall Kick 사용, false: 기본 회전만)
      * @return 새로운 게임 상태 (회전 실패 시 원본 상태 반환)
      */
-    public static GameState tryRotate(GameState state, RotationDirection direction) {
+    public static GameState tryRotate(GameState state, RotationDirection direction, boolean srsEnabled) {
         // O 블록 : 회전해도 모양이 같음 - 원본 상태 반환
         if(state.getCurrentTetromino().getType() == TetrominoType.O) {
             return state;
@@ -107,6 +108,19 @@ public class GameEngine {
 
         Tetromino rotated = state.getCurrentTetromino().getRotatedInstance(direction);
 
+        if (!srsEnabled) {
+            // SRS 비활성화: 기본 회전만 (Wall Kick 없이)
+            if(isValidPosition(state, rotated, state.getCurrentX(), state.getCurrentY())) {
+                GameState newState = state.deepCopy();
+                newState.setCurrentTetromino(rotated);
+                newState.setLastActionWasRotation(true);
+                newState.setLastRotationKickIndex(0);  // 기본 위치 사용
+                return newState;
+            }
+            return state;  // 실패 시 원본 상태 반환
+        }
+
+        // SRS 활성화: Wall Kick 사용
         // 월킥 데이터 가져오기
         int[][] kickData = WallKickEventData.getKickData(
                 state.getCurrentTetromino().getType(),
@@ -131,6 +145,19 @@ public class GameEngine {
             }
         }
         return state;  // 실패 시 원본 상태 반환
+    }
+    
+    /**
+     * 회전을 시도합니다 (기본값: SRS 활성화)
+     * 
+     * 하위 호환성을 위한 오버로드 메서드입니다.
+     * 
+     * @param state 현재 게임 상태
+     * @param direction 회전 방향 (시계/반시계)
+     * @return 새로운 게임 상태 (회전 실패 시 원본 상태 반환)
+     */
+    public static GameState tryRotate(GameState state, RotationDirection direction) {
+        return tryRotate(state, direction, true);  // 기본값: SRS 활성화
     }
 
     // ========== Hard Drop ==========
