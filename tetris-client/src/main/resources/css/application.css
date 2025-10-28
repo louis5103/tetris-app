@@ -78,3 +78,100 @@
     -fx-alignment: CENTER_RIGHT;
 }
 
+/* ========== 모드 선택 팝업 ========== */
+.mode-selection-popup {
+    -fx-background-color: rgba(44, 62, 80, 0.98);
+    -fx-background-radius: 15px;
+    -fx-border-color: #3498db;
+    -fx-border-width: 3px;
+    -fx-border-radius: 15px;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.8), 30, 0, 0, 0);
+}
+
+.mode-selection-popup .popup-title {
+    -fx-font-size: 32px;
+    -fx-font-weight: bold;
+    -fx-text-fill: white;
+    -fx-padding: 10px 0 20px 0;
+}
+
+.mode-selection-popup .section-label {
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #3498db;
+    -fx-padding: 10px 0 5px 0;
+}
+
+.mode-selection-popup .selection-box {
+    -fx-padding: 10px 20px;
+    -fx-spacing: 8px;
+}
+
+.mode-selection-popup .play-type-radio,
+.mode-selection-popup .gameplay-type-radio {
+    -fx-text-fill: white;
+    -fx-font-size: 16px;
+    -fx-padding: 5px;
+}
+
+.mode-selection-popup .play-type-radio:hover,
+.mode-selection-popup .gameplay-type-radio:hover {
+    -fx-text-fill: #3498db;
+    -fx-cursor: hand;
+}
+
+.mode-selection-popup .srs-checkbox {
+    -fx-text-fill: white;
+    -fx-font-size: 15px;
+    -fx-font-weight: bold;
+}
+
+.mode-selection-popup .srs-box {
+    -fx-padding: 15px 20px;
+}
+
+.mode-selection-popup .hint-label {
+    -fx-font-size: 12px;
+    -fx-text-fill: #95a5a6;
+    -fx-padding: 5px 0 0 25px;
+}
+
+.mode-selection-popup .primary-button {
+    -fx-background-color: #27ae60;
+    -fx-text-fill: white;
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+    -fx-padding: 12px 40px;
+    -fx-background-radius: 8px;
+    -fx-min-width: 150px;
+}
+
+.mode-selection-popup .primary-button:hover {
+    -fx-background-color: #2ecc71;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(gaussian, rgba(46, 204, 113, 0.6), 10, 0, 0, 0);
+}
+
+.mode-selection-popup .secondary-button {
+    -fx-background-color: #7f8c8d;
+    -fx-text-fill: white;
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+    -fx-padding: 12px 30px;
+    -fx-background-radius: 8px;
+    -fx-min-width: 120px;
+}
+
+.mode-selection-popup .secondary-button:hover {
+    -fx-background-color: #95a5a6;
+    -fx-cursor: hand;
+}
+
+.mode-selection-popup .button-box {
+    -fx-padding: 20px 0 0 0;
+    -fx-spacing: 15px;
+}
+
+.mode-selection-popup .separator {
+    -fx-padding: 5px 0;
+}

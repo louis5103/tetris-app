@@ -133,7 +133,17 @@
                             <Button text="Restart" styleClass="menu-button-small" onAction="#handleRestartFromOverlay"/>
                         </HBox>
                     </VBox>
-                </VBox> -->
+                </VBox>
+                
+                <!-- Mode Selection 팝업 오버레이 (평소에는 숨김) -->
+                <VBox fx:id="modeSelectionOverlay" 
+                      alignment="CENTER" 
+                      styleClass="popup-overlay"
+                      visible="false"
+                      managed="false"
+                      StackPane.alignment="CENTER">
+                    <!-- ModeSelectionPopup 컴포넌트가 여기에 동적으로 추가됨 -->
+                </VBox>
             </StackPane>
             
             <!-- 오른쪽: 게임 정보 -->
