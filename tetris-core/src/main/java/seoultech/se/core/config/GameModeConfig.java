@@ -117,6 +117,21 @@ public class GameModeConfig {
     private final boolean srsEnabled = true;
     
     /**
+     * 180도 회전 허용 여부 (기본: false)
+     * true: 180도 회전 명령 허용
+     * false: 90도 회전만 허용
+     */
+    @Builder.Default
+    private final boolean rotation180Enabled = false;
+    
+    /**
+     * 소프트 드롭 속도 배율 (기본: 20.0)
+     * 사용자가 아래 방향키를 누를 때 블록이 내려가는 속도
+     */
+    @Builder.Default
+    private final double softDropSpeed = 20.0;
+    
+    /**
      * 게임플레이 타입 (기본: CLASSIC)
      * CLASSIC: 전통적인 테트리스
      * ARCADE: 빠르고 박진감 넘치는 모드

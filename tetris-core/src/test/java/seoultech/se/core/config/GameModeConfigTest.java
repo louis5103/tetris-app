@@ -146,4 +146,43 @@ class GameModeConfigTest {
         assertEquals(1.5, modified.getDropSpeedMultiplier(), 
             "낙하 속도는 arcade와 동일해야 합니다.");
     }
+    
+    @Test
+    @DisplayName("새 필드 테스트 - 180도 회전 기본값")
+    void testRotation180EnabledDefault() {
+        // Given & When
+        GameModeConfig config = GameModeConfig.builder().build();
+        
+        // Then
+        assertFalse(config.isRotation180Enabled(), 
+            "180도 회전의 기본값은 false여야 합니다.");
+    }
+    
+    @Test
+    @DisplayName("새 필드 테스트 - 소프트 드롭 속도 기본값")
+    void testSoftDropSpeedDefault() {
+        // Given & When
+        GameModeConfig config = GameModeConfig.builder().build();
+        
+        // Then
+        assertEquals(20.0, config.getSoftDropSpeed(), 
+            "소프트 드롭 속도의 기본값은 20.0이어야 합니다.");
+    }
+    
+    @Test
+    @DisplayName("Builder 패턴 - 180도 회전 및 소프트 드롭 설정")
+    void testBuilderWithRotation180AndSoftDrop() {
+        // Given & When
+        GameModeConfig config = GameModeConfig.builder()
+            .rotation180Enabled(true)
+            .softDropSpeed(30.0)
+            .build();
+        
+        // Then
+        assertTrue(config.isRotation180Enabled(), 
+            "180도 회전이 활성화되어야 합니다.");
+        assertEquals(30.0, config.getSoftDropSpeed(), 
+            "소프트 드롭 속도가 30.0으로 설정되어야 합니다.");
+    }
 }
+

@@ -240,30 +240,139 @@ public class MainController extends BaseController {
         // 현재 설정 가져오기
         GameModeConfig currentConfig = settingsService.buildGameModeConfig();
         
-        // 팝업 다이얼로그 생성
-        javafx.scene.control.Alert alert = new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.INFORMATION);
-        alert.setTitle(modeName + " 모드 설정");
-        alert.setHeaderText(modeName + " 모드 상세 정보");
+        // 커스텀 다이얼로그 생성
+        javafx.scene.control.Dialog<GameModeConfig> dialog = new javafx.scene.control.Dialog<>();
+        dialog.setTitle(modeName + " 모드 설정");
+        dialog.setHeaderText(modeName + " 모드 상세 설정");
         
-        // 설정 내용 구성
-        StringBuilder content = new StringBuilder();
-        content.append("게임플레이 타입: ").append(gameplayType.getDisplayName()).append("\n");
-        content.append("플레이 타입: ").append(playType.getDisplayName()).append("\n");
-        content.append("SRS 회전: ").append(currentConfig.isSrsEnabled() ? "활성화" : "비활성화").append("\n");
+        // 다이얼로그 버튼
+        javafx.scene.control.ButtonType applyButtonType = new javafx.scene.control.ButtonType("적용", javafx.scene.control.ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(applyButtonType, javafx.scene.control.ButtonType.CANCEL);
         
-        if (playType == PlayType.ONLINE_MULTI) {
-            content.append("\n온라인 멀티플레이 기능:\n");
-            content.append("- 실시간 대전\n");
-            content.append("- 네트워크 연결 필요\n");
-            content.append("(개발 중)");
-        } else {
-            content.append("\n로컬 싱글플레이 기능:\n");
-            content.append("- 오프라인 플레이\n");
-            content.append("- 개인 점수 기록");
-        }
+        // 설정 UI 구성
+        javafx.scene.layout.GridPane grid = new javafx.scene.layout.GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.setPadding(new javafx.geometry.Insets(20, 150, 10, 10));
         
-        alert.setContentText(content.toString());
-        alert.showAndWait();
+        int row = 0;
+        
+        // 기본 정보
+        grid.add(new javafx.scene.control.Label("게임플레이 타입:"), 0, row);
+        grid.add(new javafx.scene.control.Label(gameplayType.getDisplayName()), 1, row++);
+        
+        grid.add(new javafx.scene.control.Label("플레이 타입:"), 0, row);
+        grid.add(new javafx.scene.control.Label(playType.getDisplayName()), 1, row++);
+        
+        // 구분선
+        javafx.scene.control.Separator separator1 = new javafx.scene.control.Separator();
+        grid.add(separator1, 0, row++, 2, 1);
+        
+        // SRS 회전 설정
+        javafx.scene.control.CheckBox srsCheckBox = new javafx.scene.control.CheckBox();
+        srsCheckBox.setSelected(currentConfig.isSrsEnabled());
+        grid.add(new javafx.scene.control.Label("SRS 회전 시스템:"), 0, row);
+        grid.add(srsCheckBox, 1, row++);
+        
+        // 180도 회전 설정
+        javafx.scene.control.CheckBox rotation180CheckBox = new javafx.scene.control.CheckBox();
+        rotation180CheckBox.setSelected(currentConfig.isRotation180Enabled());
+        grid.add(new javafx.scene.control.Label("180도 회전:"), 0, row);
+        grid.add(srsCheckBox, 1, row++);
+        
+        // 하드 드롭 설정
+        javafx.scene.control.CheckBox hardDropCheckBox = new javafx.scene.control.CheckBox();
+        hardDropCheckBox.setSelected(currentConfig.isHardDropEnabled());
+        grid.add(new javafx.scene.control.Label("하드 드롭:"), 0, row);
+        grid.add(hardDropCheckBox, 1, row++);
+        
+        // 홀드 기능 설정
+        javafx.scene.control.CheckBox holdCheckBox = new javafx.scene.control.CheckBox();
+        holdCheckBox.setSelected(currentConfig.isHoldEnabled());
+        grid.add(new javafx.scene.control.Label("홀드 기능:"), 0, row);
+        grid.add(holdCheckBox, 1, row++);
+        
+        // 고스트 피스 설정
+        javafx.scene.control.CheckBox ghostCheckBox = new javafx.scene.control.CheckBox();
+        ghostCheckBox.setSelected(currentConfig.isGhostPieceEnabled());
+        grid.add(new javafx.scene.control.Label("고스트 블록:"), 0, row);
+        grid.add(ghostCheckBox, 1, row++);
+        
+        // 구분선
+        javafx.scene.control.Separator separator2 = new javafx.scene.control.Separator();
+        grid.add(separator2, 0, row++, 2, 1);
+        
+        // 드롭 속도 설정
+        javafx.scene.control.Label dropSpeedLabel = new javafx.scene.control.Label(
+            String.format("%.1fx", currentConfig.getDropSpeedMultiplier()));
+        javafx.scene.control.Slider dropSpeedSlider = new javafx.scene.control.Slider(0.5, 3.0, currentConfig.getDropSpeedMultiplier());
+        dropSpeedSlider.setShowTickMarks(true);
+        dropSpeedSlider.setShowTickLabels(true);
+        dropSpeedSlider.setMajorTickUnit(0.5);
+        dropSpeedSlider.setBlockIncrement(0.1);
+        dropSpeedSlider.valueProperty().addListener((obs, oldVal, newVal) -> {
+            dropSpeedLabel.setText(String.format("%.1fx", newVal.doubleValue()));
+        });
+        grid.add(new javafx.scene.control.Label("낙하 속도 배율:"), 0, row);
+        grid.add(dropSpeedSlider, 1, row);
+        grid.add(dropSpeedLabel, 2, row++);
+        
+        // 소프트 드롭 속도 설정
+        javafx.scene.control.Label softDropLabel = new javafx.scene.control.Label(
+            String.format("%.0f", currentConfig.getSoftDropSpeed()));
+        javafx.scene.control.Slider softDropSlider = new javafx.scene.control.Slider(1.0, 50.0, currentConfig.getSoftDropSpeed());
+        softDropSlider.setShowTickMarks(true);
+        softDropSlider.setShowTickLabels(true);
+        softDropSlider.setMajorTickUnit(10);
+        softDropSlider.setBlockIncrement(1);
+        softDropSlider.valueProperty().addListener((obs, oldVal, newVal) -> {
+            softDropLabel.setText(String.format("%.0f", newVal.doubleValue()));
+        });
+        grid.add(new javafx.scene.control.Label("소프트 드롭 속도:"), 0, row);
+        grid.add(softDropSlider, 1, row);
+        grid.add(softDropLabel, 2, row++);
+        
+        // 락 딜레이 설정
+        javafx.scene.control.Label lockDelayLabel = new javafx.scene.control.Label(
+            String.format("%dms", currentConfig.getLockDelay()));
+        javafx.scene.control.Slider lockDelaySlider = new javafx.scene.control.Slider(100, 1000, currentConfig.getLockDelay());
+        lockDelaySlider.setShowTickMarks(true);
+        lockDelaySlider.setShowTickLabels(true);
+        lockDelaySlider.setMajorTickUnit(100);
+        lockDelaySlider.setBlockIncrement(50);
+        lockDelaySlider.valueProperty().addListener((obs, oldVal, newVal) -> {
+            lockDelayLabel.setText(String.format("%dms", newVal.intValue()));
+        });
+        grid.add(new javafx.scene.control.Label("락 딜레이:"), 0, row);
+        grid.add(lockDelaySlider, 1, row);
+        grid.add(lockDelayLabel, 2, row++);
+        
+        dialog.getDialogPane().setContent(grid);
+        
+        // 결과 변환기
+        dialog.setResultConverter(dialogButton -> {
+            if (dialogButton == applyButtonType) {
+                return GameModeConfig.builder()
+                    .gameplayType(gameplayType)
+                    .srsEnabled(srsCheckBox.isSelected())
+                    .rotation180Enabled(rotation180CheckBox.isSelected())
+                    .hardDropEnabled(hardDropCheckBox.isSelected())
+                    .holdEnabled(holdCheckBox.isSelected())
+                    .ghostPieceEnabled(ghostCheckBox.isSelected())
+                    .dropSpeedMultiplier(dropSpeedSlider.getValue())
+                    .softDropSpeed(softDropSlider.getValue())
+                    .lockDelay((int) lockDelaySlider.getValue())
+                    .build();
+            }
+            return null;
+        });
+        
+        // 다이얼로그 표시 및 결과 처리
+        dialog.showAndWait().ifPresent(config -> {
+            // 설정을 SettingsService에 저장
+            settingsService.saveGameModeSettings(playType, gameplayType, config.isSrsEnabled());
+            System.out.println("✅ " + modeName + " mode settings saved");
+        });
     }
     
     /**
