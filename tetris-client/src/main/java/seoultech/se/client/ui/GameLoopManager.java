@@ -37,12 +37,23 @@ public class GameLoopManager {
     private GameLoopCallback callback;
     private long lastUpdateTime = 0;
     private long dropInterval;
+    private double speedMultiplier = 1.0; // 속도 배율
     
     /**
      * GameLoopManager 생성자
      */
     public GameLoopManager() {
         this.dropInterval = UIConstants.INITIAL_DROP_INTERVAL_NS;
+    }
+    
+    /**
+     * GameLoopManager 생성자 (속도 배율 지정)
+     * 
+     * @param speedMultiplier 낙하 속도 배율 (1.0 = 기본, 2.0 = 2배 빠름)
+     */
+    public GameLoopManager(double speedMultiplier) {
+        this.speedMultiplier = speedMultiplier;
+        this.dropInterval = (long) (UIConstants.INITIAL_DROP_INTERVAL_NS / speedMultiplier);
     }
     
     /**
@@ -124,11 +135,13 @@ public class GameLoopManager {
      * @param gameState 현재 게임 상태
      */
     public void updateDropSpeed(GameState gameState) {
-        dropInterval = Math.max(
+        long baseInterval = Math.max(
             UIConstants.MIN_DROP_INTERVAL_NS,
             UIConstants.INITIAL_DROP_INTERVAL_NS - 
             (gameState.getLevel() * UIConstants.DROP_INTERVAL_DECREASE_PER_LEVEL_NS)
         );
+        // 속도 배율 적용
+        dropInterval = (long) (baseInterval / speedMultiplier);
     }
     
     /**

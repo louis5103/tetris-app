@@ -157,11 +157,17 @@ public class MainController extends BaseController {
     public void handleClassicModeAction(ActionEvent event) {
         System.out.println("🎮 CLASSIC mode selected");
         
-        // Classic 모드 설정 생성
-        GameModeConfig config = GameModeConfig.classic();
+        // 저장된 커스텀 설정 로드, 없으면 기본 프리셋 사용
+        GameModeConfig config = settingsService.loadCustomGameModeConfig(GameplayType.CLASSIC);
+        if (config == null) {
+            config = GameModeConfig.classic();
+            System.out.println("📋 Using default CLASSIC preset");
+        } else {
+            System.out.println("📋 Using custom CLASSIC settings");
+        }
         
         // 설정 저장
-        settingsService.saveGameModeSettings(PlayType.LOCAL_SINGLE, GameplayType.CLASSIC, true);
+        settingsService.saveGameModeSettings(PlayType.LOCAL_SINGLE, GameplayType.CLASSIC, config.isSrsEnabled());
         
         // 게임 시작
         startGameWithConfig(event, config, "CLASSIC");
@@ -174,8 +180,14 @@ public class MainController extends BaseController {
     public void handleArcadeModeAction(ActionEvent event) {
         System.out.println("🕹️ ARCADE mode selected");
         
-        // Arcade 모드 설정 생성
-        GameModeConfig config = GameModeConfig.arcade();
+        // 저장된 커스텀 설정 로드, 없으면 기본 프리셋 사용
+        GameModeConfig config = settingsService.loadCustomGameModeConfig(GameplayType.ARCADE);
+        if (config == null) {
+            config = GameModeConfig.arcade();
+            System.out.println("📋 Using default ARCADE preset");
+        } else {
+            System.out.println("📋 Using custom ARCADE settings");
+        }
         
         // 설정 저장
         settingsService.saveGameModeSettings(PlayType.LOCAL_SINGLE, GameplayType.ARCADE, config.isSrsEnabled());
@@ -369,9 +381,18 @@ public class MainController extends BaseController {
         
         // 다이얼로그 표시 및 결과 처리
         dialog.showAndWait().ifPresent(config -> {
-            // 설정을 SettingsService에 저장
+            // 커스텀 설정을 SettingsService에 저장
+            settingsService.saveCustomGameModeConfig(gameplayType, config);
             settingsService.saveGameModeSettings(playType, gameplayType, config.isSrsEnabled());
-            System.out.println("✅ " + modeName + " mode settings saved");
+            System.out.println("✅ " + modeName + " mode custom settings saved");
+            System.out.println("   - SRS: " + config.isSrsEnabled());
+            System.out.println("   - 180° Rotation: " + config.isRotation180Enabled());
+            System.out.println("   - Hard Drop: " + config.isHardDropEnabled());
+            System.out.println("   - Hold: " + config.isHoldEnabled());
+            System.out.println("   - Ghost: " + config.isGhostPieceEnabled());
+            System.out.println("   - Drop Speed: " + config.getDropSpeedMultiplier() + "x");
+            System.out.println("   - Soft Drop: " + config.getSoftDropSpeed());
+            System.out.println("   - Lock Delay: " + config.getLockDelay() + "ms");
         });
     }
     

@@ -111,6 +111,20 @@ public class SettingsService {
     }
 
     public void saveSettings() {
+        Properties props = new Properties();
+        props.setProperty("soundVolume", String.valueOf(soundVolume.get()));
+        props.setProperty("colorMode", colorMode.get());
+        props.setProperty("screenSize", screenSize.get());
+        props.setProperty("stageWidth", String.valueOf(stageWidth.get()));
+        props.setProperty("stageHeight", String.valueOf(stageHeight.get()));
+        
+        // 게임 모드 설정 저장 (GameModeProperties를 통해)
+        if (gameModeProperties != null) {
+            props.setProperty("game.mode.playType", gameModeProperties.getPlayType().name());
+            props.setProperty("game.mode.gameplayType", gameModeProperties.getGameplayType().name());
+            props.setProperty("game.mode.srsEnabled", String.valueOf(gameModeProperties.isSrsEnabled()));
+        }
+        
         preferences.putDouble("soundVolume", soundVolume.get());
         preferences.put("colorMode", colorMode.get());
         preferences.put("difficulty", difficulty.get());
@@ -300,6 +314,85 @@ public class SettingsService {
         } catch (Exception e) {
             System.err.println("❗ Failed to save game mode settings: " + e.getMessage());
             e.printStackTrace();
+        }
+    }
+    
+    /**
+     * 커스텀 게임 모드 설정 저장 (모든 설정 포함)
+     * 
+     * @param gameplayType 게임플레이 타입
+     * @param config 게임 모드 설정
+     */
+    public void saveCustomGameModeConfig(GameplayType gameplayType, GameModeConfig config) {
+        try {
+            Properties props = new Properties();
+            
+            // 기존 설정 파일 로드
+            try (FileInputStream in = new FileInputStream(new File(SETTINGS_FILE))) {
+                props.load(in);
+            } catch (Exception e) {
+                // 파일이 없으면 새로 생성
+            }
+            
+            // 모드별 키 접두사
+            String prefix = "custom." + gameplayType.name().toLowerCase() + ".";
+            
+            // 모든 설정 저장
+            props.setProperty(prefix + "srsEnabled", String.valueOf(config.isSrsEnabled()));
+            props.setProperty(prefix + "rotation180Enabled", String.valueOf(config.isRotation180Enabled()));
+            props.setProperty(prefix + "hardDropEnabled", String.valueOf(config.isHardDropEnabled()));
+            props.setProperty(prefix + "holdEnabled", String.valueOf(config.isHoldEnabled()));
+            props.setProperty(prefix + "ghostPieceEnabled", String.valueOf(config.isGhostPieceEnabled()));
+            props.setProperty(prefix + "dropSpeedMultiplier", String.valueOf(config.getDropSpeedMultiplier()));
+            props.setProperty(prefix + "softDropSpeed", String.valueOf(config.getSoftDropSpeed()));
+            props.setProperty(prefix + "lockDelay", String.valueOf(config.getLockDelay()));
+            
+            // 파일에 저장
+            try (java.io.FileOutputStream out = new java.io.FileOutputStream(new File(SETTINGS_FILE))) {
+                props.store(out, "Tetris Game Settings");
+                System.out.println("✅ Custom game mode config saved for " + gameplayType.getDisplayName());
+            }
+        } catch (Exception e) {
+            System.err.println("❗ Failed to save custom game mode config: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+    
+    /**
+     * 커스텀 게임 모드 설정 로드
+     * 
+     * @param gameplayType 게임플레이 타입
+     * @return 저장된 커스텀 설정, 없으면 null
+     */
+    public GameModeConfig loadCustomGameModeConfig(GameplayType gameplayType) {
+        try {
+            Properties props = new Properties();
+            try (FileInputStream in = new FileInputStream(new File(SETTINGS_FILE))) {
+                props.load(in);
+            }
+            
+            String prefix = "custom." + gameplayType.name().toLowerCase() + ".";
+            
+            // 저장된 설정이 있는지 확인
+            if (!props.containsKey(prefix + "srsEnabled")) {
+                return null; // 저장된 커스텀 설정 없음
+            }
+            
+            // 모든 설정 로드
+            return GameModeConfig.builder()
+                .gameplayType(gameplayType)
+                .srsEnabled(Boolean.parseBoolean(props.getProperty(prefix + "srsEnabled", "true")))
+                .rotation180Enabled(Boolean.parseBoolean(props.getProperty(prefix + "rotation180Enabled", "false")))
+                .hardDropEnabled(Boolean.parseBoolean(props.getProperty(prefix + "hardDropEnabled", "true")))
+                .holdEnabled(Boolean.parseBoolean(props.getProperty(prefix + "holdEnabled", "true")))
+                .ghostPieceEnabled(Boolean.parseBoolean(props.getProperty(prefix + "ghostPieceEnabled", "true")))
+                .dropSpeedMultiplier(Double.parseDouble(props.getProperty(prefix + "dropSpeedMultiplier", "1.0")))
+                .softDropSpeed(Double.parseDouble(props.getProperty(prefix + "softDropSpeed", "20.0")))
+                .lockDelay(Integer.parseInt(props.getProperty(prefix + "lockDelay", "500")))
+                .build();
+        } catch (Exception e) {
+            System.err.println("❗ Failed to load custom game mode config: " + e.getMessage());
+            return null;
         }
     }
     
