@@ -203,6 +203,70 @@ public class MainController extends BaseController {
     }
     
     /**
+     * CLASSIC 모드 설정 버튼 액션
+     * 클래식 모드 상세 설정을 팝업으로 표시
+     */
+    public void handleClassicSettingsAction(ActionEvent event) {
+        System.out.println("⚙️ CLASSIC settings button clicked");
+        showModeSettingsPopup("CLASSIC", GameplayType.CLASSIC, PlayType.LOCAL_SINGLE);
+    }
+    
+    /**
+     * ARCADE 모드 설정 버튼 액션
+     * 아케이드 모드 상세 설정을 팝업으로 표시
+     */
+    public void handleArcadeSettingsAction(ActionEvent event) {
+        System.out.println("⚙️ ARCADE settings button clicked");
+        showModeSettingsPopup("ARCADE", GameplayType.ARCADE, PlayType.LOCAL_SINGLE);
+    }
+    
+    /**
+     * MULTIPLAYER 모드 설정 버튼 액션
+     * 멀티플레이 모드 상세 설정을 팝업으로 표시
+     */
+    public void handleMultiplayerSettingsAction(ActionEvent event) {
+        System.out.println("⚙️ MULTIPLAYER settings button clicked");
+        showModeSettingsPopup("MULTIPLAYER", GameplayType.CLASSIC, PlayType.ONLINE_MULTI);
+    }
+    
+    /**
+     * 모드 설정 팝업 표시
+     * 
+     * @param modeName 모드 이름
+     * @param gameplayType 게임플레이 타입
+     * @param playType 플레이 타입
+     */
+    private void showModeSettingsPopup(String modeName, GameplayType gameplayType, PlayType playType) {
+        // 현재 설정 가져오기
+        GameModeConfig currentConfig = settingsService.buildGameModeConfig();
+        
+        // 팝업 다이얼로그 생성
+        javafx.scene.control.Alert alert = new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.INFORMATION);
+        alert.setTitle(modeName + " 모드 설정");
+        alert.setHeaderText(modeName + " 모드 상세 정보");
+        
+        // 설정 내용 구성
+        StringBuilder content = new StringBuilder();
+        content.append("게임플레이 타입: ").append(gameplayType.getDisplayName()).append("\n");
+        content.append("플레이 타입: ").append(playType.getDisplayName()).append("\n");
+        content.append("SRS 회전: ").append(currentConfig.isSrsEnabled() ? "활성화" : "비활성화").append("\n");
+        
+        if (playType == PlayType.ONLINE_MULTI) {
+            content.append("\n온라인 멀티플레이 기능:\n");
+            content.append("- 실시간 대전\n");
+            content.append("- 네트워크 연결 필요\n");
+            content.append("(개발 중)");
+        } else {
+            content.append("\n로컬 싱글플레이 기능:\n");
+            content.append("- 오프라인 플레이\n");
+            content.append("- 개인 점수 기록");
+        }
+        
+        alert.setContentText(content.toString());
+        alert.showAndWait();
+    }
+    
+    /**
      * 게임 모드 설정을 적용하여 게임을 시작합니다
      * 
      * @param event 버튼 클릭 이벤트
