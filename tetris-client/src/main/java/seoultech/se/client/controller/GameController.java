@@ -35,6 +35,7 @@ import seoultech.se.client.config.ApplicationContextProvider;
 import seoultech.se.core.GameState;
 import seoultech.se.core.command.Direction;
 import seoultech.se.core.command.MoveCommand;
+import seoultech.se.core.config.GameModeConfig;
 import seoultech.se.core.model.enumType.TetrominoType;
 
 /**
@@ -88,6 +89,9 @@ public class GameController {
     // 게임 로직 컨트롤러
     private BoardController boardController;
     
+    // 게임 모드 설정
+    private GameModeConfig gameModeConfig;
+    
     // UI 관리 클래스들
     private BoardRenderer boardRenderer;
     private NotificationManager notificationManager;
@@ -124,8 +128,18 @@ public class GameController {
             System.err.println("❌ KeyMappingService is null!");
         }
 
-        // BoardController 생성
-        boardController = new BoardController();
+        // GameModeConfig 기본값 설정 (MainController에서 설정하지 않은 경우)
+        if (gameModeConfig == null) {
+            gameModeConfig = GameModeConfig.classic(); // 기본값: Classic 모드
+            System.out.println("⚙️ Using default game mode: CLASSIC");
+        } else {
+            System.out.println("⚙️ Game mode configured: " + 
+                (gameModeConfig.getGameplayType() != null ? gameModeConfig.getGameplayType() : "CLASSIC") +
+                ", SRS: " + gameModeConfig.isSrsEnabled());
+        }
+
+        // BoardController 생성 (GameModeConfig 전달)
+        boardController = new BoardController(gameModeConfig);
         
         GameState gameState = boardController.getGameState();
         System.out.println("📊 Board created: " + gameState.getBoardWidth() + "x" + gameState.getBoardHeight());
@@ -142,6 +156,19 @@ public class GameController {
         startGame();
 
         System.out.println("✅ GameController initialization complete!");
+    }
+    
+    /**
+     * 게임 모드 설정을 적용합니다
+     * MainController에서 게임 시작 전에 호출됩니다
+     * 
+     * @param config 게임 모드 설정
+     */
+    public void setGameModeConfig(GameModeConfig config) {
+        this.gameModeConfig = config;
+        System.out.println("⚙️ Game mode config set: " + 
+            (config.getGameplayType() != null ? config.getGameplayType() : "CLASSIC") +
+            ", SRS: " + config.isSrsEnabled());
     }
     
     /**

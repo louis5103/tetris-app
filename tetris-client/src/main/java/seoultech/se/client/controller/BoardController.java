@@ -29,12 +29,31 @@ public class BoardController {
     private int bagIndex = 0;
     private long gameStartTime;
 
+    /**
+     * 기본 생성자 (Classic 모드)
+     */
     public BoardController() {
+        this(GameModeConfig.classic());
+    }
+    
+    /**
+     * GameModeConfig를 받는 생성자
+     * 
+     * @param config 게임 모드 설정
+     */
+    public BoardController(GameModeConfig config) {
         this.gameState = new GameState(10, 20);
         this.gameStartTime = System.currentTimeMillis();
-        this.gameMode = new SingleMode();
+        
+        // GameModeConfig에 따라 SingleMode 생성
+        this.gameMode = new SingleMode(config);
         this.gameMode.initialize(this.gameState);
+        
         initializeNextQueue();
+        
+        System.out.println("📦 BoardController created with config: " + 
+            (config.getGameplayType() != null ? config.getGameplayType() : "CLASSIC") +
+            ", SRS: " + config.isSrsEnabled());
     }
     
     public void setGameMode(GameMode gameMode) {

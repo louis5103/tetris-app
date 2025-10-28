@@ -227,9 +227,8 @@ public class MainController extends BaseController {
             Parent gameRoot = loader.load();
             
             // 5단계: GameController에 설정 전달
-            // TODO: GameController에 setGameModeConfig() 메서드 추가 필요
-            // GameController controller = loader.getController();
-            // controller.setGameModeConfig(config);
+            GameController controller = loader.getController();
+            controller.setGameModeConfig(config);
             
             // 창 크기 변경 전 현재 위치와 크기 저장
             double currentX = stage.getX();
