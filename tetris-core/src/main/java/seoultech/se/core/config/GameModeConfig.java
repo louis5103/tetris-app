@@ -108,6 +108,22 @@ public class GameModeConfig {
     @Builder.Default
     private final int maxLockResets = 15;
     
+    /**
+     * SRS(Super Rotation System) 활성화 여부 (기본: true)
+     * true: SRS 회전 시스템 사용
+     * false: 기본 회전 시스템 사용
+     */
+    @Builder.Default
+    private final boolean srsEnabled = true;
+    
+    /**
+     * 게임플레이 타입 (기본: CLASSIC)
+     * CLASSIC: 전통적인 테트리스
+     * ARCADE: 빠르고 박진감 넘치는 모드
+     */
+    @Builder.Default
+    private final GameplayType gameplayType = GameplayType.CLASSIC;
+    
     // ========== 확장 설정 ==========
     
     /**
@@ -142,7 +158,39 @@ public class GameModeConfig {
      * 모든 설정이 기본값
      */
     public static GameModeConfig classic() {
-        return GameModeConfig.builder().build();
+        return GameModeConfig.builder()
+            .gameplayType(GameplayType.CLASSIC)
+            .srsEnabled(true)
+            .build();
+    }
+    
+    /**
+     * 클래식 모드 설정 (SRS 옵션 지정)
+     * 
+     * @param srsEnabled SRS 활성화 여부
+     * @return 클래식 모드 설정
+     */
+    public static GameModeConfig classic(boolean srsEnabled) {
+        return GameModeConfig.builder()
+            .gameplayType(GameplayType.CLASSIC)
+            .srsEnabled(srsEnabled)
+            .build();
+    }
+    
+    /**
+     * 아케이드 모드 설정
+     * - 빠른 낙하 속도 (1.5배)
+     * - 짧은 락 딜레이 (300ms)
+     * - SRS 활성화
+     * - 높은 점수 배율
+     */
+    public static GameModeConfig arcade() {
+        return GameModeConfig.builder()
+            .gameplayType(GameplayType.ARCADE)
+            .dropSpeedMultiplier(1.5)
+            .lockDelay(300)
+            .srsEnabled(true)
+            .build();
     }
     
     /**
