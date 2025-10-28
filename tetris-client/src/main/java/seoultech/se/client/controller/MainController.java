@@ -278,7 +278,7 @@ public class MainController extends BaseController {
         javafx.scene.control.CheckBox rotation180CheckBox = new javafx.scene.control.CheckBox();
         rotation180CheckBox.setSelected(currentConfig.isRotation180Enabled());
         grid.add(new javafx.scene.control.Label("180도 회전:"), 0, row);
-        grid.add(srsCheckBox, 1, row++);
+        grid.add(rotation180CheckBox, 1, row++);
         
         // 하드 드롭 설정
         javafx.scene.control.CheckBox hardDropCheckBox = new javafx.scene.control.CheckBox();
