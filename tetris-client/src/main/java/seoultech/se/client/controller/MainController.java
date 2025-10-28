@@ -21,6 +21,10 @@ import seoultech.se.backend.service.GameService;
 import seoultech.se.client.TetrisApplication;
 import seoultech.se.client.config.ApplicationContextProvider;
 import seoultech.se.client.service.NavigationService;
+import seoultech.se.client.service.SettingsService;
+import seoultech.se.core.config.GameModeConfig;
+import seoultech.se.core.config.GameplayType;
+import seoultech.se.core.mode.PlayType;
 
 
 /**
@@ -60,6 +64,9 @@ public class MainController extends BaseController {
 
     private Button[] buttons;
     private int currentButtonIndex = 0;
+    
+    @Autowired
+    private SettingsService settingsService;
     
     /**
      * UI 초기화 메서드
@@ -135,11 +142,125 @@ public class MainController extends BaseController {
     }
 
     /**
-     * 설정 버튼 액션
+     * 설정 버튼 액션 - 기존 설정 화면으로 이동
+     * (키 매핑, 커스터마이징 등)
      */
     public void handleSettingsButtonAction(ActionEvent event) throws IOException {
         System.out.println("⚙️ Settings button clicked");
         navigationService.navigateTo("/view/setting-view.fxml");
+    }
+
+    /**
+     * CLASSIC 모드 버튼 액션
+     * 클래식 모드 (로컬 싱글, SRS 회전 시스템)로 게임 시작
+     */
+    public void handleClassicModeAction(ActionEvent event) {
+        System.out.println("🎮 CLASSIC mode selected");
+        
+        // Classic 모드 설정 생성
+        GameModeConfig config = GameModeConfig.classic();
+        
+        // 설정 저장
+        settingsService.saveGameModeSettings(PlayType.LOCAL_SINGLE, GameplayType.CLASSIC, true);
+        
+        // 게임 시작
+        startGameWithConfig(event, config, "CLASSIC");
+    }
+    
+    /**
+     * ARCADE 모드 버튼 액션
+     * 아케이드 모드 (로컬 싱글, 빠른 속도)로 게임 시작
+     */
+    public void handleArcadeModeAction(ActionEvent event) {
+        System.out.println("🕹️ ARCADE mode selected");
+        
+        // Arcade 모드 설정 생성
+        GameModeConfig config = GameModeConfig.arcade();
+        
+        // 설정 저장
+        settingsService.saveGameModeSettings(PlayType.LOCAL_SINGLE, GameplayType.ARCADE, config.isSrsEnabled());
+        
+        // 게임 시작
+        startGameWithConfig(event, config, "ARCADE");
+    }
+    
+    /**
+     * MULTIPLAYER 모드 버튼 액션
+     * 온라인 멀티플레이 모드로 게임 시작
+     */
+    public void handleMultiplayerModeAction(ActionEvent event) {
+        System.out.println("👥 MULTIPLAYER mode selected");
+        
+        // TODO: 온라인 연결 체크 및 로비 화면으로 전환
+        // 현재는 클래식 설정으로 시작
+        GameModeConfig config = GameModeConfig.classic();
+        
+        // 설정 저장
+        settingsService.saveGameModeSettings(PlayType.ONLINE_MULTI, GameplayType.CLASSIC, true);
+        
+        // 게임 시작 (향후 로비 화면으로 변경 예정)
+        startGameWithConfig(event, config, "MULTIPLAYER");
+    }
+    
+    /**
+     * 게임 모드 설정을 적용하여 게임을 시작합니다
+     * 
+     * @param event 버튼 클릭 이벤트
+     * @param config 게임 모드 설정
+     * @param modeName 모드 이름 (로그용)
+     */
+    private void startGameWithConfig(ActionEvent event, GameModeConfig config, String modeName) {
+        try {
+            // 1단계: 현재 Stage 가져오기
+            Stage stage = (Stage) ((Node) event.getSource()).getScene().getWindow();
+            
+            // 2단계: game-view.fxml 로드
+            FXMLLoader loader = new FXMLLoader(
+                TetrisApplication.class.getResource("/view/game-view.fxml")
+            );
+            
+            // 3단계: Controller Factory 설정 (Spring DI)
+            ApplicationContext context = ApplicationContextProvider.getApplicationContext();
+            loader.setControllerFactory(context::getBean);
+            
+            // 4단계: FXML 로드
+            Parent gameRoot = loader.load();
+            
+            // 5단계: GameController에 설정 전달
+            // TODO: GameController에 setGameModeConfig() 메서드 추가 필요
+            // GameController controller = loader.getController();
+            // controller.setGameModeConfig(config);
+            
+            // 창 크기 변경 전 현재 위치와 크기 저장
+            double currentX = stage.getX();
+            double currentY = stage.getY();
+            double currentWidth = stage.getWidth();
+            double currentHeight = stage.getHeight();
+            
+            // 6단계: Scene 변경
+            Scene gameScene = new Scene(gameRoot);
+            stage.setScene(gameScene);
+            stage.setTitle("Tetris - " + modeName);
+            stage.setResizable(false);
+            
+            // 새 Scene 크기 가져오기
+            stage.sizeToScene();
+            double newWidth = stage.getWidth();
+            double newHeight = stage.getHeight();
+            
+            // 중앙 위치 유지
+            double deltaX = (newWidth - currentWidth) / 2;
+            double deltaY = (newHeight - currentHeight) / 2;
+            stage.setX(currentX - deltaX);
+            stage.setY(currentY - deltaY);
+            
+            System.out.println("✅ " + modeName + " mode started successfully");
+            
+        } catch (IOException e) {
+            System.err.println("❌ Failed to load game-view.fxml");
+            System.err.println("   Error: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 
     /**
@@ -151,105 +272,6 @@ public class MainController extends BaseController {
     }
 
     /**
-     * START 버튼 액션 - 게임 화면으로 전환
-     * 
-     * 동작 원리를 차근차근 설명하자면:
-     * 
-     * 1. 버튼 클릭 이벤트에서 현재 창(Stage)을 가져옵니다
-     *    - JavaFX에서 Stage는 창(Window)을 의미합니다
-     *    - ActionEvent의 source에서 버튼을 찾고, 그 버튼이 있는 Scene을 찾고,
-     *      그 Scene이 있는 Stage를 찾습니다 (마치 거슬러 올라가는 것처럼)
-     * 
-     * 2. game-view.fxml 파일을 로드합니다
-     *    - FXMLLoader가 XML 파일을 읽어서 UI 객체들을 생성합니다
-     *    - 이때 controllerFactory를 설정하여 Spring이 Controller를 생성하게 합니다
-     * 
-     * 3. 생성된 UI를 Scene에 담아서 Stage에 설정합니다
-     *    - 마치 무대(Stage)의 배경(Scene)을 교체하는 것과 같습니다
-     * 
-     * 4. GameController의 initialize()가 자동으로 호출되며 게임이 시작됩니다
-     */
-    public void handleStartButtonAction(ActionEvent event) {
-        System.out.println("▶️ Start button clicked - Loading game...");
-        
-        try {
-            // 1단계: 현재 버튼이 있는 창(Stage) 가져오기
-            // event.getSource() -> 클릭된 버튼
-            // getScene() -> 버튼이 있는 Scene
-            // getWindow() -> Scene이 표시되는 Window (Stage)
-            Stage stage = (Stage) ((Node) event.getSource()).getScene().getWindow();
-            
-            // 2단계: game-view.fxml 로드 준비
-            // 클래스패스에서 리소스 파일을 찾습니다
-            FXMLLoader loader = new FXMLLoader(
-                TetrisApplication.class.getResource("/view/game-view.fxml")
-            );
-            
-            // 3단계: Controller Factory 설정
-            // FXML이 Controller를 필요로 할 때, 직접 만들지 않고
-            // Spring에게 "이 클래스의 Bean을 주세요"라고 요청합니다
-            // 이렇게 하면 GameController가 Spring Bean으로 생성되어
-            // @Autowired 등의 의존성 주입이 작동합니다
-            ApplicationContext context = ApplicationContextProvider.getApplicationContext();
-            loader.setControllerFactory(context::getBean);
-            
-            // 4단계: FXML 파일을 실제로 로드하여 UI 객체 트리 생성
-            // 이 과정에서 GameController의 인스턴스가 생성되고
-            // @FXML로 표시된 필드들이 UI 요소와 연결됩니다
-            Parent gameRoot = loader.load();
-            
-            // 창 크기 변경 전 현재 위치와 크기 저장
-            double currentX = stage.getX();
-            double currentY = stage.getY();
-            double currentWidth = stage.getWidth();
-            double currentHeight = stage.getHeight();
-            
-            // 5단계: 새로운 Scene 생성 및 Stage에 설정
-            // Scene은 UI 요소들의 컨테이너이자 하나의 화면을 의미합니다
-            Scene gameScene = new Scene(gameRoot);
-            stage.setScene(gameScene);
-            stage.setTitle("Tetris - Playing");
-            stage.setResizable(false);  // 창 크기 조절 불가 유지
-            
-            // 새 Scene 크기 가져오기
-            stage.sizeToScene();  // Scene 크기에 맞게 Stage 크기 조정
-            double newWidth = stage.getWidth();
-            double newHeight = stage.getHeight();
-            
-            // 중앙 위치 유지: 크기 변화만큼 위치를 조정하여 중심점 유지
-            double deltaX = (newWidth - currentWidth) / 2;
-            double deltaY = (newHeight - currentHeight) / 2;
-            stage.setX(currentX - deltaX);
-            stage.setY(currentY - deltaY);
-            
-            // 6단계: 로드 완료!
-            // GameController의 initialize() 메서드가 이미 호출되었고
-            // 게임이 시작되었습니다
-            System.out.println("✅ Game scene loaded successfully");
-            System.out.println("🎮 Game is now running!");
-            
-        } catch (IOException e) {
-            // FXML 파일을 찾을 수 없거나 로드 중 오류가 발생한 경우
-            System.err.println("❌ Failed to load game-view.fxml");
-            System.err.println("   Error: " + e.getMessage());
-            e.printStackTrace();
-            
-            // 사용자에게 오류 알림 (향후 개선 가능)
-            // 예: Alert 다이얼로그 표시
-        }
-    }
-
-    /**
-     * itemSTART 버튼 액션 - 아이템 모드 게임 화면으로 전환
-     * 구현 필요
-     */
-
-    public void handleItemStartButtonAction(ActionEvent event) {
-
-    }
-
-
-    /**
      * EXIT 버튼 액션 - 애플리케이션 종료
      * 
      * Platform.exit()는 JavaFX 애플리케이션을 정상적으로 종료합니다.
@@ -259,7 +281,6 @@ public class MainController extends BaseController {
      * TetrisApplication의 stop() 메서드가 자동으로 호출되어
      * Spring Context도 깨끗하게 종료됩니다.
      */
-
     public void handleEndButtonAction() {
         System.out.println("❌ Exit button clicked - Closing application");
         System.out.println("👋 Goodbye!");
