@@ -33,11 +33,13 @@ public class GameModeProperties {
     
     /**
      * 플레이 타입 (LOCAL_SINGLE, ONLINE_MULTI)
+     * 런타임 검증은 SettingsService.validateGameModeSettings()에서 수행
      */
     private PlayType playType = PlayType.LOCAL_SINGLE;
     
     /**
      * 게임플레이 타입 (CLASSIC, ARCADE)
+     * 런타임 검증은 SettingsService.validateGameModeSettings()에서 수행
      */
     private GameplayType gameplayType = GameplayType.CLASSIC;
     

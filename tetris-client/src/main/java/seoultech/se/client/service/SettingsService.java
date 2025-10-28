@@ -2,6 +2,7 @@ package seoultech.se.client.service;
 
 import java.util.prefs.Preferences;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import jakarta.annotation.PostConstruct;
@@ -11,9 +12,16 @@ import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
 import javafx.stage.Stage;
 import seoultech.se.client.constants.ColorBlindMode;
+import seoultech.se.client.config.GameModeProperties;
+import seoultech.se.core.config.GameModeConfig;
+import seoultech.se.core.config.GameplayType;
+import seoultech.se.core.mode.PlayType;
 
 @Service
 public class SettingsService {
+
+    @Autowired
+    private GameModeProperties gameModeProperties;
 
     private Stage primaryStage;
     private final DoubleProperty stageWidth = new SimpleDoubleProperty(500);
@@ -196,5 +204,123 @@ public class SettingsService {
             colorMode.set(modeString);
             saveSettings();
         }
+    }
+    
+    // ========== Game Mode Configuration ==========
+    
+    /**
+     * GameModeConfig 빌드
+     * GameModeProperties의 설정을 기반으로 GameModeConfig 객체를 생성합니다.
+     * 
+     * @return GameModeConfig 객체
+     */
+    public GameModeConfig buildGameModeConfig() {
+        try {
+            // 유효성 검증
+            if (!validateGameModeSettings()) {
+                System.err.println("⚠️ Invalid game mode settings detected, using defaults");
+            }
+            
+            GameplayType gameplayType = gameModeProperties.getGameplayType();
+            boolean srsEnabled = gameModeProperties.isSrsEnabled();
+            
+            // 게임플레이 타입에 따라 프리셋 사용
+            if (gameplayType == GameplayType.ARCADE) {
+                return GameModeConfig.arcade();
+            } else {
+                return GameModeConfig.classic(srsEnabled);
+            }
+        } catch (Exception e) {
+            System.err.println("❗ Failed to build game mode config: " + e.getMessage());
+            e.printStackTrace();
+            // 기본값 반환
+            return GameModeConfig.classic(true);
+        }
+    }
+    
+    /**
+     * 게임 모드 설정 저장
+     * 
+     * @param playType 플레이 타입
+     * @param gameplayType 게임플레이 타입
+     * @param srsEnabled SRS 활성화 여부
+     */
+    public void saveGameModeSettings(PlayType playType, GameplayType gameplayType, boolean srsEnabled) {
+        try {
+            // GameModeProperties 업데이트
+            gameModeProperties.setPlayType(playType);
+            gameModeProperties.setGameplayType(gameplayType);
+            gameModeProperties.setSrsEnabled(srsEnabled);
+            
+            // 마지막 선택 저장
+            gameModeProperties.setLastPlayType(playType);
+            gameModeProperties.setLastGameplayType(gameplayType);
+            gameModeProperties.setLastSrsEnabled(srsEnabled);
+            
+            // 기존 설정 저장 메서드 호출
+            saveSettings();
+            
+            System.out.println("✅ Game mode settings saved: " + 
+                playType.getDisplayName() + " / " + 
+                gameplayType.getDisplayName() + " / SRS=" + srsEnabled);
+        } catch (Exception e) {
+            System.err.println("❗ Failed to save game mode settings: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+    
+    /**
+     * 게임 모드 설정 유효성 검증
+     * 
+     * @return 유효하면 true, 그렇지 않으면 false
+     */
+    public boolean validateGameModeSettings() {
+        boolean isValid = true;
+        
+        if (gameModeProperties.getPlayType() == null) {
+            System.err.println("❗ PlayType is null, setting to default: LOCAL_SINGLE");
+            gameModeProperties.setPlayType(PlayType.LOCAL_SINGLE);
+            isValid = false;
+        }
+        
+        if (gameModeProperties.getGameplayType() == null) {
+            System.err.println("❗ GameplayType is null, setting to default: CLASSIC");
+            gameModeProperties.setGameplayType(GameplayType.CLASSIC);
+            isValid = false;
+        }
+        
+        return isValid;
+    }
+    
+    /**
+     * 마지막 선택 설정 복원
+     */
+    public void restoreLastGameModeSettings() {
+        try {
+            PlayType lastPlayType = gameModeProperties.getLastPlayType();
+            GameplayType lastGameplayType = gameModeProperties.getLastGameplayType();
+            boolean lastSrsEnabled = gameModeProperties.isLastSrsEnabled();
+            
+            if (lastPlayType != null && lastGameplayType != null) {
+                gameModeProperties.setPlayType(lastPlayType);
+                gameModeProperties.setGameplayType(lastGameplayType);
+                gameModeProperties.setSrsEnabled(lastSrsEnabled);
+                
+                System.out.println("✅ Last game mode settings restored: " + 
+                    lastPlayType.getDisplayName() + " / " + 
+                    lastGameplayType.getDisplayName());
+            }
+        } catch (Exception e) {
+            System.err.println("❗ Failed to restore last game mode settings: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * GameModeProperties 반환 (외부 접근용)
+     * 
+     * @return GameModeProperties
+     */
+    public GameModeProperties getGameModeProperties() {
+        return gameModeProperties;
     }
 }
