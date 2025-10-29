@@ -176,23 +176,48 @@ public class BoardRenderer {
         rect.getStyleClass().removeAll(UIConstants.ALL_TETROMINO_COLOR_CLASSES);
         rect.getStyleClass().removeAll("range-bomb-block", "cross-bomb-block", "line-clear-block", "selectable-block");
         
-        // 아이템 타입에 따라 다른 스타일 적용
+        // 아이템 타입에 따라 다른 이미지 표시
         if (itemType != null) {
+            String imagePath = null;
+            
             switch (itemType) {
                 case BOMB:
-                    rect.getStyleClass().add("range-bomb-block");
+                    imagePath = "/image/bomb.png";
                     break;
                 case PLUS:
-                    rect.getStyleClass().add("cross-bomb-block");
+                    imagePath = "/image/cross.png";
                     break;
                 case SPEED_RESET:
                 case BONUS_SCORE:
-                    // 무지개 효과
-                    rect.getStyleClass().add("selectable-block");
+                    imagePath = "/image/L.png";
                     break;
                 default:
                     rect.setFill(Color.GOLD);
-                    break;
+                    return;
+            }
+            
+            // 이미지를 배경으로 설정
+            if (imagePath != null) {
+                try {
+                    String imageUrl = getClass().getResource(imagePath).toExternalForm();
+                    rect.setFill(new javafx.scene.paint.ImagePattern(
+                        new javafx.scene.image.Image(imageUrl)
+                    ));
+                } catch (Exception e) {
+                    System.err.println("⚠️ Failed to load item image: " + imagePath);
+                    // 폴백: CSS 클래스 사용
+                    switch (itemType) {
+                        case BOMB:
+                            rect.getStyleClass().add("range-bomb-block");
+                            break;
+                        case PLUS:
+                            rect.getStyleClass().add("cross-bomb-block");
+                            break;
+                        default:
+                            rect.getStyleClass().add("selectable-block");
+                            break;
+                    }
+                }
             }
         }
     }

@@ -55,13 +55,27 @@ public class BombItem extends AbstractItem {
         Cell[][] grid = gameState.getGrid();
         int boardHeight = gameState.getBoardHeight();
         int boardWidth = gameState.getBoardWidth();
+        
+        // 경계 체크
+        if (row < 0 || row >= boardHeight || col < 0 || col >= boardWidth) {
+            System.err.println("⚠️ [BombItem] Invalid position: (" + row + ", " + col + ")");
+            System.err.println("   - Board size: " + boardHeight + "x" + boardWidth);
+            return ItemEffect.none();
+        }
+        
         int blocksCleared = 0;
+        
+        System.out.println("💣 [BombItem] Applying BOMB effect at (" + row + ", " + col + ")");
+        System.out.println("   - Board size: " + boardHeight + "x" + boardWidth);
         
         // 5x5 영역 제거 (중심 기준 상하좌우 각 2칸)
         int startRow = Math.max(0, row - EXPLOSION_RADIUS);
         int endRow = Math.min(boardHeight - 1, row + EXPLOSION_RADIUS);
         int startCol = Math.max(0, col - EXPLOSION_RADIUS);
         int endCol = Math.min(boardWidth - 1, col + EXPLOSION_RADIUS);
+        
+        System.out.println("   - Explosion area: rows " + startRow + "-" + endRow + 
+            ", cols " + startCol + "-" + endCol);
         
         // 블록 제거
         for (int r = startRow; r <= endRow; r++) {
@@ -78,7 +92,7 @@ public class BombItem extends AbstractItem {
         String message = String.format("💣 Bomb exploded! %d blocks cleared at (%d, %d)", 
             blocksCleared, row, col);
         
-        System.out.println(message);
+        System.out.println("✅ [BombItem] " + message);
         
         return ItemEffect.success(ItemType.BOMB, blocksCleared, bonusScore, message);
     }

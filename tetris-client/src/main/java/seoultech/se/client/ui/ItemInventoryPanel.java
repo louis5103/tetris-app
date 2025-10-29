@@ -166,13 +166,28 @@ public class ItemInventoryPanel extends HBox {
      * @return 성공 여부
      */
     public boolean addItem(Item item) {
+        System.out.println("🔧 [ItemInventory] addItem called - item: " + (item != null ? item.getType() : "null"));
+        System.out.println("   - inventory: " + inventory);
+        System.out.println("   - inventory.size(): " + inventory.size());
+        System.out.println("   - maxSize: " + maxSize);
+        
+        if (inventory == null) {
+            System.err.println("❌ [ItemInventory] ERROR: inventory is null!");
+            return false;
+        }
+        
         if (inventory.size() >= maxSize) {
             System.out.println("⚠️ [ItemInventory] Inventory is full!");
             return false;
         }
         
         inventory.add(item);
-        updateUI();
+        System.out.println("   - After add, inventory.size(): " + inventory.size());
+        
+        javafx.application.Platform.runLater(() -> {
+            updateUI();
+            System.out.println("✅ [ItemInventory] UI updated on JavaFX thread");
+        });
         
         System.out.println("✅ [ItemInventory] Item added: " + item.getType() + 
             " (" + inventory.size() + "/" + maxSize + ")");
@@ -252,22 +267,31 @@ public class ItemInventoryPanel extends HBox {
      * UI 업데이트
      */
     private void updateUI() {
+        System.out.println("🔧 [ItemInventory] updateUI called");
+        System.out.println("   - inventory.size(): " + inventory.size());
+        System.out.println("   - maxSize: " + maxSize);
+        
         getChildren().clear();
         itemSlots.clear();
         
         // 현재 아이템 슬롯 생성
         for (int i = 0; i < inventory.size(); i++) {
-            VBox slot = createItemSlot(inventory.get(i), i);
+            Item item = inventory.get(i);
+            System.out.println("   - Creating slot for item " + i + ": " + item.getType());
+            VBox slot = createItemSlot(item, i);
             itemSlots.add(slot);
             getChildren().add(slot);
         }
         
         // 빈 슬롯 생성
         for (int i = inventory.size(); i < maxSize; i++) {
+            System.out.println("   - Creating empty slot " + i);
             VBox slot = createEmptySlot(i);
             itemSlots.add(slot);
             getChildren().add(slot);
         }
+        
+        System.out.println("✅ [ItemInventory] UI updated - " + getChildren().size() + " children");
     }
     
     /**

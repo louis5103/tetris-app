@@ -182,17 +182,61 @@ public class BoardController {
     }
 
     private GameState lockAndSpawnNext() {
-        // Lock 전에 아이템 타입 확인
+        // Lock 전에 아이템 타입과 위치 확인
         seoultech.se.core.item.ItemType itemType = gameState.getCurrentItemType();
+        
+        // 실제 블록의 위치 계산 (pivot이 아닌 실제 블록 위치)
+        int actualRow = -1;
+        int actualCol = -1;
+        
+        if (itemType != null && gameState.getCurrentTetromino() != null) {
+            seoultech.se.core.model.Tetromino tetromino = gameState.getCurrentTetromino();
+            int[][] shape = tetromino.getCurrentShape();
+            int pivotX = tetromino.getPivotX();
+            int pivotY = tetromino.getPivotY();
+            int currentX = gameState.getCurrentX();
+            int currentY = gameState.getCurrentY();
+            
+            // 첫 번째 블록의 실제 위치 찾기
+            boolean found = false;
+            for (int r = 0; r < shape.length && !found; r++) {
+                for (int c = 0; c < shape[0].length && !found; c++) {
+                    if (shape[r][c] == 1) {
+                        actualRow = currentY + (r - pivotY);
+                        actualCol = currentX + (c - pivotX);
+                        found = true;
+                        System.out.println("🎯 [BoardController] Item block actual position: (" + actualRow + ", " + actualCol + ")");
+                        System.out.println("   - Pivot position was: (" + currentY + ", " + currentX + ")");
+                    }
+                }
+            }
+        }
         
         GameState newState = GameEngine.lockTetromino(gameState);
         
         // Lock 후 아이템 효과 적용
-        if (itemType != null && gameEngine != null) {
-            seoultech.se.core.item.ItemEffect effect = gameEngine.applyItemEffect(newState, itemType);
-            System.out.println("🎯 [BoardController] Item effect applied after lock: " + itemType + 
-                " (Blocks cleared: " + effect.getBlocksCleared() + 
-                ", Bonus: " + effect.getBonusScore() + ")");
+        if (itemType != null && gameEngine != null && actualRow >= 0 && actualCol >= 0) {
+            // 저장한 위치 사용
+            seoultech.se.core.item.Item item = gameEngine.getItemManager() != null 
+                ? gameEngine.getItemManager().getItem(itemType) 
+                : null;
+            
+            if (item != null) {
+                System.out.println("🔥 [BoardController] Applying item effect: " + itemType + 
+                    " at position (" + actualRow + ", " + actualCol + ")");
+                seoultech.se.core.item.ItemEffect effect = item.apply(newState, actualRow, actualCol);
+                
+                if (effect.isSuccess()) {
+                    // 점수 추가
+                    newState.setScore(newState.getScore() + effect.getBonusScore());
+                    
+                    System.out.println("🎯 [BoardController] Item effect applied: " + itemType + 
+                        " - Blocks cleared: " + effect.getBlocksCleared() + 
+                        ", Bonus: " + effect.getBonusScore());
+                } else {
+                    System.out.println("⚠️ [BoardController] Item effect failed: " + itemType);
+                }
+            }
         }
         
         if (!newState.isGameOver()) {
@@ -223,9 +267,22 @@ public class BoardController {
 
     private List<TetrominoType> createAndShuffleBag() {
         List<TetrominoType> bag = new ArrayList<>();
-        for (TetrominoType type : TetrominoType.values()) {
+        // ITEM 타입은 제외 (7-bag 시스템에 포함하지 않음)
+        TetrominoType[] normalTypes = {
+            TetrominoType.I, 
+            TetrominoType.J, 
+            TetrominoType.L, 
+            TetrominoType.O, 
+            TetrominoType.S, 
+            TetrominoType.T, 
+            TetrominoType.Z
+        };
+        
+        for (TetrominoType type : normalTypes) {
             bag.add(type);
         }
+        
+        // 셔플
         for (int i = bag.size() - 1; i > 0; i--) {
             int j = random.nextInt(i + 1);
             TetrominoType temp = bag.get(i);

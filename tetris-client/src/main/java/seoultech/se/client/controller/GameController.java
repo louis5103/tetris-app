@@ -198,12 +198,20 @@ public class GameController {
      * 아케이드 모드일 때만 활성화됩니다
      */
     private void initializeItemInventory() {
+        System.out.println("🔧 [GameController] Initializing item inventory...");
+        System.out.println("   - gameModeConfig: " + gameModeConfig);
+        System.out.println("   - itemConfig: " + (gameModeConfig != null ? gameModeConfig.getItemConfig() : "null"));
+        System.out.println("   - isEnabled: " + (gameModeConfig != null && gameModeConfig.getItemConfig() != null ? gameModeConfig.getItemConfig().isEnabled() : "N/A"));
+        
         if (gameModeConfig != null && 
             gameModeConfig.getItemConfig() != null && 
             gameModeConfig.getItemConfig().isEnabled()) {
             
             int maxInventorySize = gameModeConfig.getItemConfig().getMaxInventorySize();
+            System.out.println("   - maxInventorySize: " + maxInventorySize);
+            
             itemInventoryPanel = new ItemInventoryPanel(maxInventorySize);
+            System.out.println("   - ItemInventoryPanel created: " + itemInventoryPanel);
             
             // 아이템 사용 콜백 설정
             itemInventoryPanel.setOnItemUse((item, slotIndex) -> {
@@ -214,7 +222,14 @@ public class GameController {
             if (itemInventoryContainer != null) {
                 itemInventoryContainer.getChildren().clear();
                 itemInventoryContainer.getChildren().add(itemInventoryPanel);
+                itemInventoryContainer.setVisible(true);
+                itemInventoryContainer.setManaged(true);
                 System.out.println("✅ [GameController] Item inventory initialized (max: " + maxInventorySize + ")");
+                System.out.println("   - Container visible: " + itemInventoryContainer.isVisible());
+                System.out.println("   - Container managed: " + itemInventoryContainer.isManaged());
+                System.out.println("   - Container children: " + itemInventoryContainer.getChildren().size());
+            } else {
+                System.out.println("⚠️ [GameController] itemInventoryContainer is null!");
             }
         } else {
             // 아이템 시스템 비활성화

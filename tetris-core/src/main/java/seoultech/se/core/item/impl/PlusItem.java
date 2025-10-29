@@ -51,19 +51,34 @@ public class PlusItem extends AbstractItem {
         Cell[][] grid = gameState.getGrid();
         int boardHeight = gameState.getBoardHeight();
         int boardWidth = gameState.getBoardWidth();
+        
+        // 경계 체크
+        if (row < 0 || row >= boardHeight || col < 0 || col >= boardWidth) {
+            System.err.println("⚠️ [PlusItem] Invalid position: (" + row + ", " + col + ")");
+            System.err.println("   - Board size: " + boardHeight + "x" + boardWidth);
+            return ItemEffect.none();
+        }
+        
         int blocksCleared = 0;
         
+        System.out.println("➕ [PlusItem] Applying PLUS effect at (" + row + ", " + col + ")");
+        System.out.println("   - Board size: " + boardHeight + "x" + boardWidth);
+        
         // 행 제거
+        System.out.println("   - Clearing row " + row);
         for (int c = 0; c < boardWidth; c++) {
             if (grid[row][c] != null && grid[row][c].isOccupied()) {
+                System.out.println("     * Clearing block at (" + row + ", " + c + ")");
                 grid[row][c].clear();
                 blocksCleared++;
             }
         }
         
         // 열 제거 (교차점 제외)
+        System.out.println("   - Clearing column " + col);
         for (int r = 0; r < boardHeight; r++) {
             if (r != row && grid[r][col] != null && grid[r][col].isOccupied()) {
+                System.out.println("     * Clearing block at (" + r + ", " + col + ")");
                 grid[r][col].clear();
                 blocksCleared++;
             }
@@ -74,7 +89,7 @@ public class PlusItem extends AbstractItem {
         String message = String.format("➕ Plus cleared! Row %d and Column %d - %d blocks cleared", 
             row, col, blocksCleared);
         
-        System.out.println(message);
+        System.out.println("✅ [PlusItem] " + message);
         
         return ItemEffect.success(ItemType.PLUS, blocksCleared, bonusScore, message);
     }

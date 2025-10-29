@@ -305,6 +305,28 @@ public class SettingsService {
     private GameModeConfig buildArcadeConfig(boolean srsEnabled) {
         System.out.println("🎮 [SettingsService] Building ARCADE config...");
         
+        // ItemConfig 생성
+        seoultech.se.core.item.ItemConfig itemConfig = buildItemConfig();
+        
+        System.out.println("✅ ItemConfig created - isEnabled: " + itemConfig.isEnabled());
+        
+        // 아케이드 모드 기본 설정에 아이템 설정 추가
+        return GameModeConfig.builder()
+            .gameplayType(GameplayType.ARCADE)
+            .dropSpeedMultiplier(1.5)
+            .lockDelay(300)
+            .srsEnabled(srsEnabled)
+            .itemConfig(itemConfig)
+            .build();
+    }
+    
+    /**
+     * ItemConfig 생성
+     * GameModeProperties 설정을 기반으로 ItemConfig를 빌드합니다.
+     * 
+     * @return ItemConfig 객체
+     */
+    private seoultech.se.core.item.ItemConfig buildItemConfig() {
         // 활성화된 아이템 타입 수집
         java.util.Set<seoultech.se.core.item.ItemType> enabledItems = 
             new java.util.HashSet<>();
@@ -319,24 +341,11 @@ public class SettingsService {
         System.out.println("📊 Item drop rate: " + (int)(gameModeProperties.getItemDropRate() * 100) + "%");
         System.out.println("📊 Enabled items: " + enabledItems);
         
-        // ItemConfig 생성
-        seoultech.se.core.item.ItemConfig itemConfig = 
-            seoultech.se.core.item.ItemConfig.builder()
-                .dropRate(gameModeProperties.getItemDropRate())
-                .enabledItems(enabledItems)
-                .maxInventorySize(gameModeProperties.getMaxInventorySize())
-                .autoUse(gameModeProperties.isItemAutoUse())
-                .build();
-        
-        System.out.println("✅ ItemConfig created - isEnabled: " + itemConfig.isEnabled());
-        
-        // 아케이드 모드 기본 설정에 아이템 설정 추가
-        return GameModeConfig.builder()
-            .gameplayType(GameplayType.ARCADE)
-            .dropSpeedMultiplier(1.5)
-            .lockDelay(300)
-            .srsEnabled(srsEnabled)
-            .itemConfig(itemConfig)
+        return seoultech.se.core.item.ItemConfig.builder()
+            .dropRate(gameModeProperties.getItemDropRate())
+            .enabledItems(enabledItems)
+            .maxInventorySize(gameModeProperties.getMaxInventorySize())
+            .autoUse(gameModeProperties.isItemAutoUse())
             .build();
     }
     
@@ -448,8 +457,8 @@ public class SettingsService {
                 return null; // 저장된 커스텀 설정 없음
             }
             
-            // 모든 설정 로드
-            GameModeConfig config = GameModeConfig.builder()
+            // GameModeConfig 빌더 시작
+            GameModeConfig.GameModeConfigBuilder builder = GameModeConfig.builder()
                 .gameplayType(gameplayType)
                 .srsEnabled(Boolean.parseBoolean(props.getProperty(prefix + "srsEnabled", "true")))
                 .rotation180Enabled(Boolean.parseBoolean(props.getProperty(prefix + "rotation180Enabled", "false")))
@@ -458,8 +467,15 @@ public class SettingsService {
                 .ghostPieceEnabled(Boolean.parseBoolean(props.getProperty(prefix + "ghostPieceEnabled", "true")))
                 .dropSpeedMultiplier(Double.parseDouble(props.getProperty(prefix + "dropSpeedMultiplier", "1.0")))
                 .softDropSpeed(Double.parseDouble(props.getProperty(prefix + "softDropSpeed", "20.0")))
-                .lockDelay(Integer.parseInt(props.getProperty(prefix + "lockDelay", "500")))
-                .build();
+                .lockDelay(Integer.parseInt(props.getProperty(prefix + "lockDelay", "500")));
+            
+            // ARCADE 모드인 경우 아이템 설정 추가
+            if (gameplayType == GameplayType.ARCADE) {
+                builder.itemConfig(buildItemConfig());
+                System.out.println("   - itemConfig added for ARCADE mode");
+            }
+            
+            GameModeConfig config = builder.build();
                 
             System.out.println("✅ Loaded custom config for " + gameplayType.getDisplayName() + ":");
             System.out.println("   - hardDropEnabled: " + config.isHardDropEnabled());

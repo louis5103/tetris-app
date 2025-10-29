@@ -288,6 +288,12 @@ public class GameEngine {
      * @return 새로운 게임 상태 (Hold 실패 시 원본 상태 반환)
      */
     public static GameState tryHold(GameState state) {
+        // ✅ Fix #2: 아이템 블록은 Hold 불가
+        if (state.getCurrentItemType() != null) {
+            System.out.println("⚠️ [GameEngine] Cannot hold item block");
+            return state;
+        }
+        
         // 이미 이번 턴에 Hold를 사용했는지 확인
         if (state.isHoldUsedThisTurn()) {
             return state;  // 실패 시 원본 상태 반환
@@ -986,9 +992,10 @@ public class GameEngine {
      * 
      * 변경된 메커니즘:
      * 1. 아이템 사용 시 즉시 효과가 발생하는 것이 아님
-     * 2. GameState에 아이템 타입만 설정 (시각적 표시용)
-     * 3. Lock 시점에 아이템 효과 발생 후 블록 사라짐
-     * 4. GameOver 임계값에서도 아이템 블록은 GameOver되지 않고 효과 발생
+     * 2. 현재 테트로미노를 1칸짜리 아이템 블록으로 변경
+     * 3. GameState에 아이템 타입 설정 (시각적 표시용)
+     * 4. Lock 시점에 아이템 효과 발생 후 블록 사라짐
+     * 5. GameOver 임계값에서도 아이템 블록은 GameOver되지 않고 효과 발생
      * 
      * @param item 사용할 아이템
      * @param gameState 현재 게임 상태
@@ -1000,15 +1007,30 @@ public class GameEngine {
             return false;
         }
         
+        // ✅ Fix #3: 이미 아이템 블록이 활성화되어 있으면 사용 불가
+        if (gameState.getCurrentItemType() != null) {
+            System.out.println("⚠️ [GameEngine] Item already active! Lock current item first.");
+            return false;
+        }
+        
         if (gameState.getCurrentTetromino() == null) {
             System.out.println("⚠️ [GameEngine] No current tetromino");
             return false;
         }
         
+        // 현재 테트로미노를 1칸짜리 ITEM 타입으로 변경
+        Tetromino itemBlock = new Tetromino(TetrominoType.ITEM);
+        gameState.setCurrentTetromino(itemBlock);
+        
+        // 위치 조정 (중앙 상단에 배치)
+        int centerX = gameState.getBoardWidth() / 2;
+        gameState.setCurrentX(centerX);
+        gameState.setCurrentY(0);
+        
         // GameState에 아이템 타입 설정
         gameState.setCurrentItemType(item.getType());
         
-        System.out.println("✨ [GameEngine] Tetromino converted to item block: " + item.getType());
+        System.out.println("✨ [GameEngine] Tetromino converted to 1x1 item block: " + item.getType());
         return true;
     }
     
