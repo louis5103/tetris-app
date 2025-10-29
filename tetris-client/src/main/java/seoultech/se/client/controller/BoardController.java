@@ -24,6 +24,7 @@ public class BoardController {
     private GameState gameState;
     private final Random random = new Random();
     private GameMode gameMode;
+    private GameEngine gameEngine;  // 게임 엔진 추가
     private List<TetrominoType> currentBag = new ArrayList<>();
     private List<TetrominoType> nextBag = new ArrayList<>();
     private int bagIndex = 0;
@@ -44,6 +45,10 @@ public class BoardController {
     public BoardController(GameModeConfig config) {
         this.gameState = new GameState(10, 20);
         this.gameStartTime = System.currentTimeMillis();
+        
+        // GameEngine 생성 및 초기화
+        this.gameEngine = new GameEngine();
+        this.gameEngine.initialize(config);
         
         // GameModeConfig에 따라 SingleMode 생성
         this.gameMode = new SingleMode(config);
@@ -177,7 +182,19 @@ public class BoardController {
     }
 
     private GameState lockAndSpawnNext() {
+        // Lock 전에 아이템 타입 확인
+        seoultech.se.core.item.ItemType itemType = gameState.getCurrentItemType();
+        
         GameState newState = GameEngine.lockTetromino(gameState);
+        
+        // Lock 후 아이템 효과 적용
+        if (itemType != null && gameEngine != null) {
+            seoultech.se.core.item.ItemEffect effect = gameEngine.applyItemEffect(newState, itemType);
+            System.out.println("🎯 [BoardController] Item effect applied after lock: " + itemType + 
+                " (Blocks cleared: " + effect.getBlocksCleared() + 
+                ", Bonus: " + effect.getBonusScore() + ")");
+        }
+        
         if (!newState.isGameOver()) {
             spawnNewTetromino(newState);
             updateNextQueue(newState);
@@ -273,6 +290,10 @@ public class BoardController {
         initializeNextQueue();
         if (gameMode != null) {
             gameMode.initialize(gameState);
+            // GameEngine도 재초기화
+            if (gameEngine != null) {
+                gameEngine.initialize(gameMode.getConfig());
+            }
         }
     }
     

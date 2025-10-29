@@ -112,6 +112,15 @@ public class SettingsService {
 
     public void saveSettings() {
         Properties props = new Properties();
+        
+        // 기존 설정 파일 로드 (custom.* 설정 보존)
+        try (FileInputStream in = new FileInputStream(new File(SETTINGS_FILE))) {
+            props.load(in);
+        } catch (Exception e) {
+            // 파일이 없으면 새로 생성
+        }
+        
+        // 기본 설정 업데이트
         props.setProperty("soundVolume", String.valueOf(soundVolume.get()));
         props.setProperty("colorMode", colorMode.get());
         props.setProperty("screenSize", screenSize.get());
@@ -274,7 +283,8 @@ public class SettingsService {
             
             // 게임플레이 타입에 따라 프리셋 사용
             if (gameplayType == GameplayType.ARCADE) {
-                return GameModeConfig.arcade();
+                // 아케이드 모드는 아이템 설정 포함
+                return buildArcadeConfig(srsEnabled);
             } else {
                 return GameModeConfig.classic(srsEnabled);
             }
@@ -284,6 +294,50 @@ public class SettingsService {
             // 기본값 반환
             return GameModeConfig.classic(true);
         }
+    }
+    
+    /**
+     * 아케이드 모드 설정 빌드 (아이템 설정 포함)
+     * 
+     * @param srsEnabled SRS 활성화 여부
+     * @return 아케이드 모드 설정
+     */
+    private GameModeConfig buildArcadeConfig(boolean srsEnabled) {
+        System.out.println("🎮 [SettingsService] Building ARCADE config...");
+        
+        // 활성화된 아이템 타입 수집
+        java.util.Set<seoultech.se.core.item.ItemType> enabledItems = 
+            new java.util.HashSet<>();
+        
+        for (seoultech.se.core.item.ItemType itemType : 
+             seoultech.se.core.item.ItemType.values()) {
+            if (gameModeProperties.isItemEnabled(itemType.name())) {
+                enabledItems.add(itemType);
+            }
+        }
+        
+        System.out.println("📊 Item drop rate: " + (int)(gameModeProperties.getItemDropRate() * 100) + "%");
+        System.out.println("📊 Enabled items: " + enabledItems);
+        
+        // ItemConfig 생성
+        seoultech.se.core.item.ItemConfig itemConfig = 
+            seoultech.se.core.item.ItemConfig.builder()
+                .dropRate(gameModeProperties.getItemDropRate())
+                .enabledItems(enabledItems)
+                .maxInventorySize(gameModeProperties.getMaxInventorySize())
+                .autoUse(gameModeProperties.isItemAutoUse())
+                .build();
+        
+        System.out.println("✅ ItemConfig created - isEnabled: " + itemConfig.isEnabled());
+        
+        // 아케이드 모드 기본 설정에 아이템 설정 추가
+        return GameModeConfig.builder()
+            .gameplayType(GameplayType.ARCADE)
+            .dropSpeedMultiplier(1.5)
+            .lockDelay(300)
+            .srsEnabled(srsEnabled)
+            .itemConfig(itemConfig)
+            .build();
     }
     
     /**
@@ -326,12 +380,15 @@ public class SettingsService {
     public void saveCustomGameModeConfig(GameplayType gameplayType, GameModeConfig config) {
         try {
             Properties props = new Properties();
+            File settingsFile = new File(SETTINGS_FILE);
             
             // 기존 설정 파일 로드
-            try (FileInputStream in = new FileInputStream(new File(SETTINGS_FILE))) {
+            try (FileInputStream in = new FileInputStream(settingsFile)) {
                 props.load(in);
+                System.out.println("📂 Loaded existing settings from: " + settingsFile.getAbsolutePath());
             } catch (Exception e) {
                 // 파일이 없으면 새로 생성
+                System.out.println("📂 Creating new settings file: " + settingsFile.getAbsolutePath());
             }
             
             // 모드별 키 접두사
@@ -348,9 +405,14 @@ public class SettingsService {
             props.setProperty(prefix + "lockDelay", String.valueOf(config.getLockDelay()));
             
             // 파일에 저장
-            try (java.io.FileOutputStream out = new java.io.FileOutputStream(new File(SETTINGS_FILE))) {
+            try (java.io.FileOutputStream out = new java.io.FileOutputStream(settingsFile)) {
                 props.store(out, "Tetris Game Settings");
                 System.out.println("✅ Custom game mode config saved for " + gameplayType.getDisplayName());
+                System.out.println("   File: " + settingsFile.getAbsolutePath());
+                System.out.println("   - hardDropEnabled: " + config.isHardDropEnabled());
+                System.out.println("   - holdEnabled: " + config.isHoldEnabled());
+                System.out.println("   - srsEnabled: " + config.isSrsEnabled());
+                System.out.println("   - dropSpeedMultiplier: " + config.getDropSpeedMultiplier());
             }
         } catch (Exception e) {
             System.err.println("❗ Failed to save custom game mode config: " + e.getMessage());
@@ -367,7 +429,14 @@ public class SettingsService {
     public GameModeConfig loadCustomGameModeConfig(GameplayType gameplayType) {
         try {
             Properties props = new Properties();
-            try (FileInputStream in = new FileInputStream(new File(SETTINGS_FILE))) {
+            File settingsFile = new File(SETTINGS_FILE);
+            
+            if (!settingsFile.exists()) {
+                System.out.println("⚠️ Settings file not found: " + settingsFile.getAbsolutePath());
+                return null;
+            }
+            
+            try (FileInputStream in = new FileInputStream(settingsFile)) {
                 props.load(in);
             }
             
@@ -375,11 +444,12 @@ public class SettingsService {
             
             // 저장된 설정이 있는지 확인
             if (!props.containsKey(prefix + "srsEnabled")) {
+                System.out.println("⚠️ No custom settings found for " + gameplayType.getDisplayName() + " (key: " + prefix + "srsEnabled)");
                 return null; // 저장된 커스텀 설정 없음
             }
             
             // 모든 설정 로드
-            return GameModeConfig.builder()
+            GameModeConfig config = GameModeConfig.builder()
                 .gameplayType(gameplayType)
                 .srsEnabled(Boolean.parseBoolean(props.getProperty(prefix + "srsEnabled", "true")))
                 .rotation180Enabled(Boolean.parseBoolean(props.getProperty(prefix + "rotation180Enabled", "false")))
@@ -390,8 +460,17 @@ public class SettingsService {
                 .softDropSpeed(Double.parseDouble(props.getProperty(prefix + "softDropSpeed", "20.0")))
                 .lockDelay(Integer.parseInt(props.getProperty(prefix + "lockDelay", "500")))
                 .build();
+                
+            System.out.println("✅ Loaded custom config for " + gameplayType.getDisplayName() + ":");
+            System.out.println("   - hardDropEnabled: " + config.isHardDropEnabled());
+            System.out.println("   - holdEnabled: " + config.isHoldEnabled());
+            System.out.println("   - srsEnabled: " + config.isSrsEnabled());
+            System.out.println("   - dropSpeedMultiplier: " + config.getDropSpeedMultiplier());
+            
+            return config;
         } catch (Exception e) {
             System.err.println("❗ Failed to load custom game mode config: " + e.getMessage());
+            e.printStackTrace();
             return null;
         }
     }

@@ -249,8 +249,19 @@ public class MainController extends BaseController {
      * @param playType 플레이 타입
      */
     private void showModeSettingsPopup(String modeName, GameplayType gameplayType, PlayType playType) {
-        // 현재 설정 가져오기
-        GameModeConfig currentConfig = settingsService.buildGameModeConfig();
+        // 저장된 커스텀 설정 로드, 없으면 기본 프리셋 사용
+        GameModeConfig currentConfig = settingsService.loadCustomGameModeConfig(gameplayType);
+        if (currentConfig == null) {
+            // 저장된 설정이 없으면 프리셋 사용
+            if (gameplayType == GameplayType.ARCADE) {
+                currentConfig = GameModeConfig.arcade();
+            } else {
+                currentConfig = GameModeConfig.classic();
+            }
+            System.out.println("📋 No custom settings found, using default preset for " + modeName);
+        } else {
+            System.out.println("📋 Loaded custom settings for " + modeName);
+        }
         
         // 커스텀 다이얼로그 생성
         javafx.scene.control.Dialog<GameModeConfig> dialog = new javafx.scene.control.Dialog<>();

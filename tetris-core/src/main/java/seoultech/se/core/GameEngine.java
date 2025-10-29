@@ -3,6 +3,12 @@ package seoultech.se.core;
 import java.util.ArrayList;
 import java.util.List;
 
+import seoultech.se.core.config.GameModeConfig;
+import seoultech.se.core.item.Item;
+import seoultech.se.core.item.ItemConfig;
+import seoultech.se.core.item.ItemEffect;
+import seoultech.se.core.item.ItemManager;
+import seoultech.se.core.item.ItemType;
 import seoultech.se.core.model.Cell;
 import seoultech.se.core.model.Tetromino;
 import seoultech.se.core.model.enumType.RotationDirection;
@@ -16,6 +22,7 @@ import seoultech.se.core.model.enumType.WallKickEventData;
  * 기능: 블록 이동, 회전, 고정 등 게임 내 주요 로직 처리
  * 각 메서드는 새로운 GameState 객체를 반환하여 불변성을 유지
  * Phase 2: Result 객체 제거 - GameState만으로 모든 정보 전달
+ * Phase 3: 아이템 시스템 통합 - 아케이드 모드 지원
  */
 public class GameEngine {
     private static final int[][] T_SPIN_CORNERS = {
@@ -24,6 +31,71 @@ public class GameEngine {
         {-1, 1},   // 좌하
         {1, 1}     // 우하
     };
+    
+    // ========== 아이템 시스템 ==========
+    
+    /**
+     * 아이템 관리자 (아케이드 모드에서 사용)
+     */
+    private ItemManager itemManager;
+    
+    /**
+     * 게임 모드 설정
+     */
+    private GameModeConfig config;
+    
+    // ========== 생성자 및 초기화 ==========
+    
+    /**
+     * 기본 생성자
+     */
+    public GameEngine() {
+        this.config = null;
+        this.itemManager = null;
+    }
+    
+    /**
+     * 게임 엔진 초기화
+     * 
+     * @param config 게임 모드 설정
+     */
+    public void initialize(GameModeConfig config) {
+        this.config = config;
+        
+        // 아이템 시스템 초기화 (아케이드 모드인 경우)
+        if (config != null && config.getItemConfig() != null && config.getItemConfig().isEnabled()) {
+            ItemConfig itemConfig = config.getItemConfig();
+            this.itemManager = new ItemManager(
+                itemConfig.getDropRate(),
+                itemConfig.getEnabledItems()
+            );
+            System.out.println("✅ [GameEngine] Item system initialized - Drop rate: " + 
+                (int)(itemConfig.getDropRate() * 100) + "%");
+        } else {
+            this.itemManager = null;
+            System.out.println("ℹ️ [GameEngine] Item system disabled");
+        }
+    }
+    
+    /**
+     * 아이템 매니저 반환
+     * 
+     * @return 아이템 매니저 (비활성화 시 null)
+     */
+    public ItemManager getItemManager() {
+        return itemManager;
+    }
+    
+    /**
+     * 아이템 시스템 활성화 여부
+     * 
+     * @return 아이템 시스템이 활성화되어 있으면 true
+     */
+    public boolean isItemSystemEnabled() {
+        return itemManager != null;
+    }
+    
+    // ========== 이동 관련 메서드 ==========
 
     public static GameState tryMoveLeft(GameState state) {
         int newX = state.getCurrentX() - 1;
@@ -339,6 +411,10 @@ public class GameEngine {
     private static GameState lockTetrominoInternal(GameState state, boolean needsCopy) {
         GameState newState = needsCopy ? state.deepCopy() : state;
         
+        // 아이템 블록 여부 확인
+        boolean isItemBlock = newState.getCurrentItemType() != null;
+        ItemType itemType = newState.getCurrentItemType();
+        
         // 고정하기 전에 블록 정보 저장! (EventMapper에서 사용)
         Tetromino lockedTetromino = state.getCurrentTetromino();
         int lockedX = state.getCurrentX();
@@ -359,34 +435,73 @@ public class GameEngine {
         int[][] shape = state.getCurrentTetromino().getCurrentShape();
 
         // 1. 게임 오버 체크 (블록을 고정하기 전에 먼저 확인)
-        // 블록의 어느 부분이라도 보드 위쪽(y < 0)에 있으면 게임 오버
-        for(int row = 0; row < shape.length; row++) {
-            for(int col = 0; col < shape[row].length; col++) {
-                if (shape[row][col] == 1) {
-                    int absY = state.getCurrentY() + (row - state.getCurrentTetromino().getPivotY());
-                    
-                    if(absY < 0) {
-                        // 게임 오버 - 블록이 보드 위쪽에 고정됨
-                        newState.setGameOver(true);
-                        newState.setGameOverReason("[GameEngine] (Method: lockTetromino) Game Over: Block locked above the board.");
+        // 아이템 블록인 경우 GameOver 임계값에서도 GameOver되지 않음
+        if (!isItemBlock) {
+            // 블록의 어느 부분이라도 보드 위쪽(y < 0)에 있으면 게임 오버
+            for(int row = 0; row < shape.length; row++) {
+                for(int col = 0; col < shape[row].length; col++) {
+                    if (shape[row][col] == 1) {
+                        int absY = state.getCurrentY() + (row - state.getCurrentTetromino().getPivotY());
                         
-                        // Phase 2: 게임 오버 시에도 Lock 메타데이터 저장
-                        newState.setLastLockedTetromino(lockedTetromino);
-                        newState.setLastLockedX(lockedX);
-                        newState.setLastLockedY(lockedY);
-                        newState.setLastLinesCleared(0);
-                        newState.setLastClearedRows(new int[0]);
-                        newState.setLastScoreEarned(0);
-                        newState.setLastIsPerfectClear(false);
-                        newState.setLastLeveledUp(false);
-                        
-                        return newState;
+                        if(absY < 0) {
+                            // 게임 오버 - 블록이 보드 위쪽에 고정됨
+                            newState.setGameOver(true);
+                            newState.setGameOverReason("[GameEngine] (Method: lockTetromino) Game Over: Block locked above the board.");
+                            
+                            // Phase 2: 게임 오버 시에도 Lock 메타데이터 저장
+                            newState.setLastLockedTetromino(lockedTetromino);
+                            newState.setLastLockedX(lockedX);
+                            newState.setLastLockedY(lockedY);
+                            newState.setLastLinesCleared(0);
+                            newState.setLastClearedRows(new int[0]);
+                            newState.setLastScoreEarned(0);
+                            newState.setLastIsPerfectClear(false);
+                            newState.setLastLeveledUp(false);
+                            
+                            return newState;
+                        }
                     }
                 }
             }
         }
 
-        // 2. Grid에 테트로미노 고정 (게임 오버가 아닌 경우에만 실행됨)
+        // 2. 아이템 블록 처리
+        if (isItemBlock) {
+            // 아이템 효과 적용 (인스턴스 메서드 호출을 위해 임시로 주석)
+            // ItemEffect effect = applyItemEffect(newState, itemType);
+            
+            System.out.println("🎯 [GameEngine] Item block detected, effect will be applied: " + itemType);
+            
+            // 아이템 블록은 Grid에 고정되지 않음 (사라짐)
+            // Hold 재사용 가능하게 설정
+            newState.setHoldUsedThisTurn(false);
+            
+            // 회전 플래그 리셋
+            newState.setLastActionWasRotation(false);
+            
+            // 아이템 타입 리셋
+            newState.setCurrentItemType(null);
+            
+            // Phase 2: Lock 메타데이터 저장
+            newState.setLastLockedTetromino(lockedTetromino);
+            newState.setLastLockedX(lockedX);
+            newState.setLastLockedY(lockedY);
+            newState.setLastLinesCleared(0);
+            newState.setLastClearedRows(new int[0]);
+            newState.setLastScoreEarned(0);
+            newState.setLastIsPerfectClear(false);
+            newState.setLastLeveledUp(false);
+            
+            // 아이템 블록이므로 라인 클리어 없음, 콤보/B2B 초기화
+            newState.setComboCount(0);
+            newState.setLastActionClearedLines(false);
+            newState.setBackToBackCount(0);
+            newState.setLastClearWasDifficult(false);
+            
+            return newState;
+        }
+
+        // 3. Grid에 테트로미노 고정 (일반 블록인 경우)
         for(int row = 0; row < shape.length; row++) {
             for(int col = 0; col < shape[row].length; col++) {
                 if (shape[row][col] == 1) {
@@ -405,11 +520,17 @@ public class GameEngine {
             }
         }
 
-        // 3. 라인 클리어 체크 및 실행 (T-Spin 정보 전달)
+        // 4. 라인 클리어 체크 및 실행 (T-Spin 정보 전달)
         // Phase 2: GameState에 직접 라인 클리어 정보를 저장
         checkAndClearLines(newState, isTSpin, isTSpinMini);
 
-        // 4. 점수 및 통계 업데이트
+        // 4. 아이템 드롭 체크 (아케이드 모드, 라인 클리어 시)
+        // 인스턴스 메서드로 변경 필요하므로 주석 처리 (향후 GameController에서 처리)
+        // if (itemManager != null && newState.getLastLinesCleared() > 0) {
+        //     tryDropItem(newState);
+        // }
+
+        // 5. 점수 및 통계 업데이트
         boolean leveledUp = false;
         
         if(newState.getLastLinesCleared() > 0) {
@@ -856,6 +977,97 @@ public class GameEngine {
             }
         }
         return true;
+    }
+    
+    // ========== 아이템 시스템 메서드 ==========
+    
+    /**
+     * 아이템 사용 - 현재 테트로미노를 아이템 블록으로 변환
+     * 
+     * 변경된 메커니즘:
+     * 1. 아이템 사용 시 즉시 효과가 발생하는 것이 아님
+     * 2. GameState에 아이템 타입만 설정 (시각적 표시용)
+     * 3. Lock 시점에 아이템 효과 발생 후 블록 사라짐
+     * 4. GameOver 임계값에서도 아이템 블록은 GameOver되지 않고 효과 발생
+     * 
+     * @param item 사용할 아이템
+     * @param gameState 현재 게임 상태
+     * @return true if 성공, false if 실패
+     */
+    public boolean useItem(Item item, GameState gameState) {
+        if (itemManager == null) {
+            System.out.println("⚠️ [GameEngine] Item system is disabled");
+            return false;
+        }
+        
+        if (gameState.getCurrentTetromino() == null) {
+            System.out.println("⚠️ [GameEngine] No current tetromino");
+            return false;
+        }
+        
+        // GameState에 아이템 타입 설정
+        gameState.setCurrentItemType(item.getType());
+        
+        System.out.println("✨ [GameEngine] Tetromino converted to item block: " + item.getType());
+        return true;
+    }
+    
+    /**
+     * Lock 시 아이템 효과 적용
+     * 
+     * @param gameState 게임 상태
+     * @param itemType 아이템 타입
+     * @return 아이템 효과
+     */
+    public ItemEffect applyItemEffect(GameState gameState, ItemType itemType) {
+        if (itemManager == null || itemType == null) {
+            return ItemEffect.none();
+        }
+        
+        // ItemManager에서 아이템 가져오기
+        Item item = itemManager.getItem(itemType);
+        if (item == null) {
+            System.out.println("⚠️ [GameEngine] Item not found: " + itemType);
+            return ItemEffect.none();
+        }
+        
+        // 테트로미노의 중심 위치를 사용
+        int row = gameState.getCurrentY();
+        int col = gameState.getCurrentX();
+        
+        ItemEffect effect = item.apply(gameState, row, col);
+        
+        if (effect.isSuccess()) {
+            // 점수 추가
+            gameState.setScore(gameState.getScore() + effect.getBonusScore());
+            
+            System.out.println("🎯 [GameEngine] Item effect applied: " + itemType + 
+                " - Blocks cleared: " + effect.getBlocksCleared() + 
+                ", Bonus score: " + effect.getBonusScore());
+        }
+        
+        return effect;
+    }
+    
+    /**
+     * 라인 클리어 시 아이템 드롭 체크
+     * 
+     * @return 드롭된 아이템 (없으면 null)
+     */
+    public Item tryDropItem() {
+        if (itemManager == null) {
+            return null;
+        }
+        
+        if (itemManager.shouldDropItem()) {
+            Item item = itemManager.generateRandomItem();
+            if (item != null) {
+                System.out.println("🎁 [GameEngine] Item dropped: " + item.getType());
+            }
+            return item;
+        }
+        
+        return null;
     }
     
 }

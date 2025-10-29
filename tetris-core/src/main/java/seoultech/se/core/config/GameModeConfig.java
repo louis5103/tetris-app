@@ -5,6 +5,7 @@ import java.util.Map;
 
 import lombok.Builder;
 import lombok.Getter;
+import seoultech.se.core.item.ItemConfig;
 
 /**
  * 게임 모드 설정 객체
@@ -139,6 +140,13 @@ public class GameModeConfig {
     @Builder.Default
     private final GameplayType gameplayType = GameplayType.CLASSIC;
     
+    /**
+     * 아이템 설정 (아케이드 모드용)
+     * null이면 아이템 시스템 비활성화
+     */
+    @Builder.Default
+    private final ItemConfig itemConfig = null;
+    
     // ========== 확장 설정 ==========
     
     /**
@@ -197,6 +205,7 @@ public class GameModeConfig {
      * - 빠른 낙하 속도 (1.5배)
      * - 짧은 락 딜레이 (300ms)
      * - SRS 활성화
+     * - 아이템 시스템 활성화 (10% 드롭률)
      * - 높은 점수 배율
      */
     public static GameModeConfig arcade() {
@@ -205,6 +214,7 @@ public class GameModeConfig {
             .dropSpeedMultiplier(1.5)
             .lockDelay(300)
             .srsEnabled(true)
+            .itemConfig(ItemConfig.arcadeDefault())
             .build();
     }
     

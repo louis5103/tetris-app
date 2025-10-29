@@ -126,6 +126,10 @@ public class BoardRenderer {
         int pivotY = tetromino.getPivotY();
         seoultech.se.core.model.enumType.Color color = tetromino.getColor();
         
+        // 아이템 블록 여부 확인
+        boolean isItemBlock = gameState.getCurrentItemType() != null;
+        seoultech.se.core.item.ItemType itemType = gameState.getCurrentItemType();
+        
         for (int row = 0; row < shape.length; row++) {
             for (int col = 0; col < shape[0].length; col++) {
                 if (shape[row][col] == 1) {
@@ -136,15 +140,59 @@ public class BoardRenderer {
                         absoluteX >= 0 && absoluteX < gameState.getBoardWidth()) {
                         
                         Rectangle rect = cellRectangles[absoluteY][absoluteX];
-                        rect.setFill(ColorMapper.toJavaFXColor(color));
                         
                         String colorClass = ColorMapper.toCssClass(color, currentColorBlindMode);
                         rect.getStyleClass().removeAll(UIConstants.ALL_TETROMINO_COLOR_CLASSES);
                         if (colorClass != null) {
                             rect.getStyleClass().add(colorClass);
+                        // 아이템 블록인 경우 특별한 스타일 적용
+                        if (isItemBlock) {
+                            applyItemBlockStyle(rect, itemType);
+                        } else {
+                            // 일반 블록
+                            rect.setFill(ColorMapper.toJavaFXColor(color));
+                            
+                            String colorClass = ColorMapper.toCssClass(color);
+                            rect.getStyleClass().removeAll(UIConstants.ALL_TETROMINO_COLOR_CLASSES);
+                            rect.getStyleClass().removeAll("range-bomb-block", "cross-bomb-block", "line-clear-block", "selectable-block");
+                            if (colorClass != null) {
+                                rect.getStyleClass().add(colorClass);
+                            }
                         }
                     }
                 }
+            }
+        }
+    }
+    
+    /**
+     * 아이템 블록에 특별한 스타일 적용
+     * 
+     * @param rect 대상 Rectangle
+     * @param itemType 아이템 타입
+     */
+    private void applyItemBlockStyle(Rectangle rect, seoultech.se.core.item.ItemType itemType) {
+        // 모든 기존 스타일 제거
+        rect.getStyleClass().removeAll(UIConstants.ALL_TETROMINO_COLOR_CLASSES);
+        rect.getStyleClass().removeAll("range-bomb-block", "cross-bomb-block", "line-clear-block", "selectable-block");
+        
+        // 아이템 타입에 따라 다른 스타일 적용
+        if (itemType != null) {
+            switch (itemType) {
+                case BOMB:
+                    rect.getStyleClass().add("range-bomb-block");
+                    break;
+                case PLUS:
+                    rect.getStyleClass().add("cross-bomb-block");
+                    break;
+                case SPEED_RESET:
+                case BONUS_SCORE:
+                    // 무지개 효과
+                    rect.getStyleClass().add("selectable-block");
+                    break;
+                default:
+                    rect.setFill(Color.GOLD);
+                    break;
             }
         }
     }
