@@ -3,6 +3,7 @@ package seoultech.se.client.ui;
 import javafx.application.Platform;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
+import seoultech.se.client.constants.ColorBlindMode;
 import seoultech.se.client.constants.UIConstants;
 import seoultech.se.client.util.ColorMapper;
 import seoultech.se.core.GameState;
@@ -27,6 +28,7 @@ public class BoardRenderer {
     private final Rectangle[][] cellRectangles;
     private final Rectangle[][] holdCellRectangles;
     private final Rectangle[][] nextCellRectangles;
+    private ColorBlindMode currentColorBlindMode;
     
     /**
      * BoardRenderer 생성자
@@ -44,6 +46,10 @@ public class BoardRenderer {
         this.holdCellRectangles = holdCellRectangles;
         this.nextCellRectangles = nextCellRectangles;
     }
+
+    public void setColorBlindMode(ColorBlindMode mode) {
+        this.currentColorBlindMode = mode;
+    }
     
     /**
      * 특정 셀의 Rectangle을 업데이트합니다
@@ -58,7 +64,7 @@ public class BoardRenderer {
             
             if (cell.isOccupied()) {
                 rect.setFill(ColorMapper.toJavaFXColor(cell.getColor()));
-                String colorClass = ColorMapper.toCssClass(cell.getColor());
+                String colorClass = ColorMapper.toCssClass(cell.getColor(), currentColorBlindMode);
                 rect.getStyleClass().removeAll(UIConstants.ALL_TETROMINO_COLOR_CLASSES);
                 if (colorClass != null) {
                     rect.getStyleClass().add(colorClass);
@@ -120,7 +126,7 @@ public class BoardRenderer {
                         Rectangle rect = cellRectangles[absoluteY][absoluteX];
                         rect.setFill(ColorMapper.toJavaFXColor(color));
                         
-                        String colorClass = ColorMapper.toCssClass(color);
+                        String colorClass = ColorMapper.toCssClass(color, currentColorBlindMode);
                         rect.getStyleClass().removeAll(UIConstants.ALL_TETROMINO_COLOR_CLASSES);
                         if (colorClass != null) {
                             rect.getStyleClass().add(colorClass);
@@ -139,7 +145,7 @@ public class BoardRenderer {
         
         if (cell.isOccupied()) {
             rect.setFill(ColorMapper.toJavaFXColor(cell.getColor()));
-            String colorClass = ColorMapper.toCssClass(cell.getColor());
+            String colorClass = ColorMapper.toCssClass(cell.getColor(), currentColorBlindMode);
             rect.getStyleClass().removeAll(UIConstants.ALL_TETROMINO_COLOR_CLASSES);
             if (colorClass != null) {
                 rect.getStyleClass().add(colorClass);
@@ -205,11 +211,9 @@ public class BoardRenderer {
         int[][] shape = type.shape;
         Color color = ColorMapper.toJavaFXColor(type.color);
         
-        // 중앙 정렬을 위한 오프셋 계산
         int offsetX = (UIConstants.PREVIEW_GRID_COLS - shape[0].length) / 2;
         int offsetY = (UIConstants.PREVIEW_GRID_ROWS - shape.length) / 2;
         
-        // 테트로미노 그리기
         for (int row = 0; row < shape.length; row++) {
             for (int col = 0; col < shape[row].length; col++) {
                 if (shape[row][col] == 1) {
@@ -217,7 +221,14 @@ public class BoardRenderer {
                     int gridCol = col + offsetX;
                     if (gridRow >= 0 && gridRow < UIConstants.PREVIEW_GRID_ROWS && 
                         gridCol >= 0 && gridCol < UIConstants.PREVIEW_GRID_COLS) {
+                    
                         grid[gridRow][gridCol].setFill(color);
+                        
+                        String colorClass = ColorMapper.toCssClass(type.color, currentColorBlindMode);
+                        grid[gridRow][gridCol].getStyleClass().removeAll(UIConstants.ALL_TETROMINO_COLOR_CLASSES);
+                        if (colorClass != null) {
+                            grid[gridRow][gridCol].getStyleClass().add(colorClass);
+                        }
                     }
                 }
             }

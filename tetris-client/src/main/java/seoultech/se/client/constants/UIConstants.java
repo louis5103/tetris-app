@@ -88,7 +88,7 @@ public final class UIConstants {
      */
     public static final String PREVIEW_CELL_CLASS = "preview-cell";
     
-    // 테트로미노 색상별 CSS 클래스
+    // 일반 테트로미노 색상 CSS 클래스
     public static final String TETROMINO_RED_CLASS = "tetromino-red";
     public static final String TETROMINO_GREEN_CLASS = "tetromino-green";
     public static final String TETROMINO_BLUE_CLASS = "tetromino-blue";
@@ -97,18 +97,53 @@ public final class UIConstants {
     public static final String TETROMINO_MAGENTA_CLASS = "tetromino-magenta";
     public static final String TETROMINO_ORANGE_CLASS = "tetromino-orange";
     
+    // 적록색맹 모드 CSS 클래스
+    public static final String TETROMINO_RGBLIND_RED_CLASS = "tetromino-rgblind-red";
+    public static final String TETROMINO_RGBLIND_GREEN_CLASS = "tetromino-rgblind-green";
+    public static final String TETROMINO_RGBLIND_BLUE_CLASS = "tetromino-rgblind-blue";
+    public static final String TETROMINO_RGBLIND_YELLOW_CLASS = "tetromino-rgblind-yellow";
+    public static final String TETROMINO_RGBLIND_CYAN_CLASS = "tetromino-rgblind-cyan";
+    public static final String TETROMINO_RGBLIND_MAGENTA_CLASS = "tetromino-rgblind-magenta";
+    public static final String TETROMINO_RGBLIND_ORANGE_CLASS = "tetromino-rgblind-orange";
+    
+    // 청황색맹 모드 CSS 클래스
+    public static final String TETROMINO_BYBLIND_RED_CLASS = "tetromino-byblind-red";
+    public static final String TETROMINO_BYBLIND_GREEN_CLASS = "tetromino-byblind-green";
+    public static final String TETROMINO_BYBLIND_BLUE_CLASS = "tetromino-byblind-blue";
+    public static final String TETROMINO_BYBLIND_YELLOW_CLASS = "tetromino-byblind-yellow";
+    public static final String TETROMINO_BYBLIND_CYAN_CLASS = "tetromino-byblind-cyan";
+    public static final String TETROMINO_BYBLIND_MAGENTA_CLASS = "tetromino-byblind-magenta";
+    public static final String TETROMINO_BYBLIND_ORANGE_CLASS = "tetromino-byblind-orange";
+    
     /**
-     * 모든 테트로미노 색상 CSS 클래스 배열
-     * (한 번에 제거하기 위한 배열)
+     * 모든 테트로미노 CSS 클래스 배열
+     * (색맹모드 포함, 한 번에 제거하기 위한 배열)
      */
     public static final String[] ALL_TETROMINO_COLOR_CLASSES = {
+        // 일반 모드
         TETROMINO_RED_CLASS,
         TETROMINO_GREEN_CLASS,
         TETROMINO_BLUE_CLASS,
         TETROMINO_YELLOW_CLASS,
         TETROMINO_CYAN_CLASS,
         TETROMINO_MAGENTA_CLASS,
-        TETROMINO_ORANGE_CLASS
+        TETROMINO_ORANGE_CLASS,
+        // 적록색맹 모드
+        TETROMINO_RGBLIND_RED_CLASS,
+        TETROMINO_RGBLIND_GREEN_CLASS,
+        TETROMINO_RGBLIND_BLUE_CLASS,
+        TETROMINO_RGBLIND_YELLOW_CLASS,
+        TETROMINO_RGBLIND_CYAN_CLASS,
+        TETROMINO_RGBLIND_MAGENTA_CLASS,
+        TETROMINO_RGBLIND_ORANGE_CLASS,
+        // 청황색맹 모드
+        TETROMINO_BYBLIND_RED_CLASS,
+        TETROMINO_BYBLIND_GREEN_CLASS,
+        TETROMINO_BYBLIND_BLUE_CLASS,
+        TETROMINO_BYBLIND_YELLOW_CLASS,
+        TETROMINO_BYBLIND_CYAN_CLASS,
+        TETROMINO_BYBLIND_MAGENTA_CLASS,
+        TETROMINO_BYBLIND_ORANGE_CLASS
     };
     
     // ========== 미리보기 그리드 크기 ==========
