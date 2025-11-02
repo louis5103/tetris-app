@@ -28,7 +28,7 @@ public class BoardRenderer {
     private final Rectangle[][] cellRectangles;
     private final Rectangle[][] holdCellRectangles;
     private final Rectangle[][] nextCellRectangles;
-    private ColorBlindMode currentColorBlindMode;
+    private ColorBlindMode currentColorBlindMode = ColorBlindMode.NORMAL;
     
     /**
      * BoardRenderer 생성자

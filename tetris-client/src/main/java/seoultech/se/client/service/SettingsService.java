@@ -134,7 +134,7 @@ public class SettingsService {
         String mode = colorMode.get();
         return switch (mode) {
             case "colorModeRGBlind" -> ColorBlindMode.RED_GREEN_BLIND;
-            case "colorModeYBBlind" -> ColorBlindMode.BLUE_YELLOW_BLIND;
+            case "colorModeBYBlind" -> ColorBlindMode.BLUE_YELLOW_BLIND;
             default -> ColorBlindMode.NORMAL;
         };
     }
