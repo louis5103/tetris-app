@@ -20,6 +20,8 @@ import seoultech.se.client.ui.InputHandler;
 import seoultech.se.client.ui.NotificationManager;
 import seoultech.se.client.ui.PopupManager;
 import seoultech.se.client.util.ColorMapper;
+import seoultech.se.client.service.SettingsService;
+import seoultech.se.client.config.ApplicationContextProvider;
 import seoultech.se.core.GameState;
 import seoultech.se.core.command.Direction;
 import seoultech.se.core.command.MoveCommand;
@@ -71,6 +73,9 @@ public class GameController {
     @Autowired
     private NavigationService navigationService;
 
+    @Autowired
+    private SettingsService settingsService;
+
     // 게임 로직 컨트롤러
     private BoardController boardController;
     
@@ -93,6 +98,14 @@ public class GameController {
     @FXML
     public void initialize() {
         System.out.println("🎮 GameController initializing...");
+
+        // SettingsService 확인
+        if (settingsService != null) {
+            this.settingsService = ApplicationContextProvider.getApplicationContext().getBean(seoultech.se.client.service.SettingsService.class);
+            System.out.println("✅ SettingsService is ready");
+        } else {
+            System.err.println("❌ SettingsService is null!");
+        }
 
         // KeyMappingService 확인
         if (keyMappingService != null) {
@@ -141,6 +154,7 @@ public class GameController {
             holdCellRectangles,
             nextCellRectangles
         );
+        boardRenderer.setColorBlindMode(settingsService.getColorBlindMode());
         
         // GameLoopManager 초기화
         gameLoopManager = new GameLoopManager();

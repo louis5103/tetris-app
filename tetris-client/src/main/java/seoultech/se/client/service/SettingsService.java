@@ -12,6 +12,7 @@ import javafx.beans.property.SimpleDoubleProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
 import javafx.stage.Stage;
+import seoultech.se.client.constants.ColorBlindMode;
 
 @Service
 public class SettingsService {
@@ -122,5 +123,34 @@ public class SettingsService {
 
     public StringProperty difficultyProperty() {
         return difficulty;
+    }
+
+    /**
+     * colorMode 문자열을 ColorBlindMode enum으로 변환
+     * 
+     * @return 대응하는 ColorBlindMode
+     */
+    public ColorBlindMode getColorBlindMode() {
+        String mode = colorMode.get();
+        return switch (mode) {
+            case "colorModeRGBlind" -> ColorBlindMode.RED_GREEN_BLIND;
+            case "colorModeYBBlind" -> ColorBlindMode.BLUE_YELLOW_BLIND;
+            default -> ColorBlindMode.NORMAL;
+        };
+    }
+
+    /**
+     * ColorBlindMode를 설정하고 저장
+     * 
+     * @param mode 설정할 색맹 모드
+     */
+    public void setColorBlindMode(ColorBlindMode mode) {
+        String modeString = switch (mode) {
+            case RED_GREEN_BLIND -> "colorModeRGBlind";
+            case BLUE_YELLOW_BLIND -> "colorModeYBBlind";
+            default -> "colorModeDefault";
+        };
+        colorMode.set(modeString);
+        saveSettings();
     }
 }
