@@ -3,6 +3,7 @@ package seoultech.se.client.service;
 import java.util.prefs.Preferences;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import jakarta.annotation.PostConstruct;
@@ -22,10 +23,27 @@ public class SettingsService {
 
     @Autowired
     private GameModeProperties gameModeProperties;
+    
+    // ========== application.yml 기본값 주입 ==========
+    
+    @Value("${tetris.sound.volume}")
+    private double defaultSoundVolume;
+    
+    @Value("${tetris.ui.color-mode}")
+    private String defaultColorMode;
+    
+    @Value("${tetris.ui.screen-size}")
+    private String defaultScreenSize;
+    
+    @Value("${tetris.ui.stage-width}")
+    private double defaultStageWidth;
+    
+    @Value("${tetris.ui.stage-height}")
+    private double defaultStageHeight;
 
     private Stage primaryStage;
-    private final DoubleProperty stageWidth = new SimpleDoubleProperty(500);
-    private final DoubleProperty stageHeight = new SimpleDoubleProperty(600);
+    private final DoubleProperty stageWidth = new SimpleDoubleProperty();
+    private final DoubleProperty stageHeight = new SimpleDoubleProperty();
 
     private final DoubleProperty soundVolume = new SimpleDoubleProperty(80); // Default volume is 80
     private final StringProperty colorMode = new SimpleStringProperty("colorModeDefault"); // default, rg_blind, yb_blind
@@ -96,16 +114,27 @@ public class SettingsService {
         Properties props = new Properties();
         try (FileInputStream in = new FileInputStream(new File(SETTINGS_FILE))) {
             props.load(in);
-            soundVolume.set(Double.parseDouble(props.getProperty("soundVolume", "80")));
-            colorMode.set(props.getProperty("colorMode", "colorModeDefault"));
-            screenSize.set(props.getProperty("screenSize", "screenSizeM"));
-            double width = Double.parseDouble(props.getProperty("stageWidth", "500"));
-            double height = Double.parseDouble(props.getProperty("stageHeight", "600"));
+            
+            // tetris_settings 파일에서 값을 읽되, 없으면 application.yml의 기본값 사용
+            soundVolume.set(Double.parseDouble(
+                props.getProperty("soundVolume", String.valueOf(defaultSoundVolume))));
+            colorMode.set(props.getProperty("colorMode", defaultColorMode));
+            screenSize.set(props.getProperty("screenSize", defaultScreenSize));
+            
+            double width = Double.parseDouble(
+                props.getProperty("stageWidth", String.valueOf(defaultStageWidth)));
+            double height = Double.parseDouble(
+                props.getProperty("stageHeight", String.valueOf(defaultStageHeight)));
+            
             applyResolution(width, height);
             applyScreenSizeClass();
-            System.out.println("✅ Settings loaded successfully.");
+            
+            System.out.println("✅ Settings loaded successfully from tetris_settings.");
+            System.out.println("   - Sound Volume: " + soundVolume.get() + " (default: " + defaultSoundVolume + ")");
+            System.out.println("   - Color Mode: " + colorMode.get() + " (default: " + defaultColorMode + ")");
+            System.out.println("   - Screen Size: " + screenSize.get() + " (default: " + defaultScreenSize + ")");
         } catch (Exception e) {
-            System.out.println("❗ Failed to load settings, using defaults.");
+            System.out.println("❗ Failed to load settings, using defaults from application.yml.");
             restoreDefaults();
         }
     }
@@ -149,12 +178,11 @@ public class SettingsService {
     }
 
     public void restoreDefaults() {
-        setSoundVolume(80);
-        setColorBlindMode(ColorBlindMode.NORMAL);
-        setScreenSize("screenSizeM");
-        setDifficulty("difficultyNormal");
+        soundVolume.set(80);
+        colorMode.set("colorModeDefault");
+        screenSize.set("screenSizeM");
         applyResolution(500, 700);
-        saveSettings(); // Save the default settings
+        saveSettings();
     }
 
     // ========== Property Accessors for JavaFX Binding ========== 

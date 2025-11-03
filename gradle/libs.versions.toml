@@ -27,6 +27,9 @@ mockito = "5.14.2"
 commons-lang3 = "3.19.0"
 h2-database = "2.4.240"
 
+# ✅ Validation
+jakarta-validation = "3.0.2"
+
 # 🔧 Build Plugins
 versions-plugin = "0.53.0"
 
@@ -47,6 +50,9 @@ common-mockito-junit-jupiter = { module = "org.mockito:mockito-junit-jupiter", v
 
 # 📊 Common Utilities
 common-commons-lang3 = { module = "org.apache.commons:commons-lang3", version.ref = "commons-lang3" }
+
+# ✅ Common Validation
+common-jakarta-validation-api = { module = "jakarta.validation:jakarta.validation-api", version.ref = "jakarta-validation" }
 
 # ============================================================================
 # � TETRIS-CORE MODULE (Core domain logic & algorithms)

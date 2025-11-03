@@ -15,6 +15,9 @@ dependencies {
     // 📊 Utility Libraries
     implementation(libs.common.commons.lang3)
     
+    // ✅ Validation (설정값 검증용)
+    implementation(libs.common.jakarta.validation.api)
+    
     // �️ Development Tools (공통 의존성)
     compileOnly(libs.common.lombok)
     annotationProcessor(libs.common.lombok)

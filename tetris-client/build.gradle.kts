@@ -40,6 +40,7 @@ dependencies {
     
     // 🌱 Spring Boot Bundle (DI container + JPA)
     implementation(libs.bundles.client.spring)
+    implementation(libs.backend.spring.boot.starter.validation)
     annotationProcessor(libs.client.spring.boot.configuration.processor)
     
     // 🗄️ H2 Database (로컬 저장소)
