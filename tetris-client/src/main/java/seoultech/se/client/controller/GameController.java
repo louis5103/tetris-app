@@ -1,15 +1,24 @@
 package seoultech.se.client.controller;
 
+import java.io.IOException;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import javafx.application.Platform;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Label;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
+import javafx.stage.Modality;
+import javafx.stage.Stage;
+import javafx.stage.StageStyle;
 import seoultech.se.client.constants.UIConstants;
 import seoultech.se.client.service.KeyMappingService;
 import seoultech.se.client.service.NavigationService;
@@ -18,7 +27,7 @@ import seoultech.se.client.ui.GameInfoManager;
 import seoultech.se.client.ui.GameLoopManager;
 import seoultech.se.client.ui.InputHandler;
 import seoultech.se.client.ui.NotificationManager;
-import seoultech.se.client.ui.PopupManager;
+// import seoultech.se.client.ui.PopupManager; // PopupManager 제거
 import seoultech.se.client.util.ColorMapper;
 import seoultech.se.client.service.SettingsService;
 import seoultech.se.client.config.ApplicationContextProvider;
@@ -41,7 +50,6 @@ import seoultech.se.core.model.enumType.TetrominoType;
  * - NotificationManager: 알림 메시지 관리
  * - BoardRenderer: 보드 렌더링
  * - GameLoopManager: 게임 루프 관리
- * - PopupManager: 팝업 오버레이 관리
  * - InputHandler: 키보드 입력 처리 및 Command 변환
  * - GameInfoManager: 게임 정보 레이블 업데이트
  */
@@ -62,10 +70,10 @@ public class GameController {
     @FXML private Label backToBackLabel;
     @FXML private Label lineClearNotificationLabel;
     
-    // 팝업 오버레이 요소들
-    @FXML private javafx.scene.layout.VBox pauseOverlay;
-    @FXML private javafx.scene.layout.VBox gameOverOverlay;
-    @FXML private Label finalScoreLabel;
+    // 팝업 오버레이 요소들 제거
+    // @FXML private javafx.scene.layout.VBox pauseOverlay;
+    // @FXML private javafx.scene.layout.VBox gameOverOverlay;
+    // @FXML private Label finalScoreLabel;
 
     @Autowired
     private KeyMappingService keyMappingService;
@@ -83,7 +91,7 @@ public class GameController {
     private BoardRenderer boardRenderer;
     private NotificationManager notificationManager;
     private GameLoopManager gameLoopManager;
-    private PopupManager popupManager;
+    // private PopupManager popupManager; // PopupManager 제거
     private InputHandler inputHandler;
     private GameInfoManager gameInfoManager;
     
@@ -179,53 +187,7 @@ public class GameController {
             return true; // 게임 루프 계속
         });
         
-        // PopupManager 초기화
-        popupManager = new PopupManager(
-            pauseOverlay,
-            gameOverOverlay,
-            finalScoreLabel
-        );
-        
-        // PopupManager 콜백 설정
-        popupManager.setCallback(new PopupManager.PopupActionCallback() {
-            @Override
-            public void onResumeRequested() {
-                resumeGame();
-            }
-            
-            @Override
-            public void onQuitRequested() {
-                try {
-                    navigationService.navigateTo("/view/main-view.fxml");
-                } catch (Exception e) {
-                    System.err.println("❌ Failed to navigate to main view: " + e.getMessage());
-                    showError("화면 전환 실패", "메인 화면으로 이동하지 못했습니다: " + e.getMessage());
-                    e.printStackTrace();
-                }
-            }
-            
-            @Override
-            public void onMainMenuRequested() {
-                try {
-                    navigationService.navigateTo("/view/main-view.fxml");
-                } catch (Exception e) {
-                    System.err.println("❌ Failed to navigate to main view: " + e.getMessage());
-                    showError("화면 전환 실패", "메인 화면으로 이동하지 못했습니다: " + e.getMessage());
-                    e.printStackTrace();
-                }
-            }
-            
-            @Override
-            public void onRestartRequested() {
-                try {
-                    navigationService.navigateTo("/view/game-view.fxml");
-                } catch (Exception e) {
-                    System.err.println("❌ Failed to restart game: " + e.getMessage());
-                    showError("재시작 실패", "게임을 재시작하지 못했습니다: " + e.getMessage());
-                    e.printStackTrace();
-                }
-            }
-        });
+        // PopupManager 관련 코드 제거
         
         // InputHandler 초기화
         inputHandler = new InputHandler(keyMappingService);
@@ -457,7 +419,7 @@ public class GameController {
             boolean isPaused = newState.isPaused();
             if (!wasPaused && isPaused) {
                 pauseGame();
-                popupManager.showPausePopup();
+                showPausePopup(); // 팝업 띄우는 메서드 호출
             } else if (wasPaused && !isPaused) {
                 gameLoopManager.resume();
                 notificationManager.hideAllNotifications();
@@ -471,7 +433,7 @@ public class GameController {
                 System.out.println("💀 GAME OVER");
                 System.out.println("   Final Score: " + newState.getScore());
                 System.out.println("   Lines Cleared: " + newState.getLinesCleared());
-                popupManager.showGameOverPopup(newState.getScore());
+                showGameOverPopup(newState.getScore()); // 팝업 띄우는 메서드 호출
             }
         });
     }
@@ -500,27 +462,77 @@ public class GameController {
     }
 
     // ========== 오버레이 버튼 핸들러 ==========
-    // PopupManager로 위임
+    // FXML 핸들러 메서드 제거
+    // @FXML private void handleResumeFromOverlay() { ... }
+    // @FXML private void handleQuitFromOverlay() { ... }
+    // @FXML private void handleMainFromOverlay() { ... }
+    // @FXML private void handleRestartFromOverlay() { ... }
+    
+    // ========== 팝업 창 관리 ==========
 
-    @FXML
-    private void handleResumeFromOverlay() {
-        popupManager.handleResumeAction();
+    /**
+     * 일시정지 팝업을 띄웁니다.
+     */
+    private void showPausePopup() {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/view/pause-pop.fxml"));
+            
+            // Spring 컨텍스트에서 컨트롤러 인스턴스를 가져오도록 설정
+            loader.setControllerFactory(ApplicationContextProvider.getApplicationContext()::getBean);
+            
+            Parent root = loader.load();
+            
+            PausePopController controller = loader.getController();
+            controller.setResumeCallback(this::resumeGame); // Resume 콜백 설정
+
+            Stage popupStage = new Stage();
+            popupStage.initModality(Modality.APPLICATION_MODAL);
+            popupStage.initOwner(boardGridPane.getScene().getWindow());
+            popupStage.initStyle(StageStyle.TRANSPARENT);
+
+            Scene scene = new Scene(root);
+            scene.setFill(Color.TRANSPARENT);
+            popupStage.setScene(scene);
+            
+            popupStage.showAndWait();
+
+        } catch (IOException e) {
+            e.printStackTrace();
+            showError("팝업 오류", "일시정지 팝업을 불러오는 데 실패했습니다.");
+        }
     }
 
-    @FXML
-    private void handleQuitFromOverlay() {
-        popupManager.handleQuitAction();
-    }
+    /**
+     * 게임 오버 팝업을 띄웁니다.
+     * @param score 최종 점수
+     */
+    private void showGameOverPopup(long score) {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/view/over-pop.fxml"));
+            
+            // Spring 컨텍스트에서 컨트롤러 인스턴스를 가져오도록 설정
+            loader.setControllerFactory(ApplicationContextProvider.getApplicationContext()::getBean);
 
-    @FXML
-    private void handleMainFromOverlay() {
-        popupManager.handleMainMenuAction();
-    }
+            Parent root = loader.load();
 
+            OverPopController controller = loader.getController();
+            controller.setScore(score);
 
-    @FXML
-    private void handleRestartFromOverlay() {
-        popupManager.handleRestartAction();
+            Stage popupStage = new Stage();
+            popupStage.initModality(Modality.APPLICATION_MODAL);
+            popupStage.initOwner(boardGridPane.getScene().getWindow());
+            popupStage.initStyle(StageStyle.TRANSPARENT);
+            
+            Scene scene = new Scene(root);
+            scene.setFill(Color.TRANSPARENT);
+            popupStage.setScene(scene);
+
+            popupStage.showAndWait();
+
+        } catch (IOException e) {
+            e.printStackTrace();
+            showError("팝업 오류", "게임 오버 팝업을 불러오는 데 실패했습니다.");
+        }
     }
     
     // ========== UI 알림 메서드 ==========

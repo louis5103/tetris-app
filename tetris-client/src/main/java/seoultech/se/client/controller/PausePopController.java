@@ -15,7 +15,15 @@ public class PausePopController extends BaseController {
     @Autowired
     private NavigationService navigationService;
     
+    private Runnable resumeCallback;
 
+    /**
+     * 게임 재개 콜백을 설정합니다.
+     * @param resumeCallback GameController의 resumeGame 메서드
+     */
+    public void setResumeCallback(Runnable resumeCallback) {
+        this.resumeCallback = resumeCallback;
+    }
 
     /**
      * Resume 버튼 핸들러 - 게임 재개
@@ -23,6 +31,9 @@ public class PausePopController extends BaseController {
     @FXML
     private void handleResume(ActionEvent event) {
         closePopup(event);
+        if (resumeCallback != null) {
+            resumeCallback.run();
+        }
     }
 
     /**
