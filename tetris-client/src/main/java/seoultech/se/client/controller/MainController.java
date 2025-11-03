@@ -124,21 +124,7 @@ public class MainController extends BaseController {
      * 현재 선택된 버튼을 시각적으로 강조
      */
     private void updateButtonHighlight() {
-        for (int i = 0; i < buttons.length; i++) {
-            if (i == currentButtonIndex) {
-                // 선택된 버튼 스타일
-                buttons[i].setStyle(
-                    "-fx-border-color: #00ffff; " +
-                    "-fx-border-width: 2; " +
-                    "-fx-background-color: #333333; " +
-                    "-fx-text-fill: white; " +
-                    "-fx-effect: dropshadow(gaussian, rgba(0, 255, 255, 0.8), 15, 0, 0, 0);"
-                );
-            } else {
-                // 기본 스타일로 복원 (CSS에서 정의한 스타일 사용)
-                buttons[i].setStyle("");
-            }
-        }
+        buttons[currentButtonIndex].requestFocus();
     }
 
     private void setupKeyNavigation() {
