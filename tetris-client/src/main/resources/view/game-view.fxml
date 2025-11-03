@@ -104,7 +104,7 @@
                 </VBox>
                 
                 <!-- Pause 팝업 오버레이 (평소에는 숨김) -->
-                <VBox fx:id="pauseOverlay" 
+                <!-- <VBox fx:id="pauseOverlay" 
                       alignment="CENTER" 
                       styleClass="popup-overlay"
                       visible="false"
@@ -115,10 +115,10 @@
                         <Button text="Resume" styleClass="menu-button-middle" onAction="#handleResumeFromOverlay"/>
                         <Button text="Quit" styleClass="menu-button-middle" onAction="#handleQuitFromOverlay"/>
                     </VBox>
-                </VBox>
+                </VBox> -->
                 
                 <!-- Game Over 팝업 오버레이 (평소에는 숨김) -->
-                <VBox fx:id="gameOverOverlay" 
+                <!-- <VBox fx:id="gameOverOverlay" 
                       alignment="CENTER" 
                       styleClass="popup-overlay"
                       visible="false"
@@ -133,7 +133,7 @@
                             <Button text="Restart" styleClass="menu-button-small" onAction="#handleRestartFromOverlay"/>
                         </HBox>
                     </VBox>
-                </VBox>
+                </VBox> -->
             </StackPane>
             
             <!-- 오른쪽: 게임 정보 -->
