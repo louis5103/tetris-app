@@ -51,8 +51,15 @@ public class OverPopController extends BaseController {
 
     private void checkTopScoreAndShowInput() {
         scoreService.getScores().thenAccept(scores -> {
-            boolean isNewHighScore = scores.isEmpty() || currentScore > scores.get(0).getScore();
-            if (isNewHighScore) {
+            boolean isTopTen;
+            if (scores.size() < 10) {
+                isTopTen = true;
+            } else {
+                // The list is sorted descending, so the 10th element is at index 9
+                isTopTen = currentScore > scores.get(9).getScore();
+            }
+
+            if (isTopTen) {
                 Platform.runLater(() -> {
                     nameInputBox.setVisible(true);
                     nameInputBox.setManaged(true);
