@@ -34,7 +34,7 @@ public class NavigationService {
         FXMLLoader loader = new FXMLLoader(TetrisApplication.class.getResource(fxmlPath));
         loader.setControllerFactory(springContext::getBean);
         Parent root = loader.load();
-        Scene scene = new Scene(root, settingsService.stageWidthProperty().get(), settingsService.stageHeightProperty().get());
+        Scene scene = new Scene(root, settingsService.getStageWidth(), settingsService.getStageHeight());
         stage.setScene(scene);
         stage.setResizable(false);  // 창 크기 조절 불가 유지
         

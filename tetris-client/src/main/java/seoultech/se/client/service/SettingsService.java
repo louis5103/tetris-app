@@ -157,6 +157,26 @@ public class SettingsService {
         saveSettings();
     }
 
+    public double getStageWidth() {
+        return stageWidth.get();
+    }
+
+    public void setStageWidth(double width) {
+        // applyResolution을 호출하여 프로퍼티와 실제 Stage 크기를 모두 업데이트합니다.
+        applyResolution(width, this.stageHeight.get());
+        saveSettings();
+    }
+
+    public double getStageHeight() {
+        return stageHeight.get();
+    }
+
+    public void setStageHeight(double height) {
+        // applyResolution을 호출하여 프로퍼티와 실제 Stage 크기를 모두 업데이트합니다.
+        applyResolution(this.stageWidth.get(), height);
+        saveSettings();
+    }
+
     /**
      * colorMode 문자열을 ColorBlindMode enum으로 변환
      * 
