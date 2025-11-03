@@ -81,6 +81,7 @@ public class ClientScoreService {
             score.setItemMode(isItemMode);
             scores.add(score);
         }
+        scores.sort((s1, s2) -> Integer.compare(s2.getScore(), s1.getScore()));
         return scores;
     }
 

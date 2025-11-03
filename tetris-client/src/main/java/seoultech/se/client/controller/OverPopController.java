@@ -1,6 +1,7 @@
 package seoultech.se.client.controller;
 
 import javafx.application.Platform;
+import javafx.scene.control.TableRow;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -19,6 +20,7 @@ import seoultech.se.client.dto.ScoreResponse;
 import seoultech.se.client.service.NavigationService;
 import seoultech.se.client.service.ClientScoreService;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -52,19 +54,15 @@ public class OverPopController extends BaseController {
     public void initialize() {
         nameInputBox.setVisible(false);
         nameInputBox.setManaged(false);
-        scoreService.getScores().thenAccept(this::loadScores);
     }
 
     public void setScore(long score) {
         this.currentScore = score;
         scoreLabel.setText(String.valueOf(currentScore));
         scoreService.getScores().thenAccept(scores -> {
-            boolean isTopTen;
-            if (scores.size() < 10) {
-                isTopTen = true;
-            } else {
-                isTopTen = currentScore > scores.get(9).getScore();
-            }
+            loadScores(scores);
+
+            boolean isTopTen = scores.size() < 10 || (scores.size() >= 10 && currentScore > scores.get(9).getScore());
 
             if (isTopTen) {
                 Platform.runLater(() -> {
@@ -80,10 +78,20 @@ public class OverPopController extends BaseController {
 
     private void loadScores(List<ScoreResponse> scores) {
         Platform.runLater(() -> {
+            List<ScoreResponse> displayScores = new ArrayList<>(scores);
+            ScoreResponse currentPlayerScore = new ScoreResponse();
+            currentPlayerScore.setName("You");
+            currentPlayerScore.setScore((int) currentScore);
+            // FIXME: These should be passed from the game screen.
+            currentPlayerScore.setGameMode("NORMAL");
+            currentPlayerScore.setItemMode(false);
+            displayScores.add(currentPlayerScore);
+            displayScores.sort((s1, s2) -> Integer.compare(s2.getScore(), s1.getScore()));
+
             ObservableList<Map<String, Object>> scoreData = FXCollections.observableArrayList();
-            List<Map<String, Object>> scoresMaps = IntStream.range(0, scores.size())
+            List<Map<String, Object>> scoresMaps = IntStream.range(0, displayScores.size())
                     .mapToObj(i -> {
-                        ScoreResponse scoreResponse = scores.get(i);
+                        ScoreResponse scoreResponse = displayScores.get(i);
                         String difficulty = scoreResponse.getGameMode() + (scoreResponse.isItemMode() ? " (Item)" : "");
                         return Map.<String, Object>of(
                                 "rank", i + 1,
@@ -95,6 +103,24 @@ public class OverPopController extends BaseController {
                     .collect(Collectors.toList());
             scoreData.addAll(scoresMaps);
             scoreBoardTable.setItems(scoreData);
+
+            scoreBoardTable.setRowFactory(tv -> new TableRow<>() {
+                @Override
+                protected void updateItem(Map<String, Object> item, boolean empty) {
+                    super.updateItem(item, empty);
+                    if (item == null || empty) {
+                        getStyleClass().remove("score-highlight");
+                    } else {
+                        if ("You".equals(item.get("player"))) {
+                            if (!getStyleClass().contains("score-highlight")) {
+                                getStyleClass().add("score-highlight");
+                            }
+                        } else {
+                            getStyleClass().remove("score-highlight");
+                        }
+                    }
+                }
+            });
         });
     }
 
