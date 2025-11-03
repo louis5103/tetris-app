@@ -19,6 +19,7 @@ import javafx.scene.shape.Rectangle;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
+import javafx.stage.Window;
 import seoultech.se.client.constants.UIConstants;
 import seoultech.se.client.service.KeyMappingService;
 import seoultech.se.client.service.NavigationService;
@@ -494,6 +495,13 @@ public class GameController {
             scene.setFill(Color.TRANSPARENT);
             popupStage.setScene(scene);
             
+            // 팝업을 소유자 창의 중앙에 위치시키는 리스너 추가
+            popupStage.setOnShown(e -> {
+                Window owner = popupStage.getOwner();
+                popupStage.setX(owner.getX() + owner.getWidth() / 2 - popupStage.getWidth() / 2);
+                popupStage.setY(owner.getY() + owner.getHeight() / 2 - popupStage.getHeight() / 2);
+            });
+
             popupStage.showAndWait();
 
         } catch (IOException e) {
@@ -526,6 +534,13 @@ public class GameController {
             Scene scene = new Scene(root);
             scene.setFill(Color.TRANSPARENT);
             popupStage.setScene(scene);
+
+            // 팝업을 소유자 창의 중앙에 위치시키는 리스너 추가
+            popupStage.setOnShown(e -> {
+                Window owner = popupStage.getOwner();
+                popupStage.setX(owner.getX() + owner.getWidth() / 2 - popupStage.getWidth() / 2);
+                popupStage.setY(owner.getY() + owner.getHeight() / 2 - popupStage.getHeight() / 2);
+            });
 
             popupStage.showAndWait();
 
