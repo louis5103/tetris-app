@@ -8,15 +8,22 @@ import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.Node;
 import javafx.scene.control.Label;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.HBox;
 import javafx.stage.Stage;
 import seoultech.se.client.dto.ScoreRequest;
+import seoultech.se.client.dto.ScoreResponse;
 import seoultech.se.client.service.NavigationService;
 import seoultech.se.client.service.ClientScoreService;
 
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 @Component
 public class OverPopController extends BaseController {
@@ -35,27 +42,27 @@ public class OverPopController extends BaseController {
     @FXML
     private TextField usernameInput;
 
+    @FXML
+    private TableView<Map<String, Object>> scoreBoardTable;
+
+
     private long currentScore;
 
     @FXML
     public void initialize() {
         nameInputBox.setVisible(false);
         nameInputBox.setManaged(false);
+        scoreService.getScores().thenAccept(this::loadScores);
     }
 
     public void setScore(long score) {
         this.currentScore = score;
-        Platform.runLater(() -> scoreLabel.setText(String.valueOf(score)));
-        checkTopScoreAndShowInput();
-    }
-
-    private void checkTopScoreAndShowInput() {
+        scoreLabel.setText(String.valueOf(currentScore));
         scoreService.getScores().thenAccept(scores -> {
             boolean isTopTen;
             if (scores.size() < 10) {
                 isTopTen = true;
             } else {
-                // The list is sorted descending, so the 10th element is at index 9
                 isTopTen = currentScore > scores.get(9).getScore();
             }
 
@@ -68,6 +75,26 @@ public class OverPopController extends BaseController {
         }).exceptionally(e -> {
             System.err.println("Error fetching scores: " + e.getMessage());
             return null;
+        });
+    }
+
+    private void loadScores(List<ScoreResponse> scores) {
+        Platform.runLater(() -> {
+            ObservableList<Map<String, Object>> scoreData = FXCollections.observableArrayList();
+            List<Map<String, Object>> scoresMaps = IntStream.range(0, scores.size())
+                    .mapToObj(i -> {
+                        ScoreResponse scoreResponse = scores.get(i);
+                        String difficulty = scoreResponse.getGameMode() + (scoreResponse.isItemMode() ? " (Item)" : "");
+                        return Map.<String, Object>of(
+                                "rank", i + 1,
+                                "player", scoreResponse.getName(),
+                                "score", scoreResponse.getScore(),
+                                "difficulty", difficulty
+                        );
+                    })
+                    .collect(Collectors.toList());
+            scoreData.addAll(scoresMaps);
+            scoreBoardTable.setItems(scoreData);
         });
     }
 
