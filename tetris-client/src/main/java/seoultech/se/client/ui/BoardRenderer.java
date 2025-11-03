@@ -47,6 +47,18 @@ public class BoardRenderer {
         this.nextCellRectangles = nextCellRectangles;
     }
 
+    public BoardRenderer(
+        Rectangle[][] cellRectangles,
+        Rectangle[][] holdCellRectangles,
+        Rectangle[][] nextCellRectangles,
+        ColorBlindMode initialMode) {
+            
+        this.cellRectangles = cellRectangles;
+        this.holdCellRectangles = holdCellRectangles;
+        this.nextCellRectangles = nextCellRectangles;
+        this.currentColorBlindMode = initialMode;
+    }
+
     public void setColorBlindMode(ColorBlindMode mode) {
         this.currentColorBlindMode = mode;
     }

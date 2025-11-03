@@ -152,9 +152,9 @@ public class GameController {
         boardRenderer = new BoardRenderer(
             cellRectangles,
             holdCellRectangles,
-            nextCellRectangles
+            nextCellRectangles,
+            settingsService.getColorBlindMode()
         );
-        boardRenderer.setColorBlindMode(settingsService.getColorBlindMode());
         
         // GameLoopManager 초기화
         gameLoopManager = new GameLoopManager();
