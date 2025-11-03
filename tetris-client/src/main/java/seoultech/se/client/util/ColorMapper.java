@@ -62,23 +62,23 @@ public final class ColorMapper {
     public static String toCssClass(seoultech.se.core.model.enumType.Color color, ColorBlindMode mode) {
         String baseClass = toCssClass(color);
 
+        if (baseClass == null || mode == null || mode == ColorBlindMode.NORMAL) {
+            return baseClass;
+        }
+
+        return baseClass.replace("tetromino-", "tetromino" + mode.getSuffix() + "-");
+
+        // System.out.println("[ColorMapper] Color: " + color + ", Mode: " + mode + 
+        //                    ", Base: " + baseClass);
+
         // if (baseClass == null || mode == null || mode == ColorBlindMode.NORMAL) {
+        //     System.out.println("[ColorMapper] Returning: " + baseClass);
         //     return baseClass;
         // }
 
-        // return baseClass.replace("tetromino-", "tetromino" + mode.getSuffix() + "-");
-
-    System.out.println("[ColorMapper] Color: " + color + ", Mode: " + mode + 
-                       ", Base: " + baseClass);
-
-    if (baseClass == null || mode == null || mode == ColorBlindMode.NORMAL) {
-        System.out.println("[ColorMapper] Returning: " + baseClass);
-        return baseClass;
-    }
-
-    String result = baseClass.replace("tetromino-", "tetromino" + mode.getSuffix() + "-");
-    System.out.println("[ColorMapper] Converted to: " + result);
-    return result;
+        // String result = baseClass.replace("tetromino-", "tetromino" + mode.getSuffix() + "-");
+        // System.out.println("[ColorMapper] Converted to: " + result);
+        // return result;
     }
     
 
