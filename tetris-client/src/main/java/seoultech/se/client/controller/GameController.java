@@ -87,6 +87,10 @@ public class GameController {
 
     @Autowired
     private NavigationService navigationService;
+    
+    // ✨ Phase 5: SettingsService 추가
+    @Autowired
+    private seoultech.se.client.service.SettingsService settingsService;
 
     @Autowired
     private SettingsService settingsService;
@@ -170,11 +174,20 @@ public class GameController {
             System.out.println("⚠️ Config was null, using default CLASSIC");
         }
 
-        // BoardController 생성 (GameModeConfig 전달)
-        boardController = new BoardController(gameModeConfig);
+        // ✨ Phase 5: 설정된 난이도 가져오기
+        seoultech.se.core.model.enumType.Difficulty difficulty = 
+            settingsService.getCurrentDifficulty();
+        
+        System.out.println("🎮 Creating BoardController with difficulty: " + difficulty.getDisplayName());
+        
+        // BoardController 생성 (GameModeConfig + Difficulty 전달)
+        boardController = new BoardController(gameModeConfig, difficulty);
         
         GameState gameState = boardController.getGameState();
         System.out.println("📊 Board created: " + gameState.getBoardWidth() + "x" + gameState.getBoardHeight());
+        System.out.println("   - Difficulty: " + difficulty.getDisplayName());
+        System.out.println("   - I-Block Multiplier: " + difficulty.getIBlockMultiplier() + "x");
+        System.out.println("   - Score Multiplier: " + difficulty.getScoreMultiplier() + "x");
 
         // UI 초기화
         initializeGridPane(gameState);

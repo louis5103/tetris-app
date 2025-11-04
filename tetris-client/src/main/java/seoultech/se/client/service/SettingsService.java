@@ -40,15 +40,28 @@ public class SettingsService {
     
     @Value("${tetris.ui.stage-height}")
     private double defaultStageHeight;
+    
+    // ✨ Phase 5: 난이도 기본값 추가
+    @Value("${tetris.ui.difficulty}")
+    private String defaultDifficulty;
 
     private Stage primaryStage;
     private final DoubleProperty stageWidth = new SimpleDoubleProperty();
     private final DoubleProperty stageHeight = new SimpleDoubleProperty();
 
+<<<<<<< HEAD
     private final DoubleProperty soundVolume = new SimpleDoubleProperty(80); // Default volume is 80
     private final StringProperty colorMode = new SimpleStringProperty("colorModeDefault"); // default, rg_blind, yb_blind
     private final StringProperty difficulty = new SimpleStringProperty("difficultyNormal"); // easy, normal, hard
     private final StringProperty screenSize = new SimpleStringProperty("screenSizeM"); // XS, S, M, L, XL
+=======
+    private final DoubleProperty soundVolume = new SimpleDoubleProperty();
+    private final StringProperty colorMode = new SimpleStringProperty();
+    private final StringProperty screenSize = new SimpleStringProperty();
+    
+    // ✨ Phase 5: 난이도 속성 추가
+    private final StringProperty difficulty = new SimpleStringProperty();
+>>>>>>> 1b6bf28 ([Feat] 선택 UI)
 
     private static final String PREFS_NODE = "tetris_settings";
     private final Preferences preferences;
@@ -121,6 +134,9 @@ public class SettingsService {
             colorMode.set(props.getProperty("colorMode", defaultColorMode));
             screenSize.set(props.getProperty("screenSize", defaultScreenSize));
             
+            // ✨ Phase 5: 난이도 로드
+            difficulty.set(props.getProperty("difficulty", defaultDifficulty));
+            
             double width = Double.parseDouble(
                 props.getProperty("stageWidth", String.valueOf(defaultStageWidth)));
             double height = Double.parseDouble(
@@ -133,6 +149,7 @@ public class SettingsService {
             System.out.println("   - Sound Volume: " + soundVolume.get() + " (default: " + defaultSoundVolume + ")");
             System.out.println("   - Color Mode: " + colorMode.get() + " (default: " + defaultColorMode + ")");
             System.out.println("   - Screen Size: " + screenSize.get() + " (default: " + defaultScreenSize + ")");
+            System.out.println("   - Difficulty: " + difficulty.get() + " (default: " + defaultDifficulty + ")");
         } catch (Exception e) {
             System.out.println("❗ Failed to load settings, using defaults from application.yml.");
             restoreDefaults();
@@ -156,6 +173,9 @@ public class SettingsService {
         props.setProperty("stageWidth", String.valueOf(stageWidth.get()));
         props.setProperty("stageHeight", String.valueOf(stageHeight.get()));
         
+        // ✨ Phase 5: 난이도 저장
+        props.setProperty("difficulty", difficulty.get());
+        
         // 게임 모드 설정 저장 (GameModeProperties를 통해)
         if (gameModeProperties != null) {
             props.setProperty("game.mode.playType", gameModeProperties.getPlayType().name());
@@ -178,11 +198,31 @@ public class SettingsService {
     }
 
     public void restoreDefaults() {
+<<<<<<< HEAD
         soundVolume.set(80);
         colorMode.set("colorModeDefault");
         screenSize.set("screenSizeM");
         applyResolution(500, 700);
         saveSettings();
+=======
+        // application.yml의 기본값 사용
+        soundVolume.set(defaultSoundVolume);
+        colorMode.set(defaultColorMode);
+        screenSize.set(defaultScreenSize);
+        
+        // ✨ Phase 5: 난이도 기본값 복원
+        difficulty.set(defaultDifficulty);
+        
+        applyResolution(defaultStageWidth, defaultStageHeight);
+        saveSettings();
+        
+        System.out.println("✅ Settings restored to defaults from application.yml.");
+        System.out.println("   - Sound Volume: " + defaultSoundVolume);
+        System.out.println("   - Color Mode: " + defaultColorMode);
+        System.out.println("   - Screen Size: " + defaultScreenSize);
+        System.out.println("   - Difficulty: " + defaultDifficulty);
+        System.out.println("   - Stage Size: " + defaultStageWidth + "x" + defaultStageHeight);
+>>>>>>> 1b6bf28 ([Feat] 선택 UI)
     }
 
     // ========== Property Accessors for JavaFX Binding ========== 
@@ -197,6 +237,11 @@ public class SettingsService {
 
     public StringProperty screenSizeProperty() {
         return screenSize;
+    }
+    
+    // ✨ Phase 5: 난이도 속성 getter
+    public StringProperty difficultyProperty() {
+        return difficulty;
     }
 
     public DoubleProperty stageWidthProperty() {
@@ -572,5 +617,32 @@ public class SettingsService {
      */
     public GameModeProperties getGameModeProperties() {
         return gameModeProperties;
+    }
+    
+    // =========================================================================
+    // ✨ Phase 5: 난이도 변환 메서드
+    // =========================================================================
+    
+    /**
+     * UI 난이도 ID를 Difficulty enum으로 변환
+     * 
+     * @return Difficulty enum (EASY, NORMAL, HARD)
+     */
+    public seoultech.se.core.model.enumType.Difficulty getCurrentDifficulty() {
+        String difficultyId = difficulty.get();
+        
+        if (difficultyId == null || difficultyId.isEmpty()) {
+            difficultyId = defaultDifficulty;
+        }
+        
+        switch (difficultyId) {
+            case "difficultyEasy":
+                return seoultech.se.core.model.enumType.Difficulty.EASY;
+            case "difficultyHard":
+                return seoultech.se.core.model.enumType.Difficulty.HARD;
+            case "difficultyNormal":
+            default:
+                return seoultech.se.core.model.enumType.Difficulty.NORMAL;
+        }
     }
 }

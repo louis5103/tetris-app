@@ -39,8 +39,13 @@ class TetrominoGeneratorTest {
         // 첫 7개는 모든 타입이 정확히 1번씩 나와야 함
         assertEquals(7, firstBag.size(), "첫 7개는 모든 타입이 나와야 함");
         
-        // 모든 타입이 포함되어 있는지 확인
-        for (TetrominoType type : TetrominoType.values()) {
+        // ✅ ITEM 타입을 제외한 모든 타입이 포함되어 있는지 확인
+        TetrominoType[] normalTypes = {
+            TetrominoType.I, TetrominoType.J, TetrominoType.L,
+            TetrominoType.O, TetrominoType.S, TetrominoType.T, TetrominoType.Z
+        };
+        
+        for (TetrominoType type : normalTypes) {
             assertTrue(firstBag.contains(type), type + " 타입이 누락됨");
         }
     }
@@ -72,13 +77,23 @@ class TetrominoGeneratorTest {
         Map<TetrominoType, Integer> counts = new HashMap<>();
         int totalCount = 700;  // 정확히 100개 가방
         
+        // ✅ ITEM 타입을 제외한 7개 타입 초기화
+        TetrominoType[] normalTypes = {
+            TetrominoType.I, TetrominoType.J, TetrominoType.L,
+            TetrominoType.O, TetrominoType.S, TetrominoType.T, TetrominoType.Z
+        };
+        for (TetrominoType type : normalTypes) {
+            counts.put(type, 0);
+        }
+        
         for (int i = 0; i < totalCount; i++) {
             TetrominoType type = generator.next();
             counts.merge(type, 1, Integer::sum);
         }
         
         // Normal 모드: 정확히 균등 분배 (각 100번씩)
-        for (TetrominoType type : TetrominoType.values()) {
+        // ✅ ITEM 타입을 제외한 7개 타입만 체크
+        for (TetrominoType type : normalTypes) {
             int count = counts.get(type);
             assertEquals(100, count, 
                 type + " 타입이 정확히 100번 나와야 함 (실제: " + count + ")");

@@ -47,14 +47,20 @@ class RandomGeneratorTest {
         Map<TetrominoType, Integer> counts = new HashMap<>();
         int totalCount = 1000;
         
+        // ✅ ITEM 타입을 제외한 7개 타입
+        TetrominoType[] normalTypes = {
+            TetrominoType.I, TetrominoType.J, TetrominoType.L,
+            TetrominoType.O, TetrominoType.S, TetrominoType.T, TetrominoType.Z
+        };
+        
         // 1000개 생성
         for (int i = 0; i < totalCount; i++) {
             TetrominoType type = generator.generateTetromino(normal);
             counts.merge(type, 1, Integer::sum);
         }
         
-        // 모든 타입이 최소 1번은 나와야 함
-        for (TetrominoType type : TetrominoType.values()) {
+        // 모든 타입이 최소 1번은 나와야 함 (ITEM 제외)
+        for (TetrominoType type : normalTypes) {
             assertTrue(counts.containsKey(type), 
                 type + " 타입이 생성되지 않음");
             assertTrue(counts.get(type) > 0,
@@ -65,7 +71,7 @@ class RandomGeneratorTest {
         double expectedRate = 1.0 / 7.0;  // 14.3%
         double tolerance = 0.05;  // ±5%
         
-        for (TetrominoType type : TetrominoType.values()) {
+        for (TetrominoType type : normalTypes) {
             double actualRate = counts.get(type) / (double) totalCount;
             assertTrue(
                 Math.abs(actualRate - expectedRate) < tolerance,

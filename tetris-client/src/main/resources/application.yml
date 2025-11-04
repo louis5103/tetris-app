@@ -69,7 +69,8 @@ tetris:
   # ---------------------------------------------------------------------------
   difficulty:
     # Easy 모드 설정
-    easy:      display-name: "쉬움"
+    easy:
+      display-name: "쉬움"
       # I형 블록 출현 확률 배율 (1.0 = 14.3%, 1.2 = 17.1%)
       i-block-multiplier: 1.2
       # 레벨업 시 속도 증가율 배율 (0.8 = 20% 감소)
@@ -160,6 +161,8 @@ tetris:
     stage-width: ${TETRIS_UI_STAGE_WIDTH:500}
     # 스테이지 기본 높이
     stage-height: ${TETRIS_UI_STAGE_HEIGHT:700}
+    # ✨ Phase 5: 난이도 기본값 (difficultyEasy, difficultyNormal, difficultyHard)
+    difficulty: ${TETRIS_UI_DIFFICULTY:difficultyNormal}
     # 애니메이션 활성화
     animation:
       enabled: ${TETRIS_UI_ANIMATION_ENABLED:true}
