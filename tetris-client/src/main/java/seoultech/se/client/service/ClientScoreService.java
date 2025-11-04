@@ -55,6 +55,20 @@ public class ClientScoreService {
                 });
     }
 
+    public CompletableFuture<Void> clearScores() {
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(API_URL))
+                .DELETE()
+                .build();
+
+        return client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+                .thenAccept(response -> {
+                    if (response.statusCode() != 204) {
+                        throw new RuntimeException("Failed to clear scores: " + response.body());
+                    }
+                });
+    }
+
     // Manual JSON parsing. This is fragile and depends on the exact JSON structure.
     private List<ScoreResponse> parseScores(String json) {
         List<ScoreResponse> scores = new ArrayList<>();

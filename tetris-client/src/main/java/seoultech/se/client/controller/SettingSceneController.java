@@ -25,6 +25,7 @@ import javafx.stage.Stage;
 import seoultech.se.client.config.ApplicationContextProvider;
 import seoultech.se.client.model.*;
 import seoultech.se.client.repository.*;
+import seoultech.se.client.service.ClientScoreService;
 import seoultech.se.client.service.KeyMappingService;
 import seoultech.se.client.service.NavigationService;
 
@@ -37,6 +38,8 @@ public class SettingSceneController extends BaseController {
     private KeyMappingService keyMappingService;
     @Autowired
     private SettingsRepository settingsRepository;
+
+    private ClientScoreService clientScoreService;
 
     @FXML
     private Slider soundSlider;
@@ -94,6 +97,7 @@ public class SettingSceneController extends BaseController {
         super.initialize();
 
         this.settingsService = ApplicationContextProvider.getApplicationContext().getBean(seoultech.se.client.service.SettingsService.class);
+        this.clientScoreService = ApplicationContextProvider.getApplicationContext().getBean(ClientScoreService.class);
 
         loadSettingsToUI();
 
@@ -243,7 +247,12 @@ public class SettingSceneController extends BaseController {
     @FXML
     public void handleClearScoreBoardButton(ActionEvent event) {
         System.out.println("🧹 Clear Score Board button clicked");
-        //TODO : 스코어보드 초기화 기능 구현
+        clientScoreService.clearScores()
+                .thenRun(() -> System.out.println("✅ Score board cleared successfully."))
+                .exceptionally(e -> {
+                    System.err.println("❌ Failed to clear score board: " + e.getMessage());
+                    return null;
+                });
     }
 
     @FXML
