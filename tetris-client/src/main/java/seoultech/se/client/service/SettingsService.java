@@ -1,8 +1,6 @@
 package seoultech.se.client.service;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.util.Properties;
+import java.util.prefs.Preferences;
 
 import org.springframework.stereotype.Service;
 
@@ -26,10 +24,11 @@ public class SettingsService {
     private final StringProperty difficulty = new SimpleStringProperty("difficultyNormal"); // easy, normal, hard
     private final StringProperty screenSize = new SimpleStringProperty("screenSizeM"); // XS, S, M, L, XL
 
-    private static final String SETTINGS_FILE = "tetris_settings";
+    private static final String PREFS_NODE = "tetris_settings";
+    private final Preferences preferences;
 
     public SettingsService() {
-        // Constructor - initialization happens in @PostConstruct
+        this.preferences = Preferences.userRoot().node(PREFS_NODE);
     }
     
     /**
@@ -59,36 +58,28 @@ public class SettingsService {
     }
 
     public void loadSettings() {
-        Properties props = new Properties();
-        try (FileInputStream in = new FileInputStream(new File(SETTINGS_FILE))) {
-            props.load(in);
-            soundVolume.set(Double.parseDouble(props.getProperty("soundVolume", "80")));
-            colorMode.set(props.getProperty("colorMode", "colorModeDefault"));
-            screenSize.set(props.getProperty("screenSize", "screenSizeM"));
-            difficulty.set(props.getProperty("difficulty", "difficultyNormal"));
-            double width = Double.parseDouble(props.getProperty("stageWidth", "500"));
-            double height = Double.parseDouble(props.getProperty("stageHeight", "600"));
-            applyResolution(width, height);
-            System.out.println("✅ Settings loaded successfully.");
-        } catch (Exception e) {
-            System.out.println("❗ Failed to load settings, using defaults.");
-            restoreDefaults();
-        }
+        soundVolume.set(preferences.getDouble("soundVolume", 80));
+        colorMode.set(preferences.get("colorMode", "colorModeDefault"));
+        screenSize.set(preferences.get("screenSize", "screenSizeM"));
+        difficulty.set(preferences.get("difficulty", "difficultyNormal"));
+        double width = preferences.getDouble("stageWidth", 500);
+        double height = preferences.getDouble("stageHeight", 600);
+        applyResolution(width, height);
+        System.out.println("✅ Settings loaded successfully from preferences.");
     }
 
     public void saveSettings() {
-        Properties props = new Properties();
-        props.setProperty("soundVolume", String.valueOf(soundVolume.get()));
-        props.setProperty("colorMode", colorMode.get());
-        props.setProperty("difficulty", difficulty.get());
-        props.setProperty("screenSize", screenSize.get());
-        props.setProperty("stageWidth", String.valueOf(stageWidth.get()));
-        props.setProperty("stageHeight", String.valueOf(stageHeight.get()));
+        preferences.putDouble("soundVolume", soundVolume.get());
+        preferences.put("colorMode", colorMode.get());
+        preferences.put("difficulty", difficulty.get());
+        preferences.put("screenSize", screenSize.get());
+        preferences.putDouble("stageWidth", stageWidth.get());
+        preferences.putDouble("stageHeight", stageHeight.get());
         try {
-            props.store(new java.io.FileOutputStream(new File(SETTINGS_FILE)), null);
-            System.out.println("✅ Settings saved successfully.");
+            preferences.flush(); // Ensure changes are written to persistent store
+            System.out.println("✅ Settings saved successfully to preferences.");
         } catch (Exception e) {
-            System.out.println("❗ Failed to save settings.");
+            System.err.println("❗ Failed to save settings to preferences: " + e.getMessage());
         }
     }
 
@@ -98,11 +89,10 @@ public class SettingsService {
         setScreenSize("screenSizeM");
         setDifficulty("difficultyNormal");
         applyResolution(500, 700);
-        // restoreDefaults 내의 각 setter가 saveSettings를 호출하므로 중복 호출 제거
-        // saveSettings(); 
+        saveSettings(); // Save the default settings
     }
 
-    // ========== Property Accessors for JavaFX Binding ==========
+    // ========== Property Accessors for JavaFX Binding ========== 
 
     public DoubleProperty soundVolumeProperty() { 
         return soundVolume;
@@ -128,7 +118,7 @@ public class SettingsService {
         return difficulty;
     }
 
-    // ========== Standard Getters and Setters ==========
+    // ========== Standard Getters and Setters ========== 
 
     public double getSoundVolume() {
         return soundVolume.get();
@@ -162,7 +152,6 @@ public class SettingsService {
     }
 
     public void setStageWidth(double width) {
-        // applyResolution을 호출하여 프로퍼티와 실제 Stage 크기를 모두 업데이트합니다.
         applyResolution(width, this.stageHeight.get());
         saveSettings();
     }
@@ -172,7 +161,6 @@ public class SettingsService {
     }
 
     public void setStageHeight(double height) {
-        // applyResolution을 호출하여 프로퍼티와 실제 Stage 크기를 모두 업데이트합니다.
         applyResolution(this.stageWidth.get(), height);
         saveSettings();
     }

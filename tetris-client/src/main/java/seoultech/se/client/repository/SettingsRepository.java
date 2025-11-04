@@ -3,82 +3,69 @@ package seoultech.se.client.repository;
 import org.springframework.stereotype.Repository;
 import seoultech.se.client.model.Setting;
 
-import java.io.*;
 import java.util.*;
+import java.util.prefs.BackingStoreException;
+import java.util.prefs.Preferences;
 
 @Repository
 public class SettingsRepository {
-    private static final String SETTINGS_FILE = "custom_settings.properties";
-    private Properties properties;
+    private static final String PREFS_NODE = "tetris_custom_settings";
+    private final Preferences preferences;
 
     public SettingsRepository() {
-        properties = new Properties();
-        loadProperties();
-    }
-
-    private void loadProperties() {
-        try (FileInputStream in = new FileInputStream(SETTINGS_FILE)) {
-            properties.load(in);
-        } catch (IOException e) {
-            // File doesn't exist yet - that's okay for first run
-        }
-    }
-
-    private void saveProperties() {
-        try (FileOutputStream out = new FileOutputStream(SETTINGS_FILE)) {
-            properties.store(out, "Tetris Custom Settings");
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        this.preferences = Preferences.userRoot().node(PREFS_NODE);
     }
 
     public List<Setting> loadSettings() {
         List<Setting> settings = new ArrayList<>();
-        Set<String> settingNames = new HashSet<>();
+        try {
+            String[] settingKeys = preferences.childrenNames();
+            for (String key : settingKeys) {
+                Preferences settingNode = preferences.node(key);
+                String name = settingNode.get("name", null);
+                if (name != null) {
+                    Setting setting = new Setting(name);
+                    setting.setSelected(settingNode.getBoolean("selected", false));
 
-        // First pass: Create settings with their basic properties
-        for (String key : properties.stringPropertyNames()) {
-            if (key.endsWith(".name")) {
-                String baseName = key.substring(0, key.length() - 5);
-                String name = properties.getProperty(key);
-                boolean selected = Boolean.parseBoolean(properties.getProperty(baseName + ".selected", "false"));
-                
-                Setting setting = new Setting(name);
-                setting.setSelected(selected);
-                
-                // Load configurations for this setting
-                Map<String, String> configs = new HashMap<>();
-                for (String propKey : properties.stringPropertyNames()) {
-                    if (propKey.startsWith(baseName + ".config.")) {
-                        String configKey = propKey.substring((baseName + ".config.").length());
-                        String configValue = properties.getProperty(propKey);
-                        configs.put(configKey, configValue);
+                    Map<String, String> configs = new HashMap<>();
+                    Preferences configNode = settingNode.node("config");
+                    String[] configKeys = configNode.keys();
+                    for (String configKey : configKeys) {
+                        configs.put(configKey, configNode.get(configKey, null));
                     }
+                    setting.setConfigurations(configs);
+                    settings.add(setting);
                 }
-                setting.setConfigurations(configs);
-                
-                settings.add(setting);
-                settingNames.add(name);
             }
+        } catch (BackingStoreException e) {
+            System.err.println("Error loading custom settings: " + e.getMessage());
         }
-
         return settings;
     }
 
     public void saveSettings(List<Setting> settings) {
-        properties.clear();
-        for (Setting setting : settings) {
-            String baseKey = setting.getKey();
-            properties.setProperty(baseKey + ".name", setting.getName());
-            properties.setProperty(baseKey + ".selected", String.valueOf(setting.isSelected()));
-            
-            // Save all configurations
-            Map<String, String> configs = new HashMap<>(setting.getConfigurations()); // Create a copy
-            for (Map.Entry<String, String> entry : configs.entrySet()) {
-                properties.setProperty(baseKey + ".config." + entry.getKey(), entry.getValue());
+        try {
+            // Clear existing settings
+            for (String child : preferences.childrenNames()) {
+                preferences.node(child).removeNode();
             }
+
+            // Save new settings
+            for (Setting setting : settings) {
+                Preferences settingNode = preferences.node(setting.getKey());
+                settingNode.put("name", setting.getName());
+                settingNode.putBoolean("selected", setting.isSelected());
+
+                Preferences configNode = settingNode.node("config");
+                configNode.clear(); // Clear old configs for this setting
+                for (Map.Entry<String, String> entry : setting.getConfigurations().entrySet()) {
+                    configNode.put(entry.getKey(), entry.getValue());
+                }
+            }
+            preferences.flush();
+        } catch (BackingStoreException e) {
+            System.err.println("Error saving custom settings: " + e.getMessage());
         }
-        saveProperties();
     }
 
     public Setting getActiveSetting() {
