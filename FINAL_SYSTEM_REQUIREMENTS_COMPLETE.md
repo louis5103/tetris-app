@@ -690,3 +690,846 @@ logging:
 **END OF DOCUMENT**
 
 *이 문서는 프로덕션 개발팀이 즉시 사용 가능한 최종 버전입니다.*
+
+---
+
+## 📚 상세 구현 가이드 (Detailed Implementation Guide)
+
+### DIG-1: BoardController 완전 구현 예제
+
+```java
+@Component
+public class BoardController {
+    
+    // DI 주입
+    private final GameEngine gameEngine;
+    private final PlayTypeStrategy playTypeStrategy;
+    private final UIEventHandler eventHandler;
+    private final LocalUIEventGenerator localEventGen;
+    
+    // 게임 상태
+    private GameState currentState;
+    
+    @Autowired
+    public BoardController(
+        GameEngine gameEngine,
+        PlayTypeStrategy playTypeStrategy,
+        UIEventHandler eventHandler,
+        LocalUIEventGenerator localEventGen
+    ) {
+        this.gameEngine = gameEngine;
+        this.playTypeStrategy = playTypeStrategy;
+        this.eventHandler = eventHandler;
+        this.localEventGen = localEventGen;
+    }
+    
+    /**
+     * Command 실행 (핵심 메서드)
+     */
+    public void executeCommand(GameCommand command) {
+        try {
+            // Step 1: beforeCommand (서버 전송 - Multi만)
+            boolean shouldExecute = playTypeStrategy.beforeCommand(command);
+            if (!shouldExecute) {
+                log.debug("Command blocked by strategy: {}", command.getCommandType());
+                return;
+            }
+            
+            // Step 2: Local Event 생성 및 즉시 표시
+            UIEvent localEvent = localEventGen.generateLocalEvent(command, currentState);
+            if (localEvent != null) {
+                eventHandler.handle(localEvent);
+            }
+            
+            // Step 3: 로컬 예측 (GameEngine 실행)
+            GameState newState = executeGameLogic(command, currentState);
+            
+            // Step 4: afterCommand (예측 저장 - Multi만)
+            playTypeStrategy.afterCommand(command, newState);
+            
+            // Step 5: 상태 업데이트 및 렌더링
+            updateState(newState);
+            
+        } catch (NetworkException e) {
+            handleNetworkError(e);
+        } catch (ValidationException e) {
+            showErrorMessage("잘못된 조작입니다: " + e.getMessage());
+        } catch (Exception e) {
+            log.error("Unexpected error in executeCommand", e);
+            showErrorMessage("오류가 발생했습니다. 다시 시도해주세요.");
+        }
+    }
+    
+    /**
+     * 게임 로직 실행 (GameEngine 위임)
+     */
+    private GameState executeGameLogic(GameCommand command, GameState state) {
+        switch (command.getCommandType()) {
+            case MOVE_LEFT:
+                return gameEngine.tryMoveLeft(state);
+            case MOVE_RIGHT:
+                return gameEngine.tryMoveRight(state);
+            case ROTATE_CW:
+                return gameEngine.tryRotate(state, RotationDirection.CLOCKWISE);
+            case ROTATE_CCW:
+                return gameEngine.tryRotate(state, RotationDirection.COUNTER_CLOCKWISE);
+            case SOFT_DROP:
+                return gameEngine.softDrop(state);
+            case HARD_DROP:
+                return gameEngine.hardDrop(state);
+            case HOLD:
+                return gameEngine.hold(state);
+            default:
+                throw new ValidationException("Unknown command type: " + command.getCommandType());
+        }
+    }
+    
+    /**
+     * 서버 응답 수신 (멀티플레이어)
+     */
+    public void onServerUpdate(GameUpdateResponse response) {
+        log.debug("Received server update: seq={}, events={}", 
+            response.getSequenceNumber(), response.getEvents().size());
+        
+        try {
+            // Step 1: State Reconciliation (Multi만)
+            playTypeStrategy.onServerStateUpdate(response.getState());
+            
+            // Step 2: Critical Events 처리
+            if (!response.getEvents().isEmpty()) {
+                eventHandler.handleEvents(response.getEvents());
+            }
+            
+            // Step 3: 상태 업데이트
+            updateState(response.getState());
+            
+        } catch (StateConflictException e) {
+            log.warn("State conflict detected, forcing server state", e);
+            forceStateUpdate(e.getServerState());
+        }
+    }
+    
+    /**
+     * 강제 상태 업데이트 (Mismatch 시)
+     */
+    public void forceStateUpdate(GameState serverState) {
+        log.warn("Forcing state update from server");
+        this.currentState = serverState;
+        renderState(serverState);
+    }
+    
+    /**
+     * 네트워크 오류 처리
+     */
+    private void handleNetworkError(NetworkException e) {
+        log.error("Network error: {}", e.getMessage());
+        showNotification("네트워크 연결이 끊어졌습니다. 오프라인 모드로 전환합니다.");
+        
+        // Single 모드로 전환 (선택적)
+        // switchToSinglePlayMode();
+    }
+    
+    /**
+     * 상태 업데이트 + 렌더링
+     */
+    private void updateState(GameState newState) {
+        this.currentState = newState;
+        renderState(newState);
+    }
+    
+    /**
+     * UI 렌더링
+     */
+    private void renderState(GameState state) {
+        Platform.runLater(() -> {
+            // JavaFX UI 업데이트
+            boardView.render(state.getGrid());
+            scoreLabel.setText("Score: " + state.getScore());
+            levelLabel.setText("Level: " + state.getLevel());
+            // ... 나머지 UI 업데이트
+        });
+    }
+}
+```
+
+---
+
+### DIG-2: UIEventHandler 완전 구현 (Thread-safe)
+
+```java
+@Component
+public class UIEventHandler {
+    
+    private final Logger log = LoggerFactory.getLogger(UIEventHandler.class);
+    
+    // Thread-safe 변수
+    private final AtomicBoolean isProcessing = new AtomicBoolean(false);
+    private final PriorityQueue<UIEvent> eventQueue = new PriorityQueue<>(
+        Comparator.comparingInt(UIEvent::getPriority).reversed()
+    );
+    private final Object lock = new Object();
+    
+    // 스케줄러
+    private final ScheduledExecutorService scheduler = 
+        Executors.newSingleThreadScheduledExecutor();
+    
+    /**
+     * 단일 이벤트 처리
+     */
+    public void handle(UIEvent event) {
+        handleEvents(List.of(event));
+    }
+    
+    /**
+     * 다중 이벤트 처리 (서버에서 받은 Critical Events)
+     */
+    public void handleEvents(List<UIEvent> events) {
+        if (events == null || events.isEmpty()) {
+            return;
+        }
+        
+        // Step 1: Queue에 추가 (synchronized)
+        synchronized (lock) {
+            eventQueue.addAll(events);
+            log.debug("Added {} events to queue. Total: {}", events.size(), eventQueue.size());
+        }
+        
+        // Step 2: 처리 시작 (CAS 패턴)
+        if (isProcessing.compareAndSet(false, true)) {
+            log.debug("Starting event processing");
+            processNextEvent();
+        } else {
+            log.debug("Event processing already in progress");
+        }
+    }
+    
+    /**
+     * 다음 이벤트 처리 (재귀 스케줄링)
+     */
+    private void processNextEvent() {
+        UIEvent event;
+        
+        // Step 1: Queue에서 꺼내기 (synchronized)
+        synchronized (lock) {
+            event = eventQueue.poll();
+            if (event == null) {
+                // 더 이상 처리할 이벤트 없음
+                isProcessing.set(false);
+                log.debug("Event processing completed");
+                return;
+            }
+        }
+        
+        // Step 2: 이벤트 표시 (UI Thread)
+        displayEvent(event);
+        
+        // Step 3: 다음 이벤트 스케줄링
+        long duration = event.getDuration();
+        scheduler.schedule(
+            this::processNextEvent,
+            duration,
+            TimeUnit.MILLISECONDS
+        );
+        
+        log.debug("Scheduled next event after {}ms", duration);
+    }
+    
+    /**
+     * 이벤트 표시 (JavaFX UI)
+     */
+    private void displayEvent(UIEvent event) {
+        log.info("Displaying event: type={}, priority={}, duration={}ms", 
+            event.getType(), event.getPriority(), event.getDuration());
+        
+        Platform.runLater(() -> {
+            try {
+                switch (event.getType()) {
+                    case LINE_CLEAR:
+                        showLineClearAnimation(event.getData());
+                        break;
+                    case T_SPIN:
+                        showTSpinAnimation(event.getData());
+                        break;
+                    case COMBO:
+                        showComboAnimation(event.getData());
+                        break;
+                    case LEVEL_UP:
+                        showLevelUpAnimation(event.getData());
+                        break;
+                    case PERFECT_CLEAR:
+                        showPerfectClearAnimation(event.getData());
+                        break;
+                    case ATTACK_SENT:
+                        showAttackSentAnimation(event.getData());
+                        break;
+                    case ATTACK_RECEIVED:
+                        showAttackReceivedAnimation(event.getData());
+                        break;
+                    case BLOCK_MOVE:
+                        // Local Event (즉시 처리됨, 여기서는 스킵)
+                        break;
+                    case BLOCK_ROTATE:
+                        // Local Event
+                        break;
+                    case BLOCK_LOCK:
+                        showBlockLockAnimation(event.getData());
+                        break;
+                    default:
+                        log.warn("Unknown event type: {}", event.getType());
+                }
+            } catch (Exception e) {
+                log.error("Error displaying event: {}", event, e);
+            }
+        });
+    }
+    
+    /**
+     * 라인 클리어 애니메이션
+     */
+    private void showLineClearAnimation(Map<String, Object> data) {
+        int lines = (int) data.get("lines");
+        int score = (int) data.get("score");
+        
+        // 애니메이션 로직
+        Label label = new Label(lines + " LINE" + (lines > 1 ? "S" : "") + "!");
+        label.setStyle("-fx-font-size: 48px; -fx-text-fill: yellow;");
+        
+        FadeTransition fade = new FadeTransition(Duration.millis(800), label);
+        fade.setFromValue(1.0);
+        fade.setToValue(0.0);
+        fade.play();
+        
+        log.info("LINE CLEAR: {} lines, {} score", lines, score);
+    }
+    
+    /**
+     * T-Spin 애니메이션
+     */
+    private void showTSpinAnimation(Map<String, Object> data) {
+        String spinType = (String) data.get("spinType");
+        int bonus = (int) data.get("bonus");
+        
+        Label label = new Label("T-SPIN " + spinType.toUpperCase() + "!");
+        label.setStyle("-fx-font-size: 56px; -fx-text-fill: magenta;");
+        
+        // 회전 + 페이드 애니메이션
+        RotateTransition rotate = new RotateTransition(Duration.millis(500), label);
+        rotate.setByAngle(360);
+        
+        FadeTransition fade = new FadeTransition(Duration.millis(500), label);
+        fade.setFromValue(1.0);
+        fade.setToValue(0.0);
+        
+        SequentialTransition seq = new SequentialTransition(rotate, fade);
+        seq.play();
+        
+        log.info("T-SPIN: type={}, bonus={}", spinType, bonus);
+    }
+    
+    /**
+     * 콤보 애니메이션
+     */
+    private void showComboAnimation(Map<String, Object> data) {
+        int combo = (int) data.get("combo");
+        
+        Label label = new Label(combo + " COMBO!");
+        label.setStyle("-fx-font-size: 40px; -fx-text-fill: orange;");
+        
+        ScaleTransition scale = new ScaleTransition(Duration.millis(300), label);
+        scale.setFromX(0.5);
+        scale.setFromY(0.5);
+        scale.setToX(1.5);
+        scale.setToY(1.5);
+        
+        FadeTransition fade = new FadeTransition(Duration.millis(500), label);
+        fade.setDelay(Duration.millis(300));
+        fade.setFromValue(1.0);
+        fade.setToValue(0.0);
+        
+        ParallelTransition parallel = new ParallelTransition(scale, fade);
+        parallel.play();
+        
+        log.info("COMBO: {}", combo);
+    }
+    
+    /**
+     * 레벨 업 애니메이션
+     */
+    private void showLevelUpAnimation(Map<String, Object> data) {
+        int newLevel = (int) data.get("newLevel");
+        
+        Label label = new Label("LEVEL UP!\nLevel " + newLevel);
+        label.setStyle("-fx-font-size: 48px; -fx-text-fill: cyan;");
+        
+        TranslateTransition translate = new TranslateTransition(Duration.millis(1000), label);
+        translate.setFromY(100);
+        translate.setToY(0);
+        
+        FadeTransition fade = new FadeTransition(Duration.millis(1000), label);
+        fade.setFromValue(0.0);
+        fade.setToValue(1.0);
+        
+        ParallelTransition parallel = new ParallelTransition(translate, fade);
+        parallel.play();
+        
+        log.info("LEVEL UP: {}", newLevel);
+    }
+    
+    /**
+     * Perfect Clear 애니메이션
+     */
+    private void showPerfectClearAnimation(Map<String, Object> data) {
+        int bonus = (int) data.get("bonus");
+        
+        Label label = new Label("★ PERFECT CLEAR ★\n+" + bonus + " BONUS!");
+        label.setStyle("-fx-font-size: 64px; -fx-text-fill: gold;");
+        
+        // 폭발 효과
+        ScaleTransition scale = new ScaleTransition(Duration.millis(500), label);
+        scale.setFromX(0.1);
+        scale.setFromY(0.1);
+        scale.setToX(2.0);
+        scale.setToY(2.0);
+        
+        RotateTransition rotate = new RotateTransition(Duration.millis(500), label);
+        rotate.setByAngle(720);
+        
+        FadeTransition fade = new FadeTransition(Duration.millis(1000), label);
+        fade.setDelay(Duration.millis(500));
+        fade.setFromValue(1.0);
+        fade.setToValue(0.0);
+        
+        ParallelTransition parallel = new ParallelTransition(scale, rotate);
+        SequentialTransition seq = new SequentialTransition(parallel, fade);
+        seq.play();
+        
+        log.info("PERFECT CLEAR: bonus={}", bonus);
+    }
+    
+    /**
+     * 공격 전송 애니메이션
+     */
+    private void showAttackSentAnimation(Map<String, Object> data) {
+        int lines = (int) data.get("lines");
+        String target = (String) data.get("target");
+        
+        Label label = new Label("ATTACK! ⚔️\n" + lines + " lines");
+        label.setStyle("-fx-font-size: 36px; -fx-text-fill: red;");
+        
+        TranslateTransition translate = new TranslateTransition(Duration.millis(500), label);
+        translate.setFromX(0);
+        translate.setToX(300);
+        
+        FadeTransition fade = new FadeTransition(Duration.millis(500), label);
+        fade.setFromValue(1.0);
+        fade.setToValue(0.0);
+        
+        ParallelTransition parallel = new ParallelTransition(translate, fade);
+        parallel.play();
+        
+        log.info("ATTACK SENT: {} lines to {}", lines, target);
+    }
+    
+    /**
+     * 공격 수신 애니메이션
+     */
+    private void showAttackReceivedAnimation(Map<String, Object> data) {
+        int lines = (int) data.get("lines");
+        String from = (String) data.get("from");
+        
+        Label label = new Label("⚠️ ATTACKED!\n+" + lines + " lines");
+        label.setStyle("-fx-font-size: 36px; -fx-text-fill: orange;");
+        
+        // 흔들림 효과
+        TranslateTransition shake = new TranslateTransition(Duration.millis(50), label);
+        shake.setFromX(-10);
+        shake.setToX(10);
+        shake.setCycleCount(10);
+        shake.setAutoReverse(true);
+        
+        FadeTransition fade = new FadeTransition(Duration.millis(1000), label);
+        fade.setDelay(Duration.millis(500));
+        fade.setFromValue(1.0);
+        fade.setToValue(0.0);
+        
+        SequentialTransition seq = new SequentialTransition(shake, fade);
+        seq.play();
+        
+        log.info("ATTACK RECEIVED: {} lines from {}", lines, from);
+    }
+    
+    /**
+     * 블록 고정 애니메이션
+     */
+    private void showBlockLockAnimation(Map<String, Object> data) {
+        // 짧은 플래시 효과
+        // UI 구현은 BoardView에서 처리
+        log.debug("BLOCK LOCK");
+    }
+    
+    /**
+     * 종료 시 정리
+     */
+    @PreDestroy
+    public void shutdown() {
+        log.info("Shutting down UIEventHandler");
+        scheduler.shutdownNow();
+    }
+}
+```
+
+---
+
+### DIG-3: MultiPlayStrategy 완전 구현 (State Reconciliation)
+
+```java
+@Component
+@ConditionalOnProperty(name = "tetris.play-type", havingValue = "ONLINE_MULTI")
+public class MultiPlayStrategy implements PlayTypeStrategy {
+    
+    private final Logger log = LoggerFactory.getLogger(MultiPlayStrategy.class);
+    
+    private final NetworkService networkService;
+    private final TetrisGameConfig config;
+    
+    // Thread-safe 변수
+    private final AtomicInteger sequenceNumber = new AtomicInteger(0);
+    private final ConcurrentHashMap<Integer, PendingCommand> pendingCommands = new ConcurrentHashMap<>();
+    
+    // Throttling
+    private final ConcurrentHashMap<CommandType, Long> lastSentTime = new ConcurrentHashMap<>();
+    private final long THROTTLE_MS = 16; // 60 FPS
+    
+    @Autowired
+    public MultiPlayStrategy(NetworkService networkService, TetrisGameConfig config) {
+        this.networkService = networkService;
+        this.config = config;
+    }
+    
+    @Override
+    public boolean beforeCommand(GameCommand command) {
+        try {
+            // Step 1: Throttling 체크
+            if (!checkThrottle(command.getCommandType())) {
+                log.trace("Command throttled: {}", command.getCommandType());
+                return false; // 너무 빠른 전송, 무시
+            }
+            
+            // Step 2: Sequence Number 할당
+            int seq = sequenceNumber.getAndIncrement();
+            command.setSequenceNumber(seq);
+            command.setPlayerId(config.getPlayerId());
+            command.setTimestamp(System.currentTimeMillis());
+            
+            // Step 3: 서버 전송
+            networkService.sendCommand(command);
+            log.debug("Command sent: seq={}, type={}", seq, command.getCommandType());
+            
+            // Step 4: Pending Commands에 추가
+            PendingCommand pending = PendingCommand.builder()
+                .command(command)
+                .sentTime(System.currentTimeMillis())
+                .build();
+            pendingCommands.put(seq, pending);
+            
+            // Step 5: 로컬 예측 허용
+            return true;
+            
+        } catch (NetworkException e) {
+            log.error("Network error in beforeCommand", e);
+            // 오프라인 모드로 전환 (NetworkServiceProxy가 처리)
+            return true; // 로컬 예측은 계속 허용
+        }
+    }
+    
+    @Override
+    public void afterCommand(GameCommand command, GameState predictedState) {
+        // 예측 결과 저장
+        PendingCommand pending = pendingCommands.get(command.getSequenceNumber());
+        if (pending != null) {
+            pending.setPredictedState(predictedState);
+            log.debug("Predicted state saved: seq={}", command.getSequenceNumber());
+        }
+    }
+    
+    @Override
+    public void onServerStateUpdate(GameState serverState) {
+        int serverSeq = serverState.getLastProcessedSequence();
+        log.debug("Server state received: seq={}", serverSeq);
+        
+        // Step 1: 처리된 Commands 제거
+        pendingCommands.keySet().removeIf(seq -> seq <= serverSeq);
+        
+        // Step 2: State Reconciliation
+        PendingCommand processed = pendingCommands.get(serverSeq);
+        if (processed != null && processed.getPredictedState() != null) {
+            
+            GameState predictedState = processed.getPredictedState();
+            
+            // Step 3: Mismatch 검사
+            if (!statesMatch(predictedState, serverState)) {
+                log.warn("❌ State mismatch detected! seq={}", serverSeq);
+                log.warn("  Predicted score: {}, Server score: {}", 
+                    predictedState.getScore(), serverState.getScore());
+                
+                // Step 4: 서버 상태로 강제 동기화
+                throw new StateConflictException(
+                    "State mismatch at sequence " + serverSeq,
+                    serverState
+                );
+            } else {
+                log.debug("✅ State prediction correct: seq={}", serverSeq);
+            }
+        }
+        
+        // Step 5: Pending Commands 타임아웃 체크
+        checkPendingTimeouts();
+    }
+    
+    /**
+     * Throttling 체크 (16ms 간격)
+     */
+    private boolean checkThrottle(CommandType commandType) {
+        long now = System.currentTimeMillis();
+        Long last = lastSentTime.get(commandType);
+        
+        if (last != null && (now - last) < THROTTLE_MS) {
+            return false; // 너무 빠름
+        }
+        
+        lastSentTime.put(commandType, now);
+        return true;
+    }
+    
+    /**
+     * 상태 일치 여부 검사
+     */
+    private boolean statesMatch(GameState predicted, GameState server) {
+        // Critical 필드만 비교
+        return predicted.getScore() == server.getScore()
+            && predicted.getLevel() == server.getLevel()
+            && predicted.getLines() == server.getLines()
+            && tetrominoMatch(predicted.getCurrentTetromino(), server.getCurrentTetromino())
+            && gridMatch(predicted.getGrid(), server.getGrid());
+    }
+    
+    /**
+     * Tetromino 일치 여부
+     */
+    private boolean tetrominoMatch(Tetromino a, Tetromino b) {
+        if (a == null && b == null) return true;
+        if (a == null || b == null) return false;
+        
+        return a.getType() == b.getType()
+            && a.getX() == b.getX()
+            && a.getY() == b.getY()
+            && a.getRotation() == b.getRotation();
+    }
+    
+    /**
+     * Grid 일치 여부 (샘플링)
+     */
+    private boolean gridMatch(int[][] gridA, int[][] gridB) {
+        if (gridA.length != gridB.length) return false;
+        
+        // 전체 비교는 비용이 크므로 샘플링
+        for (int i = 0; i < gridA.length; i += 2) {
+            for (int j = 0; j < gridA[i].length; j += 2) {
+                if (gridA[i][j] != gridB[i][j]) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+    
+    /**
+     * Pending Commands 타임아웃 체크 (5초)
+     */
+    private void checkPendingTimeouts() {
+        long now = System.currentTimeMillis();
+        long TIMEOUT_MS = 5000;
+        
+        pendingCommands.entrySet().removeIf(entry -> {
+            PendingCommand pending = entry.getValue();
+            if (now - pending.getSentTime() > TIMEOUT_MS) {
+                log.warn("⏱️ Command timeout: seq={}, type={}", 
+                    entry.getKey(), pending.getCommand().getCommandType());
+                
+                // 재전송 (최대 3회)
+                if (pending.getRetryCount() < 3) {
+                    pending.incrementRetryCount();
+                    networkService.sendCommand(pending.getCommand());
+                    log.info("Retrying command: seq={}, retry={}", 
+                        entry.getKey(), pending.getRetryCount());
+                    return false; // 유지
+                } else {
+                    log.error("❌ Command failed after 3 retries: seq={}", entry.getKey());
+                    return true; // 제거
+                }
+            }
+            return false;
+        });
+    }
+    
+    @Override
+    public void onLineClear(GameState state) {
+        // 2줄 이상 클리어 시 공격 전송
+        int linesCleared = state.getLastLinesCleared();
+        if (linesCleared >= 2) {
+            int attackLines = calculateAttack(linesCleared, state);
+            if (attackLines > 0) {
+                networkService.sendAttack(attackLines);
+                log.info("⚔️ Attack sent: {} lines", attackLines);
+            }
+        }
+    }
+    
+    /**
+     * 공격 라인 수 계산
+     */
+    private int calculateAttack(int linesCleared, GameState state) {
+        int attack = 0;
+        
+        // 기본 공격
+        switch (linesCleared) {
+            case 2: attack = 1; break;
+            case 3: attack = 2; break;
+            case 4: attack = 4; break; // Tetris
+        }
+        
+        // T-Spin 보너스
+        if (state.isLastLockWasTSpin()) {
+            attack += 2;
+        }
+        
+        // Combo 보너스
+        int combo = state.getComboCount();
+        if (combo > 0) {
+            attack += Math.min(combo / 2, 3); // 최대 +3
+        }
+        
+        // Back-to-Back 보너스
+        if (state.getBackToBackCount() > 0) {
+            attack += 1;
+        }
+        
+        return attack;
+    }
+    
+    @Override
+    public void onAttackReceived(int lines, String fromPlayerId) {
+        log.info("🛡️ Attack received: {} lines from {}", lines, fromPlayerId);
+        // BoardController가 처리 (다음 블록 고정 시 바닥에서 줄 추가)
+    }
+    
+    @Override
+    public void initialize() {
+        log.info("MultiPlayStrategy initialized");
+    }
+    
+    @Override
+    public void cleanup() {
+        log.info("MultiPlayStrategy cleanup");
+        pendingCommands.clear();
+        lastSentTime.clear();
+    }
+    
+    @Override
+    public PlayType getType() {
+        return PlayType.ONLINE_MULTI;
+    }
+}
+
+/**
+ * Pending Command DTO
+ */
+@Data
+@Builder
+class PendingCommand {
+    private final GameCommand command;
+    private final long sentTime;
+    private GameState predictedState;
+    private int retryCount;
+    
+    public void incrementRetryCount() {
+        this.retryCount++;
+    }
+}
+```
+
+---
+
+### DIG-4: 실행 흐름 시퀀스 다이어그램
+
+#### 시나리오 1: Hard Drop + 4줄 클리어 (Tetris!)
+
+```
+[Client]                [Strategy]           [Network]           [Server]
+    │                       │                     │                   │
+    │ User: HARD_DROP       │                     │                   │
+    ├──────────────────────>│                     │                   │
+    │                       │ beforeCommand()     │                   │
+    │                       ├────────────────────>│ sendCommand()     │
+    │                       │                     ├──────────────────>│
+    │                       │ return true         │                   │
+    │<──────────────────────┤                     │                   │
+    │                       │                     │                   │
+    │ Local Event: HARD_DROP│                     │                   │
+    ├──> eventHandler ⚡     │                     │                   │
+    │     (즉시 표시)        │                     │                   │
+    │                       │                     │                   │
+    │ gameEngine.hardDrop() │                     │                   │
+    ├──────────────────────>│                     │                   │
+    │<───── newState ────────│                     │                   │
+    │ (4줄 클리어 감지)      │                     │                   │
+    │                       │                     │                   │
+    │ afterCommand()        │                     │                   │
+    ├──────────────────────>│                     │                   │
+    │                       │ predictedState 저장  │                   │
+    │                       │                     │                   │
+    │ renderState() ⚡       │                     │                   │
+    │ (즉시 업데이트)        │                     │                   │
+    │                       │                     │                   │
+    │                       │                     │   JWT 검증 ✅      │
+    │                       │                     │   Rate Limit ✅    │
+    │                       │                     │   Command 검증 ✅  │
+    │                       │                     │   gameEngine.exec()│
+    │                       │                     │   4줄 클리어!      │
+    │                       │                     │   점수 계산        │
+    │                       │                     │   Level Up 체크    │
+    │                       │                     │                   │
+    │                       │                     │   Critical Events: │
+    │                       │                     │   - LINE_CLEAR(4)  │
+    │                       │                     │   - LEVEL_UP       │
+    │                       │                     │                   │
+    │                       │   GameUpdateResponse│                   │
+    │                       │   {                 │                   │
+    │                       │     state: {...},   │                   │
+    │                       │     events: [       │                   │
+    │                       │       {type: LINE_CLEAR, priority: 15}, │
+    │                       │       {type: LEVEL_UP, priority: 13}    │
+    │                       │     ]               │                   │
+    │                       │   }                 │                   │
+    │<──────────────────────┤<────────────────────┤<──────────────────┤
+    │                       │                     │                   │
+    │ onServerUpdate()      │                     │                   │
+    ├──────────────────────>│                     │                   │
+    │                       │ onServerStateUpdate()│                   │
+    │                       │ State Reconciliation│                   │
+    │                       │ ✅ Prediction 성공!  │                   │
+    │                       │                     │                   │
+    │ eventHandler.handleEvents([LINE_CLEAR, LEVEL_UP])              │
+    │ 순차 표시:            │                     │                   │
+    │ 1. LINE_CLEAR (800ms) │                     │                   │
+    │ 2. LEVEL_UP (1000ms)  │                     │                   │
+    │                       │                     │                   │
+    │ renderState()         │                     │                   │
+    │ (최종 동기화)          │                     │                   │
+    │                       │                     │                   │
+
+완료! 총 시간: ~150ms (사용자 관점: 즉시 반응)
+```
+
+---
+
