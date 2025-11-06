@@ -1533,3 +1533,715 @@ class PendingCommand {
 
 ---
 
+
+### DIG-5: NetworkServiceProxy 완전 구현 (자동 재연결)
+
+```java
+@Service
+@Primary
+public class NetworkServiceProxy implements NetworkService {
+    
+    private final Logger log = LoggerFactory.getLogger(NetworkServiceProxy.class);
+    
+    private final NetworkService realService;
+    private final TetrisGameConfig config;
+    
+    // Thread-safe 변수
+    private final AtomicBoolean connected = new AtomicBoolean(false);
+    private final ConcurrentLinkedQueue<Object> offlineQueue = new ConcurrentLinkedQueue<>();
+    
+    // 재연결 스케줄러
+    private final ScheduledExecutorService reconnectScheduler = 
+        Executors.newSingleThreadScheduledExecutor();
+    private ScheduledFuture<?> reconnectTask;
+    
+    // 설정
+    private static final int MAX_QUEUE_SIZE = 1000;
+    private static final long RECONNECT_INTERVAL_MS = 5000; // 5초
+    
+    @Autowired
+    public NetworkServiceProxy(
+        @Qualifier("networkServiceImpl") NetworkService realService,
+        TetrisGameConfig config
+    ) {
+        this.realService = realService;
+        this.config = config;
+        
+        // 초기 연결 시도
+        checkConnection();
+    }
+    
+    @Override
+    public void sendCommand(GameCommand command) {
+        if (connected.get()) {
+            try {
+                realService.sendCommand(command);
+                log.trace("Command sent: {}", command.getCommandType());
+            } catch (NetworkException e) {
+                log.error("Failed to send command", e);
+                handleDisconnection();
+                queueCommand(command);
+            }
+        } else {
+            log.debug("Offline - queuing command: {}", command.getCommandType());
+            queueCommand(command);
+        }
+    }
+    
+    @Override
+    public void sendAttack(int attackLines) {
+        if (connected.get()) {
+            try {
+                realService.sendAttack(attackLines);
+                log.debug("Attack sent: {} lines", attackLines);
+            } catch (NetworkException e) {
+                log.error("Failed to send attack", e);
+                handleDisconnection();
+                queueAttack(attackLines);
+            }
+        } else {
+            log.debug("Offline - queuing attack: {} lines", attackLines);
+            queueAttack(attackLines);
+        }
+    }
+    
+    @Override
+    public void ping() {
+        try {
+            realService.ping();
+            
+            if (!connected.get()) {
+                // 재연결 성공!
+                log.info("✅ Reconnected to server");
+                connected.set(true);
+                stopReconnectTask();
+                flushOfflineQueue();
+            }
+            
+        } catch (NetworkException e) {
+            if (connected.get()) {
+                log.warn("⚠️ Lost connection to server");
+                handleDisconnection();
+            }
+        }
+    }
+    
+    /**
+     * 연결 체크
+     */
+    private void checkConnection() {
+        try {
+            realService.ping();
+            connected.set(true);
+            log.info("✅ Connected to server: {}", config.getNetwork().getServerUrl());
+        } catch (Exception e) {
+            log.warn("⚠️ Failed to connect to server", e);
+            handleDisconnection();
+        }
+    }
+    
+    /**
+     * 연결 끊김 처리
+     */
+    private void handleDisconnection() {
+        if (connected.compareAndSet(true, false)) {
+            log.error("❌ Disconnected from server - entering offline mode");
+            startReconnectTask();
+        }
+    }
+    
+    /**
+     * 재연결 태스크 시작
+     */
+    private void startReconnectTask() {
+        if (reconnectTask == null || reconnectTask.isDone()) {
+            log.info("🔄 Starting reconnect task (every {}ms)", RECONNECT_INTERVAL_MS);
+            
+            reconnectTask = reconnectScheduler.scheduleAtFixedRate(
+                this::ping,
+                RECONNECT_INTERVAL_MS,
+                RECONNECT_INTERVAL_MS,
+                TimeUnit.MILLISECONDS
+            );
+        }
+    }
+    
+    /**
+     * 재연결 태스크 중지
+     */
+    private void stopReconnectTask() {
+        if (reconnectTask != null && !reconnectTask.isDone()) {
+            log.info("⏹️ Stopping reconnect task");
+            reconnectTask.cancel(false);
+            reconnectTask = null;
+        }
+    }
+    
+    /**
+     * Command 큐잉
+     */
+    private void queueCommand(GameCommand command) {
+        if (offlineQueue.size() >= MAX_QUEUE_SIZE) {
+            // 큐가 가득 찼으면 가장 오래된 항목 제거
+            Object removed = offlineQueue.poll();
+            log.warn("⚠️ Offline queue full - removed oldest item: {}", removed);
+        }
+        
+        offlineQueue.offer(command);
+        log.debug("Queued command: {} (queue size: {})", 
+            command.getCommandType(), offlineQueue.size());
+    }
+    
+    /**
+     * Attack 큐잉
+     */
+    private void queueAttack(int attackLines) {
+        if (offlineQueue.size() >= MAX_QUEUE_SIZE) {
+            Object removed = offlineQueue.poll();
+            log.warn("⚠️ Offline queue full - removed oldest item: {}", removed);
+        }
+        
+        AttackEvent attack = AttackEvent.builder()
+            .attackLines(attackLines)
+            .timestamp(System.currentTimeMillis())
+            .build();
+        
+        offlineQueue.offer(attack);
+        log.debug("Queued attack: {} lines (queue size: {})", 
+            attackLines, offlineQueue.size());
+    }
+    
+    /**
+     * 오프라인 큐 Flush (재연결 시)
+     */
+    private void flushOfflineQueue() {
+        int flushedCount = 0;
+        
+        while (!offlineQueue.isEmpty()) {
+            Object item = offlineQueue.poll();
+            
+            try {
+                if (item instanceof GameCommand) {
+                    realService.sendCommand((GameCommand) item);
+                } else if (item instanceof AttackEvent) {
+                    AttackEvent attack = (AttackEvent) item;
+                    realService.sendAttack(attack.getAttackLines());
+                }
+                
+                flushedCount++;
+                
+            } catch (NetworkException e) {
+                log.error("Failed to flush queued item", e);
+                // 다시 큐에 넣기
+                offlineQueue.offer(item);
+                break; // 더 이상 시도하지 않음
+            }
+        }
+        
+        log.info("📤 Flushed {} items from offline queue", flushedCount);
+    }
+    
+    /**
+     * 연결 상태 확인
+     */
+    public boolean isConnected() {
+        return connected.get();
+    }
+    
+    /**
+     * 오프라인 큐 크기
+     */
+    public int getQueueSize() {
+        return offlineQueue.size();
+    }
+    
+    /**
+     * 종료 시 정리
+     */
+    @PreDestroy
+    public void shutdown() {
+        log.info("Shutting down NetworkServiceProxy");
+        stopReconnectTask();
+        reconnectScheduler.shutdownNow();
+        offlineQueue.clear();
+    }
+}
+```
+
+---
+
+### DIG-6: 서버 측 GameService 구현
+
+```java
+@Service
+public class GameService {
+    
+    private final Logger log = LoggerFactory.getLogger(GameService.class);
+    
+    private final GameEngine gameEngine;
+    private final GameStateStore stateStore;
+    private final CriticalEventGenerator eventGenerator;
+    private final CheatDetectionService cheatDetection;
+    
+    @Autowired
+    public GameService(
+        GameEngine gameEngine,
+        GameStateStore stateStore,
+        CriticalEventGenerator eventGenerator,
+        CheatDetectionService cheatDetection
+    ) {
+        this.gameEngine = gameEngine;
+        this.stateStore = stateStore;
+        this.eventGenerator = eventGenerator;
+        this.cheatDetection = cheatDetection;
+    }
+    
+    /**
+     * Command 처리 (핵심 메서드)
+     */
+    @Measured // 성능 로깅
+    @Transactional
+    public GameUpdateResponse processCommand(GameCommand command) {
+        String playerId = command.getPlayerId();
+        int seq = command.getSequenceNumber();
+        
+        log.debug("Processing command: seq={}, type={}, player={}", 
+            seq, command.getCommandType(), playerId);
+        
+        try {
+            // Step 1: 게임 상태 로드
+            GameState oldState = stateStore.get(playerId);
+            if (oldState == null) {
+                throw new ValidationException("Game state not found for player: " + playerId);
+            }
+            
+            // Step 2: Command 검증
+            cheatDetection.validateCommand(command, oldState);
+            
+            // Step 3: GameEngine 실행
+            GameState newState = executeGameLogic(command, oldState);
+            
+            // Step 4: 상태 변화 검증 (Cheating Detection)
+            cheatDetection.validateStateTransition(oldState, newState);
+            
+            // Step 5: Sequence Number 업데이트
+            newState = newState.toBuilder()
+                .lastProcessedSequence(seq)
+                .build();
+            
+            // Step 6: Critical Events 생성
+            List<UIEvent> events = eventGenerator.generate(oldState, newState);
+            
+            // Step 7: 상태 저장
+            stateStore.save(playerId, newState);
+            
+            // Step 8: 응답 생성
+            GameUpdateResponse response = GameUpdateResponse.builder()
+                .success(true)
+                .sequenceNumber(seq)
+                .timestamp(System.currentTimeMillis())
+                .state(newState)
+                .events(events)
+                .build();
+            
+            log.info("✅ Command processed: seq={}, score={}, events={}", 
+                seq, newState.getScore(), events.size());
+            
+            return response;
+            
+        } catch (ValidationException e) {
+            log.warn("❌ Validation failed: seq={}, error={}", seq, e.getMessage());
+            throw e;
+            
+        } catch (CheatDetectedException e) {
+            log.error("🚨 Cheat detected: seq={}, player={}, reason={}", 
+                seq, playerId, e.getMessage());
+            throw e;
+            
+        } catch (Exception e) {
+            log.error("❌ Unexpected error processing command", e);
+            throw new TetrisException(ErrorCode.INTERNAL_ERROR, "Failed to process command", e);
+        }
+    }
+    
+    /**
+     * GameEngine 실행
+     */
+    private GameState executeGameLogic(GameCommand command, GameState state) {
+        switch (command.getCommandType()) {
+            case MOVE_LEFT:
+                return gameEngine.tryMoveLeft(state);
+            case MOVE_RIGHT:
+                return gameEngine.tryMoveRight(state);
+            case ROTATE_CW:
+                return gameEngine.tryRotate(state, RotationDirection.CLOCKWISE);
+            case ROTATE_CCW:
+                return gameEngine.tryRotate(state, RotationDirection.COUNTER_CLOCKWISE);
+            case SOFT_DROP:
+                return gameEngine.softDrop(state);
+            case HARD_DROP:
+                return gameEngine.hardDrop(state);
+            case HOLD:
+                return gameEngine.hold(state);
+            default:
+                throw new ValidationException("Unknown command type: " + command.getCommandType());
+        }
+    }
+    
+    /**
+     * 게임 상태 로드
+     */
+    public GameState loadGameState(String playerId) {
+        return stateStore.get(playerId);
+    }
+    
+    /**
+     * 게임 상태 초기화
+     */
+    public GameState initializeGame(String playerId, GameplayType gameplayType) {
+        log.info("Initializing game: player={}, type={}", playerId, gameplayType);
+        
+        GameState initialState = GameState.builder()
+            .score(0)
+            .level(1)
+            .lines(0)
+            .grid(new int[20][10])
+            .nextPieces(new ArrayList<>())
+            .lastProcessedSequence(0)
+            .build();
+        
+        stateStore.save(playerId, initialState);
+        
+        return initialState;
+    }
+}
+```
+
+---
+
+### DIG-7: CheatDetectionService 구현
+
+```java
+@Service
+public class CheatDetectionService {
+    
+    private final Logger log = LoggerFactory.getLogger(CheatDetectionService.class);
+    
+    // 플레이어별 위반 횟수
+    private final ConcurrentHashMap<String, ViolationCount> violations = new ConcurrentHashMap<>();
+    
+    // 임계값
+    private static final int MAX_SCORE_INCREASE_PER_SEC = 1000;
+    private static final int MAX_LINES_PER_SEC = 10;
+    private static final int MIN_COMMAND_INTERVAL_MS = 5;
+    private static final int MAX_VIOLATIONS = 3;
+    
+    /**
+     * Command 검증
+     */
+    public void validateCommand(GameCommand command, GameState state) {
+        String playerId = command.getPlayerId();
+        
+        // Command 간격 체크
+        ViolationCount vc = violations.computeIfAbsent(playerId, k -> new ViolationCount());
+        long now = System.currentTimeMillis();
+        
+        if (vc.lastCommandTime > 0) {
+            long interval = now - vc.lastCommandTime;
+            
+            if (interval < MIN_COMMAND_INTERVAL_MS) {
+                vc.incrementViolation("Command interval too short: " + interval + "ms");
+                log.warn("⚠️ Suspicious: Very fast command from {}: {}ms", playerId, interval);
+                
+                if (vc.violationCount >= MAX_VIOLATIONS) {
+                    throw new CheatDetectedException(
+                        "Too many fast commands detected for player: " + playerId
+                    );
+                }
+            }
+        }
+        
+        vc.lastCommandTime = now;
+    }
+    
+    /**
+     * 상태 전환 검증
+     */
+    public void validateStateTransition(GameState oldState, GameState newState) {
+        String playerId = getCurrentPlayerId(); // SecurityContext에서 가져옴
+        
+        // 점수 증가율 체크
+        int scoreIncrease = newState.getScore() - oldState.getScore();
+        long timeDiff = System.currentTimeMillis() - oldState.getTimestamp();
+        
+        if (timeDiff > 0) {
+            double scorePerSec = (scoreIncrease * 1000.0) / timeDiff;
+            
+            if (scorePerSec > MAX_SCORE_INCREASE_PER_SEC) {
+                ViolationCount vc = violations.get(playerId);
+                if (vc != null) {
+                    vc.incrementViolation("Score increase too fast: " + scorePerSec + "/sec");
+                    log.warn("⚠️ Suspicious: High score increase from {}: {}/sec", 
+                        playerId, scorePerSec);
+                    
+                    if (vc.violationCount >= MAX_VIOLATIONS) {
+                        throw new CheatDetectedException(
+                            "Abnormal score increase detected for player: " + playerId
+                        );
+                    }
+                }
+            }
+        }
+        
+        // 라인 클리어 속도 체크
+        int linesCleared = newState.getLines() - oldState.getLines();
+        if (timeDiff > 0 && linesCleared > 0) {
+            double linesPerSec = (linesCleared * 1000.0) / timeDiff;
+            
+            if (linesPerSec > MAX_LINES_PER_SEC) {
+                ViolationCount vc = violations.get(playerId);
+                if (vc != null) {
+                    vc.incrementViolation("Line clear too fast: " + linesPerSec + "/sec");
+                    log.warn("⚠️ Suspicious: High line clear rate from {}: {}/sec", 
+                        playerId, linesPerSec);
+                    
+                    if (vc.violationCount >= MAX_VIOLATIONS) {
+                        throw new CheatDetectedException(
+                            "Abnormal line clear rate detected for player: " + playerId
+                        );
+                    }
+                }
+            }
+        }
+    }
+    
+    /**
+     * 위반 횟수 초기화 (게임 종료 시)
+     */
+    public void resetViolations(String playerId) {
+        violations.remove(playerId);
+        log.debug("Reset violations for player: {}", playerId);
+    }
+    
+    /**
+     * 현재 플레이어 ID 가져오기
+     */
+    private String getCurrentPlayerId() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        return auth != null ? auth.getName() : "unknown";
+    }
+}
+
+/**
+ * 위반 횟수 DTO
+ */
+class ViolationCount {
+    int violationCount = 0;
+    long lastCommandTime = 0;
+    final List<String> reasons = new ArrayList<>();
+    
+    void incrementViolation(String reason) {
+        violationCount++;
+        reasons.add(reason);
+    }
+}
+```
+
+---
+
+### DIG-8: CriticalEventGenerator 구현
+
+```java
+@Component
+public class CriticalEventGenerator {
+    
+    private final Logger log = LoggerFactory.getLogger(CriticalEventGenerator.class);
+    
+    // Thread-safe sequence ID
+    private final AtomicInteger eventSequenceId = new AtomicInteger(0);
+    
+    /**
+     * Critical Events 생성 (상태 변화 비교)
+     */
+    public List<UIEvent> generate(GameState oldState, GameState newState) {
+        List<UIEvent> events = new ArrayList<>();
+        
+        // 1. Line Clear 이벤트
+        int linesCleared = newState.getLastLinesCleared();
+        if (linesCleared > 0) {
+            UIEvent lineClearEvent = generateLineClearEvent(newState, linesCleared);
+            events.add(lineClearEvent);
+            log.debug("Generated LINE_CLEAR event: {} lines", linesCleared);
+        }
+        
+        // 2. T-Spin 이벤트
+        if (newState.isLastLockWasTSpin()) {
+            UIEvent tSpinEvent = generateTSpinEvent(newState);
+            events.add(tSpinEvent);
+            log.debug("Generated T_SPIN event");
+        }
+        
+        // 3. Combo 이벤트
+        if (newState.getComboCount() > 0 && newState.getComboCount() != oldState.getComboCount()) {
+            UIEvent comboEvent = generateComboEvent(newState);
+            events.add(comboEvent);
+            log.debug("Generated COMBO event: {}", newState.getComboCount());
+        }
+        
+        // 4. Level Up 이벤트
+        if (newState.getLevel() > oldState.getLevel()) {
+            UIEvent levelUpEvent = generateLevelUpEvent(newState);
+            events.add(levelUpEvent);
+            log.debug("Generated LEVEL_UP event: level {}", newState.getLevel());
+        }
+        
+        // 5. Perfect Clear 이벤트
+        if (newState.isLastIsPerfectClear()) {
+            UIEvent perfectClearEvent = generatePerfectClearEvent(newState);
+            events.add(perfectClearEvent);
+            log.debug("Generated PERFECT_CLEAR event");
+        }
+        
+        // 6. Game Over 이벤트
+        if (newState.isGameOver() && !oldState.isGameOver()) {
+            UIEvent gameOverEvent = generateGameOverEvent(newState);
+            events.add(gameOverEvent);
+            log.debug("Generated GAME_OVER event");
+        }
+        
+        return events;
+    }
+    
+    /**
+     * LINE_CLEAR 이벤트 생성
+     */
+    private UIEvent generateLineClearEvent(GameState state, int linesCleared) {
+        int baseScore = calculateLineClearScore(linesCleared);
+        int totalScore = baseScore * state.getLevel();
+        
+        return UIEvent.builder()
+            .type(UIEventType.LINE_CLEAR)
+            .priority(15)
+            .duration(800) // 0.8초
+            .timestamp(System.currentTimeMillis())
+            .sequenceId(eventSequenceId.getAndIncrement())
+            .data(Map.of(
+                "lines", linesCleared,
+                "score", totalScore,
+                "level", state.getLevel()
+            ))
+            .build();
+    }
+    
+    /**
+     * T_SPIN 이벤트 생성
+     */
+    private UIEvent generateTSpinEvent(GameState state) {
+        String spinType = state.isLastLockWasTSpinMini() ? "mini" : "full";
+        int bonus = state.isLastLockWasTSpinMini() ? 200 : 400;
+        
+        return UIEvent.builder()
+            .type(UIEventType.T_SPIN)
+            .priority(14)
+            .duration(1000) // 1초
+            .timestamp(System.currentTimeMillis())
+            .sequenceId(eventSequenceId.getAndIncrement())
+            .data(Map.of(
+                "spinType", spinType,
+                "bonus", bonus,
+                "lines", state.getLastLinesCleared()
+            ))
+            .build();
+    }
+    
+    /**
+     * COMBO 이벤트 생성
+     */
+    private UIEvent generateComboEvent(GameState state) {
+        int combo = state.getComboCount();
+        int bonus = combo * 50 * state.getLevel();
+        
+        return UIEvent.builder()
+            .type(UIEventType.COMBO)
+            .priority(12)
+            .duration(600) // 0.6초
+            .timestamp(System.currentTimeMillis())
+            .sequenceId(eventSequenceId.getAndIncrement())
+            .data(Map.of(
+                "combo", combo,
+                "bonus", bonus
+            ))
+            .build();
+    }
+    
+    /**
+     * LEVEL_UP 이벤트 생성
+     */
+    private UIEvent generateLevelUpEvent(GameState state) {
+        return UIEvent.builder()
+            .type(UIEventType.LEVEL_UP)
+            .priority(13)
+            .duration(1200) // 1.2초
+            .timestamp(System.currentTimeMillis())
+            .sequenceId(eventSequenceId.getAndIncrement())
+            .data(Map.of(
+                "newLevel", state.getLevel(),
+                "requiredLines", state.getLevel() * 10
+            ))
+            .build();
+    }
+    
+    /**
+     * PERFECT_CLEAR 이벤트 생성
+     */
+    private UIEvent generatePerfectClearEvent(GameState state) {
+        int bonus = 3000 * state.getLevel();
+        
+        return UIEvent.builder()
+            .type(UIEventType.PERFECT_CLEAR)
+            .priority(16) // 최고 우선순위
+            .duration(2000) // 2초
+            .timestamp(System.currentTimeMillis())
+            .sequenceId(eventSequenceId.getAndIncrement())
+            .data(Map.of(
+                "bonus", bonus,
+                "level", state.getLevel()
+            ))
+            .build();
+    }
+    
+    /**
+     * GAME_OVER 이벤트 생성
+     */
+    private UIEvent generateGameOverEvent(GameState state) {
+        return UIEvent.builder()
+            .type(UIEventType.GAME_OVER)
+            .priority(20) // 최고 우선순위
+            .duration(3000) // 3초
+            .timestamp(System.currentTimeMillis())
+            .sequenceId(eventSequenceId.getAndIncrement())
+            .data(Map.of(
+                "finalScore", state.getScore(),
+                "finalLevel", state.getLevel(),
+                "totalLines", state.getLines()
+            ))
+            .build();
+    }
+    
+    /**
+     * 라인 클리어 기본 점수 계산
+     */
+    private int calculateLineClearScore(int lines) {
+        switch (lines) {
+            case 1: return 100;
+            case 2: return 300;
+            case 3: return 500;
+            case 4: return 800; // Tetris
+            default: return 0;
+        }
+    }
+}
+```
+
+---
+
