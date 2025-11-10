@@ -5,35 +5,33 @@ import lombok.Getter;
 /**
  * 아이템 타입 열거형
  * 
- * 각 아이템의 종류를 정의하고, 확장 가능한 구조를 제공합니다.
+ * Req2 필수 아이템만 정의합니다.
  * 새로운 아이템을 추가하려면 이 enum에 값을 추가하면 됩니다.
  */
 @Getter
 public enum ItemType {
     
     /**
-     * 폭탄 아이템
-     * 반경 2칸의 정사각형 범위를 지웁니다.
+     * 줄 삭제 아이템 ('L')
+     * 
+     * Req2 명세:
+     * - 블록 내에 'L' 문자로 표시
+     * - 블록 고정 시 'L'이 위치한 줄을 즉시 삭제
+     * - 해당 줄이 꽉 차있지 않아도 삭제됨
+     * - 삭제된 줄에 대해서도 기존 방식대로 점수 계산
      */
-    BOMB("Bomb", "💣", "Clears a 5x5 area around the item"),
+    LINE_CLEAR("Line Clear", "L", "Clears the line where 'L' is placed"),
     
     /**
-     * 십자 아이템
-     * 아이템의 행과 열을 모두 지웁니다.
+     * 무게추 아이템
+     * 
+     * Req2 명세:
+     * - 총 4칸 너비의 특수 블록
+     * - 초기: 좌우 이동 가능
+     * - 바닥/블록에 닿으면: 좌우 이동 불가, 아래로만 이동
+     * - 떨어지면서 아래에 있는 모든 블록 제거
      */
-    PLUS("Plus", "➕", "Clears the entire row and column"),
-    
-    /**
-     * 속도 초기화 아이템
-     * 소프트 드롭 속도를 초기 값으로 되돌립니다.
-     */
-    SPEED_RESET("Speed Reset", "⚡", "Resets soft drop speed to initial value"),
-    
-    /**
-     * 보너스 점수 아이템
-     * 즉시 보너스 점수를 부여합니다.
-     */
-    BONUS_SCORE("Bonus Score", "⭐", "Grants bonus score points");
+    WEIGHT_BOMB("Weight Bomb", "⚓", "Clears all blocks below while falling");
     
     /**
      * 아이템 표시 이름
@@ -41,7 +39,7 @@ public enum ItemType {
     private final String displayName;
     
     /**
-     * 아이템 아이콘 (이모지)
+     * 아이템 아이콘
      */
     private final String icon;
     
