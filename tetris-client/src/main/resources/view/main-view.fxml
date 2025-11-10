@@ -16,9 +16,22 @@
     <center>
         <VBox fx:id="menuBox" styleClass="menu-box" alignment="CENTER" BorderPane.alignment="CENTER">
             <children>
-                <!-- START 버튼: onAction 메서드가 ActionEvent를 전달합니다 -->
-                <Button fx:id="startButton" onAction="#handleStartButtonAction" styleClass="menu-button" text="START" />
-                <Button fx:id="itemStartButton" onAction="#handleItemStartButtonAction" styleClass="menu-button" text="ITEM START" />
+                <!-- 게임 모드 선택 버튼들 (버튼 + 설정 아이콘) -->
+                <HBox styleClass="mode-button-container" alignment="CENTER">
+                    <Button fx:id="classicButton" onAction="#handleClassicModeAction" styleClass="menu-button" text="CLASSIC" />
+                    <Button fx:id="classicSettingsButton" onAction="#handleClassicSettingsAction" styleClass="mode-settings-icon" text="⚙" />
+                </HBox>
+                
+                <HBox styleClass="mode-button-container" alignment="CENTER">
+                    <Button fx:id="arcadeButton" onAction="#handleArcadeModeAction" styleClass="menu-button" text="ARCADE" />
+                    <Button fx:id="arcadeSettingsButton" onAction="#handleArcadeSettingsAction" styleClass="mode-settings-icon" text="⚙" />
+                </HBox>
+                
+                <HBox styleClass="mode-button-container" alignment="CENTER">
+                    <Button fx:id="multiplayerButton" onAction="#handleMultiplayerModeAction" styleClass="menu-button" text="MULTIPLAYER" />
+                    <Button fx:id="multiplayerSettingsButton" onAction="#handleMultiplayerSettingsAction" styleClass="mode-settings-icon" text="⚙" />
+                </HBox>
+                
                 <Button fx:id="scoreButton" onAction="#handleScoreButtonAction" styleClass="menu-button" text="SCORE" />
                 <Button fx:id="endButton" onAction="#handleEndButtonAction" styleClass="menu-button" text="END" />
             </children>

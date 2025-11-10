@@ -5,6 +5,7 @@ import java.util.Map;
 
 import lombok.Builder;
 import lombok.Getter;
+import seoultech.se.core.item.ItemConfig;
 
 /**
  * 게임 모드 설정 객체
@@ -108,6 +109,44 @@ public class GameModeConfig {
     @Builder.Default
     private final int maxLockResets = 15;
     
+    /**
+     * SRS(Super Rotation System) 활성화 여부 (기본: true)
+     * true: SRS 회전 시스템 사용
+     * false: 기본 회전 시스템 사용
+     */
+    @Builder.Default
+    private final boolean srsEnabled = true;
+    
+    /**
+     * 180도 회전 허용 여부 (기본: false)
+     * true: 180도 회전 명령 허용
+     * false: 90도 회전만 허용
+     */
+    @Builder.Default
+    private final boolean rotation180Enabled = false;
+    
+    /**
+     * 소프트 드롭 속도 배율 (기본: 20.0)
+     * 사용자가 아래 방향키를 누를 때 블록이 내려가는 속도
+     */
+    @Builder.Default
+    private final double softDropSpeed = 20.0;
+    
+    /**
+     * 게임플레이 타입 (기본: CLASSIC)
+     * CLASSIC: 전통적인 테트리스
+     * ARCADE: 빠르고 박진감 넘치는 모드
+     */
+    @Builder.Default
+    private final GameplayType gameplayType = GameplayType.CLASSIC;
+    
+    /**
+     * 아이템 설정 (아케이드 모드용)
+     * null이면 아이템 시스템 비활성화
+     */
+    @Builder.Default
+    private final ItemConfig itemConfig = null;
+    
     // ========== 확장 설정 ==========
     
     /**
@@ -142,7 +181,41 @@ public class GameModeConfig {
      * 모든 설정이 기본값
      */
     public static GameModeConfig classic() {
-        return GameModeConfig.builder().build();
+        return GameModeConfig.builder()
+            .gameplayType(GameplayType.CLASSIC)
+            .srsEnabled(true)
+            .build();
+    }
+    
+    /**
+     * 클래식 모드 설정 (SRS 옵션 지정)
+     * 
+     * @param srsEnabled SRS 활성화 여부
+     * @return 클래식 모드 설정
+     */
+    public static GameModeConfig classic(boolean srsEnabled) {
+        return GameModeConfig.builder()
+            .gameplayType(GameplayType.CLASSIC)
+            .srsEnabled(srsEnabled)
+            .build();
+    }
+    
+    /**
+     * 아케이드 모드 설정
+     * - 빠른 낙하 속도 (1.5배)
+     * - 짧은 락 딜레이 (300ms)
+     * - SRS 활성화
+     * - 아이템 시스템 활성화 (10% 드롭률)
+     * - 높은 점수 배율
+     */
+    public static GameModeConfig arcade() {
+        return GameModeConfig.builder()
+            .gameplayType(GameplayType.ARCADE)
+            .dropSpeedMultiplier(1.5)
+            .lockDelay(300)
+            .srsEnabled(true)
+            .itemConfig(ItemConfig.arcadeDefault())
+            .build();
     }
     
     /**

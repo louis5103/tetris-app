@@ -62,6 +62,25 @@ public class SingleMode implements GameMode {
      */
     private GameState gameState;
     
+    /**
+     * 기본 생성자 (Classic 모드)
+     */
+    public SingleMode() {
+        this(GameModeConfig.classic());
+    }
+    
+    /**
+     * GameModeConfig를 받는 생성자
+     * 
+     * @param config 게임 모드 설정
+     */
+    public SingleMode(GameModeConfig config) {
+        this.config = config;
+        System.out.println("🎮 SingleMode created with config: " + 
+            (config.getGameplayType() != null ? config.getGameplayType() : "CLASSIC") +
+            ", SRS: " + config.isSrsEnabled());
+    }
+    
     // ========== GameMode 인터페이스 구현 ==========
     
     @Override

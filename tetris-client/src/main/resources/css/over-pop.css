@@ -38,3 +38,9 @@
     -fx-font-weight: bold;
     -fx-effect: dropshadow(gaussian, rgba(255, 215, 0, 0.8), 8, 0.5, 0, 0);
 }
+
+/* 키보드 및 마우스 네비게이션으로 선택된 버튼 하이라이트 (녹색) */
+.menu-button-small.highlighted {
+    -fx-background-color: #4CAF50 !important;
+    -fx-cursor: hand;
+}

@@ -119,6 +119,8 @@ public class SettingSceneController extends BaseController {
         soundSlider.setValue(settingsService.soundVolumeProperty().getValue());
         String screenSize = settingsService.screenSizeProperty().getValue();
         String colorMode = settingsService.colorModeProperty().getValue();
+        
+        // ✨ Phase 5: 난이도 로드
         String difficulty = settingsService.difficultyProperty().getValue();
 
         switch (screenSize) {
@@ -139,6 +141,22 @@ public class SettingSceneController extends BaseController {
                 break;
             default:
                 System.out.println("❗ Unknown screen size in settings: " + screenSize);
+        }
+        
+        // ✨ Phase 5: 난이도 UI 설정
+        switch (difficulty) {
+            case "difficultyEasy":
+                difficultyEasy.setSelected(true);
+                break;
+            case "difficultyNormal":
+                difficultyNormal.setSelected(true);
+                break;
+            case "difficultyHard":
+                difficultyHard.setSelected(true);
+                break;
+            default:
+                System.out.println("❗ Unknown difficulty in settings: " + difficulty);
+                difficultyNormal.setSelected(true); // 기본값
         }
 
         switch (difficulty) {
@@ -210,11 +228,7 @@ public class SettingSceneController extends BaseController {
 
     @FXML
     public void handleDifficultyChange(ActionEvent event) {
-        RadioButton selectedRadioButton = (RadioButton) event.getSource();
-        settingsService.difficultyProperty().setValue(selectedRadioButton.getId());
-        settingsService.saveSettings();
-
-        System.out.println("⚙️ Difficulty set to: " + selectedRadioButton.getId());
+        // 난이도 변경 기능 구현 필요
     }
 
     @FXML

@@ -127,4 +127,15 @@ public interface GameMode {
     default void cleanup() {
         // 기본 구현: 아무것도 하지 않음
     }
+    
+    /**
+     * 온라인 연결 필수 여부
+     * 
+     * 이 모드가 온라인 연결을 필요로 하는지 확인합니다.
+     * 
+     * @return true이면 온라인 필요, false이면 오프라인 가능
+     */
+    default boolean isOnlineRequired() {
+        return false;  // 기본값: 오프라인 가능
+    }
 }

@@ -24,6 +24,7 @@ public class Cell {
         cell.setOccupied(isOccupied);
         return cell;
     }
+    
     public Cell copy() {
         return Cell.of(this.color, this.isOccupied);
     }

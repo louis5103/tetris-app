@@ -451,3 +451,79 @@
 .erase-motion {
     -fx-animation: blink 500ms infinite;
 }
+
+/* ========== 아이템 인벤토리 ========== */
+.item-inventory-container {
+    -fx-spacing: 0.833em;
+    -fx-padding: 0.833em;
+    -fx-background-color: rgba(30, 30, 30, 0.8);
+    -fx-background-radius: 0.417em;
+    -fx-border-color: #444444;
+    -fx-border-width: 0.167em;
+    -fx-border-radius: 0.417em;
+}
+
+.item-slot {
+    -fx-spacing: 0.417em;
+    -fx-padding: 0.833em;
+    -fx-background-color: rgba(50, 50, 50, 0.6);
+    -fx-background-radius: 0.417em;
+    -fx-border-color: #666666;
+    -fx-border-width: 0.167em;
+    -fx-border-radius: 0.417em;
+    -fx-pref-width: 8.333em;
+    -fx-pref-height: 5em;
+    -fx-alignment: center;
+}
+
+.item-slot:hover {
+    -fx-background-color: rgba(70, 70, 70, 0.8);
+    -fx-border-color: #888888;
+}
+
+.item-icon {
+    -fx-font-size: 2em;
+}
+
+.item-name {
+    -fx-font-size: 0.917em;
+    -fx-font-family: "Arial Bold";
+    -fx-text-fill: #cccccc;
+}
+
+.item-use-button {
+    -fx-background-color: #4CAF50;
+    -fx-text-fill: white;
+    -fx-font-size: 0.833em;
+    -fx-font-family: "Arial Bold";
+    -fx-padding: 0.25em 0.833em;
+    -fx-background-radius: 0.25em;
+    -fx-cursor: hand;
+}
+
+.item-use-button:hover {
+    -fx-background-color: #45a049;
+}
+
+.item-use-button:pressed {
+    -fx-background-color: #3d8b40;
+}
+
+.item-slot-empty {
+    -fx-spacing: 0.417em;
+    -fx-padding: 0.833em;
+    -fx-background-color: rgba(30, 30, 30, 0.4);
+    -fx-background-radius: 0.417em;
+    -fx-border-color: #444444;
+    -fx-border-width: 0.167em;
+    -fx-border-style: dashed;
+    -fx-border-radius: 0.417em;
+    -fx-pref-width: 8.333em;
+    -fx-pref-height: 5em;
+    -fx-alignment: center;
+}
+
+.item-slot-empty-label {
+    -fx-font-size: 0.917em;
+    -fx-text-fill: #666666;
+}

@@ -20,21 +20,24 @@ import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 import javafx.stage.Window;
+import seoultech.se.client.config.ApplicationContextProvider;
 import seoultech.se.client.constants.UIConstants;
 import seoultech.se.client.service.KeyMappingService;
 import seoultech.se.client.service.NavigationService;
+import seoultech.se.client.service.SettingsService;
 import seoultech.se.client.ui.BoardRenderer;
 import seoultech.se.client.ui.GameInfoManager;
 import seoultech.se.client.ui.GameLoopManager;
 import seoultech.se.client.ui.InputHandler;
+import seoultech.se.client.ui.ItemInventoryPanel;
 import seoultech.se.client.ui.NotificationManager;
 // import seoultech.se.client.ui.PopupManager; // PopupManager 제거
 import seoultech.se.client.util.ColorMapper;
-import seoultech.se.client.service.SettingsService;
-import seoultech.se.client.config.ApplicationContextProvider;
 import seoultech.se.core.GameState;
 import seoultech.se.core.command.Direction;
 import seoultech.se.core.command.MoveCommand;
+import seoultech.se.core.config.GameModeConfig;
+import seoultech.se.core.item.Item;
 import seoultech.se.core.model.enumType.TetrominoType;
 
 /**
@@ -71,10 +74,13 @@ public class GameController {
     @FXML private Label backToBackLabel;
     @FXML private Label lineClearNotificationLabel;
     
-    // 팝업 오버레이 요소들 제거
-    // @FXML private javafx.scene.layout.VBox pauseOverlay;
-    // @FXML private javafx.scene.layout.VBox gameOverOverlay;
-    // @FXML private Label finalScoreLabel;
+    // 팝업 오버레이 요소들
+    @FXML private javafx.scene.layout.VBox pauseOverlay;
+    @FXML private javafx.scene.layout.VBox gameOverOverlay;
+    @FXML private Label finalScoreLabel;
+    
+    // 아이템 인벤토리 UI
+    @FXML private javafx.scene.layout.HBox itemInventoryContainer;
 
     @Autowired
     private KeyMappingService keyMappingService;
@@ -88,6 +94,9 @@ public class GameController {
     // 게임 로직 컨트롤러
     private BoardController boardController;
     
+    // 게임 모드 설정
+    private GameModeConfig gameModeConfig;
+    
     // UI 관리 클래스들
     private BoardRenderer boardRenderer;
     private NotificationManager notificationManager;
@@ -95,6 +104,7 @@ public class GameController {
     // private PopupManager popupManager; // PopupManager 제거
     private InputHandler inputHandler;
     private GameInfoManager gameInfoManager;
+    private ItemInventoryPanel itemInventoryPanel;
     
     // Rectangle 배열들
     private Rectangle[][] cellRectangles;
@@ -103,6 +113,7 @@ public class GameController {
 
     /**
      * FXML이 로드된 후 자동으로 호출됩니다
+     * UI 요소만 준비하고, 실제 게임 초기화는 setGameModeConfig()에서 수행합니다
      */
     @FXML
     public void initialize() {
@@ -124,11 +135,55 @@ public class GameController {
             System.err.println("❌ KeyMappingService is null!");
         }
 
-        // BoardController 생성
-        boardController = new BoardController();
+        System.out.println("⏳ Waiting for GameModeConfig to be set...");
+    }
+    
+    /**
+     * 게임 모드 설정을 적용하고 게임을 초기화합니다
+     * MainController에서 씬 전환 전에 호출됩니다
+     * 
+     * @param config 게임 모드 설정
+     */
+    public void setGameModeConfig(GameModeConfig config) {
+        this.gameModeConfig = config;
+        System.out.println("⚙️ Game mode config set: " + 
+            (config.getGameplayType() != null ? config.getGameplayType() : "CLASSIC") +
+            ", SRS: " + config.isSrsEnabled() +
+            ", Hard Drop: " + config.isHardDropEnabled() +
+            ", Hold: " + config.isHoldEnabled() +
+            ", Drop Speed: " + config.getDropSpeedMultiplier() + "x");
+        
+        // 이제 실제 게임 초기화 수행
+        startInitialization();
+    }
+    
+    /**
+     * 실제 게임 초기화를 수행합니다
+     * setGameModeConfig()에서 호출되어 config가 확실히 설정된 후 실행됩니다
+     */
+    private void startInitialization() {
+        System.out.println("🚀 Starting game initialization with config...");
+        
+        // GameModeConfig 기본값 설정 (혹시 모를 경우 대비)
+        if (gameModeConfig == null) {
+            gameModeConfig = GameModeConfig.classic();
+            System.out.println("⚠️ Config was null, using default CLASSIC");
+        }
+
+        // ✨ Phase 5: 설정된 난이도 가져오기
+        seoultech.se.core.model.enumType.Difficulty difficulty = 
+            settingsService.getCurrentDifficulty();
+        
+        System.out.println("🎮 Creating BoardController with difficulty: " + difficulty.getDisplayName());
+        
+        // BoardController 생성 (GameModeConfig + Difficulty 전달)
+        boardController = new BoardController(gameModeConfig, difficulty);
         
         GameState gameState = boardController.getGameState();
         System.out.println("📊 Board created: " + gameState.getBoardWidth() + "x" + gameState.getBoardHeight());
+        System.out.println("   - Difficulty: " + difficulty.getDisplayName());
+        System.out.println("   - I-Block Multiplier: " + difficulty.getIBlockMultiplier() + "x");
+        System.out.println("   - Score Multiplier: " + difficulty.getScoreMultiplier() + "x");
 
         // UI 초기화
         initializeGridPane(gameState);
@@ -137,11 +192,62 @@ public class GameController {
         // UI 관리 클래스들 초기화
         initializeManagers();
         
+        // 아이템 인벤토리 초기화 (아케이드 모드인 경우)
+        initializeItemInventory();
+        
         gameInfoManager.updateAll(gameState);
         setupKeyboardControls();
         startGame();
 
         System.out.println("✅ GameController initialization complete!");
+    }
+    
+    /**
+     * 아이템 인벤토리 초기화
+     * 아케이드 모드일 때만 활성화됩니다
+     */
+    private void initializeItemInventory() {
+        System.out.println("🔧 [GameController] Initializing item inventory...");
+        System.out.println("   - gameModeConfig: " + gameModeConfig);
+        System.out.println("   - itemConfig: " + (gameModeConfig != null ? gameModeConfig.getItemConfig() : "null"));
+        System.out.println("   - isEnabled: " + (gameModeConfig != null && gameModeConfig.getItemConfig() != null ? gameModeConfig.getItemConfig().isEnabled() : "N/A"));
+        
+        if (gameModeConfig != null && 
+            gameModeConfig.getItemConfig() != null && 
+            gameModeConfig.getItemConfig().isEnabled()) {
+            
+            int maxInventorySize = gameModeConfig.getItemConfig().getMaxInventorySize();
+            System.out.println("   - maxInventorySize: " + maxInventorySize);
+            
+            itemInventoryPanel = new ItemInventoryPanel(maxInventorySize);
+            System.out.println("   - ItemInventoryPanel created: " + itemInventoryPanel);
+            
+            // 아이템 사용 콜백 설정
+            itemInventoryPanel.setOnItemUse((item, slotIndex) -> {
+                useItem(item, slotIndex);
+            });
+            
+            // 컨테이너에 추가
+            if (itemInventoryContainer != null) {
+                itemInventoryContainer.getChildren().clear();
+                itemInventoryContainer.getChildren().add(itemInventoryPanel);
+                itemInventoryContainer.setVisible(true);
+                itemInventoryContainer.setManaged(true);
+                System.out.println("✅ [GameController] Item inventory initialized (max: " + maxInventorySize + ")");
+                System.out.println("   - Container visible: " + itemInventoryContainer.isVisible());
+                System.out.println("   - Container managed: " + itemInventoryContainer.isManaged());
+                System.out.println("   - Container children: " + itemInventoryContainer.getChildren().size());
+            } else {
+                System.out.println("⚠️ [GameController] itemInventoryContainer is null!");
+            }
+        } else {
+            // 아이템 시스템 비활성화
+            if (itemInventoryContainer != null) {
+                itemInventoryContainer.setVisible(false);
+                itemInventoryContainer.setManaged(false);
+            }
+            System.out.println("ℹ️ [GameController] Item system disabled");
+        }
     }
     
     /**
@@ -165,8 +271,11 @@ public class GameController {
             settingsService.getColorBlindMode()
         );
         
-        // GameLoopManager 초기화
-        gameLoopManager = new GameLoopManager();
+        // GameLoopManager 초기화 (gameModeConfig의 속도 배율 적용)
+        double dropSpeedMultiplier = (gameModeConfig != null) 
+            ? gameModeConfig.getDropSpeedMultiplier() 
+            : 1.0;
+        gameLoopManager = new GameLoopManager(dropSpeedMultiplier);
         gameLoopManager.setCallback(() -> {
             GameState gameState = boardController.getGameState();
             
@@ -321,7 +430,65 @@ public class GameController {
      * 키보드 입력을 처리합니다
      */
     private void setupKeyboardControls() {
-        inputHandler.setupKeyboardControls(boardGridPane);
+        // 아이템 시스템이 활성화된 경우 아이템 키와 게임 키를 함께 처리
+        if (itemInventoryPanel != null) {
+            // Scene이 준비되면 키 이벤트 설정 (한 번만)
+            if (boardGridPane.getScene() != null) {
+                boardGridPane.getScene().setOnKeyPressed(this::handleAllKeyPress);
+                System.out.println("⌨️  Keyboard controls enabled (with item support)");
+            } else {
+                boardGridPane.sceneProperty().addListener((obs, oldScene, newScene) -> {
+                    if (newScene != null && oldScene == null) {
+                        newScene.setOnKeyPressed(this::handleAllKeyPress);
+                        System.out.println("⌨️  Keyboard controls enabled (with item support)");
+                    }
+                });
+            }
+        } else {
+            // 일반 게임 모드는 InputHandler만 사용
+            inputHandler.setupKeyboardControls(boardGridPane);
+        }
+    }
+    
+    /**
+     * 모든 키 입력 처리 (게임 키 + 아이템 키)
+     * Arcade 모드 전용
+     */
+    private void handleAllKeyPress(javafx.scene.input.KeyEvent event) {
+        GameState state = boardController.getGameState();
+        if (state.isGameOver() || state.isPaused()) {
+            return; // 게임 오버 또는 일시정지 중에는 입력 무시
+        }
+        
+        // 먼저 아이템 키 확인
+        boolean isItemKey = false;
+        switch (event.getCode()) {
+            case DIGIT1:
+            case NUMPAD1:
+                itemInventoryPanel.useItemByKey(1);
+                isItemKey = true;
+                break;
+            case DIGIT2:
+            case NUMPAD2:
+                itemInventoryPanel.useItemByKey(2);
+                isItemKey = true;
+                break;
+            case DIGIT3:
+            case NUMPAD3:
+                itemInventoryPanel.useItemByKey(3);
+                isItemKey = true;
+                break;
+            default:
+                // 아이템 키가 아님
+                break;
+        }
+        
+        // 아이템 키가 아니면 일반 게임 키로 처리
+        if (!isItemKey) {
+            inputHandler.handleKeyPress(event);
+        } else {
+            event.consume();
+        }
     }
 
     // ========== GameState 비교하여 UI 힌트 추출 ==========
@@ -392,6 +559,9 @@ public class GameController {
                 
                 // 우측에 라인 클리어 수 표시
                 notificationManager.showLineClearCount(linesCleared, newLines);
+                
+                // 아이템 드롭 시도 (아케이드 모드)
+                tryDropItemOnLineClear(linesCleared);
             }
             
             // 6. 콤보 감지
@@ -442,6 +612,77 @@ public class GameController {
     // ========== UI 업데이트 헬퍼 메서드들 ==========
     // GameInfoManager로 이동됨
 
+    // ========== 아이템 관리 ==========
+    
+    /**
+     * 아이템 사용 처리
+     * @param item 사용할 아이템
+     * @param slotIndex 인벤토리 슬롯 인덱스
+     */
+    private void useItem(Item item, int slotIndex) {
+        if (item == null) {
+            System.out.println("⚠️ [GameController] Cannot use null item");
+            return;
+        }
+        
+        GameState currentState = boardController.getGameState();
+        
+        // 게임 오버 또는 일시정지 상태에서는 아이템 사용 불가
+        if (currentState.isGameOver() || currentState.isPaused()) {
+            System.out.println("⚠️ [GameController] Cannot use item: game over or paused");
+            return;
+        }
+        
+        // GameEngine을 통해 아이템 사용 - 테트로미노를 아이템 블록으로 변환
+        boolean success = boardController.getGameEngine().useItem(item, currentState);
+        
+        if (success) {
+            // 아이템 사용 성공 - 인벤토리에서 제거
+            itemInventoryPanel.removeItem(slotIndex);
+            
+            // 효과 적용 알림 (Lock 시 실제 효과 발생)
+            String message = String.format("✨ %s activated! Will trigger on lock", item.getName());
+            notificationManager.showLineClearType(message);
+            
+            // UI 업데이트 - BoardRenderer를 통해 보드 다시 그리기 (아이템 블록 표시)
+            boardRenderer.drawBoard(currentState);
+            
+            System.out.println("✅ [GameController] Item activated: " + item.getName());
+        } else {
+            // 아이템 사용 실패
+            notificationManager.showLineClearType("❌ Cannot use item now");
+            System.out.println("⚠️ [GameController] Item use failed");
+        }
+    }
+    
+    /**
+     * 라인 클리어 시 아이템 드롭 시도
+     * @param linesCleared 클리어된 라인 수
+     */
+    private void tryDropItemOnLineClear(int linesCleared) {
+        if (itemInventoryPanel == null || linesCleared <= 0) {
+            return;
+        }
+        
+        // GameEngine을 통해 아이템 드롭 시도
+        Item droppedItem = boardController.getGameEngine().tryDropItem();
+        
+        if (droppedItem != null) {
+            boolean added = itemInventoryPanel.addItem(droppedItem);
+            
+            if (added) {
+                // 아이템 획득 알림
+                String message = String.format("🎁 Got item: %s", droppedItem.getName());
+                notificationManager.showLineClearType(message);
+                System.out.println("✅ [GameController] Item dropped: " + droppedItem.getName());
+            } else {
+                // 인벤토리 가득 참
+                notificationManager.showLineClearType("⚠️ Inventory full!");
+                System.out.println("⚠️ [GameController] Item inventory full, item lost: " + droppedItem.getName());
+            }
+        }
+    }
+    
     // ========== 게임 제어 ==========
     public void startGame() {
         gameOverLabel.setVisible(false);
@@ -476,6 +717,12 @@ public class GameController {
      */
     private void showPausePopup() {
         try {
+            // Scene이 아직 설정되지 않았다면 팝업을 띄우지 않음
+            if (boardGridPane.getScene() == null) {
+                System.out.println("⚠️ Scene not ready yet, skipping pause popup");
+                return;
+            }
+            
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/view/pause-pop.fxml"));
             
             // Spring 컨텍스트에서 컨트롤러 인스턴스를 가져오도록 설정
@@ -563,6 +810,104 @@ public class GameController {
             alert.setContentText(message);
             alert.showAndWait();
         });
+    }
+    
+    // ========== 오버레이 이벤트 핸들러 ==========
+    
+    /**
+     * 일시정지 오버레이에서 Resume 버튼 클릭 시
+     */
+    @FXML
+    public void handleResumeFromOverlay() {
+        System.out.println("▶️ Resume button clicked from pause overlay");
+        if (pauseOverlay != null) {
+            pauseOverlay.setVisible(false);
+            pauseOverlay.setManaged(false);
+        }
+        // 게임 재개
+        if (gameLoopManager != null) {
+            gameLoopManager.resume();
+        }
+    }
+    
+    /**
+     * 일시정지/게임오버 오버레이에서 Quit 버튼 클릭 시
+     */
+    @FXML
+    public void handleQuitFromOverlay() {
+        System.out.println("🚪 Quit button clicked from overlay");
+        try {
+            // 게임 루프 정지
+            if (gameLoopManager != null) {
+                gameLoopManager.stop();
+            }
+            // 메인 메뉴로 이동
+            navigationService.navigateTo("/view/main-view.fxml");
+        } catch (IOException e) {
+            e.printStackTrace();
+            showError("네비게이션 오류", "메인 메뉴로 돌아가는 데 실패했습니다.");
+        }
+    }
+    
+    /**
+     * 게임오버 오버레이에서 Restart 버튼 클릭 시
+     */
+    @FXML
+    public void handleRestartFromOverlay() {
+        System.out.println("🔄 Restart button clicked from game over overlay");
+        if (gameOverOverlay != null) {
+            gameOverOverlay.setVisible(false);
+            gameOverOverlay.setManaged(false);
+        }
+        // 게임 재시작
+        restartGame();
+    }
+    
+    /**
+     * 게임을 재시작합니다
+     */
+    private void restartGame() {
+        try {
+            System.out.println("🔄 Restarting game...");
+            
+            // 1. 게임 루프 정리
+            if (gameLoopManager != null) {
+                gameLoopManager.cleanup();
+                System.out.println("   ✓ GameLoopManager cleaned up");
+            }
+            
+            // 2. 키보드 이벤트 핸들러 제거
+            javafx.scene.Scene currentScene = boardGridPane.getScene();
+            if (currentScene != null) {
+                currentScene.setOnKeyPressed(null);
+                System.out.println("   ✓ Keyboard handlers removed");
+            }
+            
+            // 3. 오버레이 숨기기
+            if (gameOverOverlay != null) {
+                gameOverOverlay.setVisible(false);
+                gameOverOverlay.setManaged(false);
+            }
+            if (pauseOverlay != null) {
+                pauseOverlay.setVisible(false);
+                pauseOverlay.setManaged(false);
+            }
+            
+            // 4. UI 요소 초기화 (gameOverLabel 숨기기)
+            if (gameOverLabel != null) {
+                gameOverLabel.setVisible(false);
+                gameOverLabel.setManaged(false);
+            }
+            
+            // 5. 게임 재초기화 (현재 gameModeConfig 유지)
+            System.out.println("🎮 Reinitializing game with current config...");
+            startInitialization();
+            
+            System.out.println("✅ Game restarted successfully");
+        } catch (Exception e) {
+            e.printStackTrace();
+            showError("재시작 오류", "게임을 재시작하는 데 실패했습니다.");
+        }
     }
 }
 

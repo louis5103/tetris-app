@@ -16,7 +16,10 @@ import seoultech.se.core.command.RotateCommand;
 import seoultech.se.core.config.GameModeConfig;
 import seoultech.se.core.mode.GameMode;
 import seoultech.se.core.model.Tetromino;
+import seoultech.se.core.model.enumType.Difficulty;
 import seoultech.se.core.model.enumType.TetrominoType;
+import seoultech.se.core.random.RandomGenerator;
+import seoultech.se.core.random.TetrominoGenerator;
 
 @Getter
 @Component
@@ -24,17 +27,63 @@ public class BoardController {
     private GameState gameState;
     private final Random random = new Random();
     private GameMode gameMode;
+    private GameEngine gameEngine;  // 게임 엔진 추가
+    
+    // ✨ Phase 4: 난이도 시스템 통합
+    private Difficulty difficulty;  // 현재 난이도
+    private RandomGenerator randomGenerator;  // 시드 기반 난수 생성기
+    private TetrominoGenerator tetrominoGenerator;  // 7-bag 생성기
+    
     private List<TetrominoType> currentBag = new ArrayList<>();
     private List<TetrominoType> nextBag = new ArrayList<>();
     private int bagIndex = 0;
     private long gameStartTime;
 
+    /**
+     * 기본 생성자 (Classic 모드, Normal 난이도)
+     */
     public BoardController() {
+        this(GameModeConfig.classic(), Difficulty.NORMAL);
+    }
+    
+    /**
+     * GameModeConfig를 받는 생성자 (Normal 난이도)
+     * 
+     * @param config 게임 모드 설정
+     */
+    public BoardController(GameModeConfig config) {
+        this(config, Difficulty.NORMAL);
+    }
+    
+    /**
+     * GameModeConfig와 Difficulty를 받는 생성자 ✨ Phase 4
+     * 
+     * @param config 게임 모드 설정
+     * @param difficulty 난이도
+     */
+    public BoardController(GameModeConfig config, Difficulty difficulty) {
         this.gameState = new GameState(10, 20);
         this.gameStartTime = System.currentTimeMillis();
-        this.gameMode = new SingleMode();
+        this.difficulty = difficulty;
+        
+        // ✨ Phase 4: RandomGenerator와 TetrominoGenerator 초기화
+        this.randomGenerator = new RandomGenerator();
+        this.tetrominoGenerator = new TetrominoGenerator(randomGenerator, difficulty);
+        
+        // GameEngine 생성 및 초기화
+        this.gameEngine = new GameEngine();
+        this.gameEngine.initialize(config);
+        
+        // GameModeConfig에 따라 SingleMode 생성
+        this.gameMode = new SingleMode(config);
         this.gameMode.initialize(this.gameState);
+        
         initializeNextQueue();
+        
+        System.out.println("📦 BoardController created with config: " + 
+            (config.getGameplayType() != null ? config.getGameplayType() : "CLASSIC") +
+            ", SRS: " + config.isSrsEnabled() +
+            ", Difficulty: " + difficulty);
     }
     
     public void setGameMode(GameMode gameMode) {
@@ -43,6 +92,18 @@ public class BoardController {
         }
         this.gameMode = gameMode;
         this.gameMode.initialize(this.gameState);
+    }
+    
+    /**
+     * 난이도 설정 ✨ Phase 4
+     * 
+     * @param difficulty 새로운 난이도
+     */
+    public void setDifficulty(Difficulty difficulty) {
+        this.difficulty = difficulty;
+        // TetrominoGenerator 재생성
+        this.tetrominoGenerator = new TetrominoGenerator(randomGenerator, difficulty);
+        System.out.println("🎮 Difficulty changed to: " + difficulty);
     }
     
     public GameModeConfig getConfig() {
@@ -109,7 +170,11 @@ public class BoardController {
     }
 
     private GameState handleRotateCommand(RotateCommand command) {
-        return GameEngine.tryRotate(gameState, command.getDirection());
+        // GameModeConfig에서 SRS 설정 가져오기
+        boolean srsEnabled = getConfig().isSrsEnabled();
+        
+        // GameEngine에 SRS 설정 전달
+        return GameEngine.tryRotate(gameState, command.getDirection(), srsEnabled);
     }
 
     private GameState handleHardDropCommand() {
@@ -154,7 +219,81 @@ public class BoardController {
     }
 
     private GameState lockAndSpawnNext() {
+        // Lock 전에 아이템 타입과 위치 확인
+        seoultech.se.core.item.ItemType itemType = gameState.getCurrentItemType();
+        
+        // 실제 블록의 위치 계산 (pivot이 아닌 실제 블록 위치)
+        int actualRow = -1;
+        int actualCol = -1;
+        
+        if (itemType != null && gameState.getCurrentTetromino() != null) {
+            seoultech.se.core.model.Tetromino tetromino = gameState.getCurrentTetromino();
+            int[][] shape = tetromino.getCurrentShape();
+            int pivotX = tetromino.getPivotX();
+            int pivotY = tetromino.getPivotY();
+            int currentX = gameState.getCurrentX();
+            int currentY = gameState.getCurrentY();
+            
+            // 첫 번째 블록의 실제 위치 찾기
+            boolean found = false;
+            for (int r = 0; r < shape.length && !found; r++) {
+                for (int c = 0; c < shape[0].length && !found; c++) {
+                    if (shape[r][c] == 1) {
+                        actualRow = currentY + (r - pivotY);
+                        actualCol = currentX + (c - pivotX);
+                        found = true;
+                        System.out.println("🎯 [BoardController] Item block actual position: (" + actualRow + ", " + actualCol + ")");
+                        System.out.println("   - Pivot position was: (" + currentY + ", " + currentX + ")");
+                    }
+                }
+            }
+        }
+        
         GameState newState = GameEngine.lockTetromino(gameState);
+        
+        // ✨ Phase 4: 난이도별 점수 배율 적용
+        // GameEngine에서 계산된 점수에 난이도 배율을 곱함
+        long originalScore = gameState.getScore();
+        long newScore = newState.getScore();
+        long scoreGained = newScore - originalScore;
+        
+        if (scoreGained > 0) {
+            double scoreMultiplier = difficulty.getScoreMultiplier();
+            long adjustedScoreGained = (long) (scoreGained * scoreMultiplier);
+            newState.setScore(originalScore + adjustedScoreGained);
+            
+            System.out.println("💰 [BoardController] Score adjustment: " + 
+                scoreGained + " × " + scoreMultiplier + " = " + adjustedScoreGained);
+        }
+        
+        // Lock 후 아이템 효과 적용
+        if (itemType != null && gameEngine != null && actualRow >= 0 && actualCol >= 0) {
+            // 저장한 위치 사용
+            seoultech.se.core.item.Item item = gameEngine.getItemManager() != null 
+                ? gameEngine.getItemManager().getItem(itemType) 
+                : null;
+            
+            if (item != null) {
+                System.out.println("🔥 [BoardController] Applying item effect: " + itemType + 
+                    " at position (" + actualRow + ", " + actualCol + ")");
+                seoultech.se.core.item.ItemEffect effect = item.apply(newState, actualRow, actualCol);
+                
+                if (effect.isSuccess()) {
+                    // ✨ Phase 4: 아이템 점수에도 난이도 배율 적용
+                    long itemScore = effect.getBonusScore();
+                    long adjustedItemScore = (long) (itemScore * difficulty.getScoreMultiplier());
+                    newState.setScore(newState.getScore() + adjustedItemScore);
+                    
+                    System.out.println("🎯 [BoardController] Item effect applied: " + itemType + 
+                        " - Blocks cleared: " + effect.getBlocksCleared() + 
+                        ", Bonus: " + itemScore + " × " + difficulty.getScoreMultiplier() + 
+                        " = " + adjustedItemScore);
+                } else {
+                    System.out.println("⚠️ [BoardController] Item effect failed: " + itemType);
+                }
+            }
+        }
+        
         if (!newState.isGameOver()) {
             spawnNewTetromino(newState);
             updateNextQueue(newState);
@@ -171,68 +310,23 @@ public class BoardController {
     }
 
     private TetrominoType getNextTetrominoType() {
-        if (currentBag.isEmpty() || bagIndex >= currentBag.size()) {
-            currentBag = nextBag;
-            nextBag = createAndShuffleBag();
-            bagIndex = 0;
-        }
-        TetrominoType nextType = currentBag.get(bagIndex);
-        bagIndex++;
-        return nextType;
-    }
-
-    private List<TetrominoType> createAndShuffleBag() {
-        List<TetrominoType> bag = new ArrayList<>();
-        for (TetrominoType type : TetrominoType.values()) {
-            bag.add(type);
-        }
-        for (int i = bag.size() - 1; i > 0; i--) {
-            int j = random.nextInt(i + 1);
-            TetrominoType temp = bag.get(i);
-            bag.set(i, bag.get(j));
-            bag.set(j, temp);
-        }
-        return bag;
-    }
-
-    private void refillBag() {
-        currentBag = createAndShuffleBag();
-        nextBag = createAndShuffleBag();
-        bagIndex = 0;
+        // ✨ Phase 4: TetrominoGenerator 사용
+        return tetrominoGenerator.next();
     }
 
     private void initializeNextQueue() {
-        refillBag();
+        // ✨ Phase 4: TetrominoGenerator가 자동으로 관리
         updateNextQueue(gameState);
         spawnNewTetromino(gameState);
     }
 
     private void updateNextQueue(GameState state) {
+        // ✨ Phase 4: TetrominoGenerator.preview() 사용
+        List<TetrominoType> preview = tetrominoGenerator.preview(6);
         TetrominoType[] queue = new TetrominoType[6];
         
         for (int i = 0; i < 6; i++) {
-            int index = bagIndex + i;
-            
-            if (index < currentBag.size()) {
-                queue[i] = currentBag.get(index);
-            } else {
-                int nextBagIndex = index - currentBag.size();
-                
-                // ✅ nextBag 검증 추가
-                if (nextBag == null || nextBag.isEmpty()) {
-                    System.err.println("⚠️ [BoardController] nextBag is not initialized! Refilling bags...");
-                    refillBag();
-                }
-                
-                if (nextBagIndex < nextBag.size()) {
-                    queue[i] = nextBag.get(nextBagIndex);
-                } else {
-                    // ✅ 범위 초과 시 기본값 (fallback)
-                    System.err.println("⚠️ [BoardController] nextBag index out of bounds (" + 
-                        nextBagIndex + " >= " + nextBag.size() + "). Using I block as fallback.");
-                    queue[i] = TetrominoType.I;
-                }
-            }
+            queue[i] = preview.get(i);
         }
         
         state.setNextQueue(queue);
@@ -244,12 +338,21 @@ public class BoardController {
         }
         this.gameState = new GameState(10, 20);
         this.gameStartTime = System.currentTimeMillis();
+        
+        // ✨ Phase 4: TetrominoGenerator 재생성
+        this.randomGenerator = new RandomGenerator();
+        this.tetrominoGenerator = new TetrominoGenerator(randomGenerator, difficulty);
+        
         this.currentBag.clear();
         this.nextBag.clear();
         this.bagIndex = 0;
         initializeNextQueue();
         if (gameMode != null) {
             gameMode.initialize(gameState);
+            // GameEngine도 재초기화
+            if (gameEngine != null) {
+                gameEngine.initialize(gameMode.getConfig());
+            }
         }
     }
     

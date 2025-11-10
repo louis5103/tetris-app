@@ -46,6 +46,10 @@ public class PopupManager {
     private final VBox gameOverOverlay;
     private final Label finalScoreLabel;
     
+    // 모드 선택 팝업
+    private VBox modeSelectionOverlay;
+    private ModeSelectionPopup modeSelectionPopup;
+    
     // 콜백
     private PopupActionCallback callback;
     
@@ -195,5 +199,87 @@ public class PopupManager {
         if (callback != null) {
             callback.onRestartRequested();
         }
+    }
+    
+    // ========== 모드 선택 팝업 관리 ==========
+    
+    /**
+     * 모드 선택 팝업 초기화
+     * 
+     * @param overlay 모드 선택 오버레이 VBox (game-view.fxml에서 주입)
+     */
+    public void initModeSelectionPopup(VBox overlay) {
+        this.modeSelectionOverlay = overlay;
+        this.modeSelectionPopup = new ModeSelectionPopup();
+        
+        // 오버레이에 팝업 추가
+        modeSelectionOverlay.getChildren().clear();
+        modeSelectionOverlay.getChildren().add(modeSelectionPopup);
+        
+        // 초기에는 숨김
+        modeSelectionOverlay.setVisible(false);
+        modeSelectionOverlay.setManaged(false);
+        
+        System.out.println("✅ Mode selection popup initialized");
+    }
+    
+    /**
+     * 모드 선택 팝업 표시
+     * 
+     * @param onStart 게임 시작 콜백
+     * @param onCancel 취소 콜백
+     */
+    public void showModeSelectionPopup(Runnable onStart, Runnable onCancel) {
+        if (modeSelectionOverlay != null && modeSelectionPopup != null) {
+            Platform.runLater(() -> {
+                // 콜백 설정
+                modeSelectionPopup.setOnStart(() -> {
+                    hideModeSelectionPopup();
+                    if (onStart != null) {
+                        onStart.run();
+                    }
+                });
+                
+                modeSelectionPopup.setOnCancel(() -> {
+                    hideModeSelectionPopup();
+                    if (onCancel != null) {
+                        onCancel.run();
+                    }
+                });
+                
+                // 팝업 표시
+                modeSelectionOverlay.setVisible(true);
+                modeSelectionOverlay.setManaged(true);
+            });
+        } else {
+            System.err.println("❗ Mode selection popup not initialized. Call initModeSelectionPopup() first.");
+        }
+    }
+    
+    /**
+     * 모드 선택 팝업 숨기기
+     */
+    public void hideModeSelectionPopup() {
+        if (modeSelectionOverlay != null) {
+            setOverlayVisibility(modeSelectionOverlay, false);
+        }
+    }
+    
+    /**
+     * 모드 선택 팝업이 표시되어 있는지 확인
+     * 
+     * @return 표시되어 있으면 true
+     */
+    public boolean isModeSelectionPopupVisible() {
+        return modeSelectionOverlay != null && modeSelectionOverlay.isVisible();
+    }
+    
+    /**
+     * 모드 선택 팝업 인스턴스 반환
+     * 
+     * @return ModeSelectionPopup 인스턴스
+     */
+    public ModeSelectionPopup getModeSelectionPopup() {
+        return modeSelectionPopup;
     }
 }
