@@ -1,0 +1,2754 @@
+# FINAL_SYSTEM_REQUIREMENTS
+
+**프로젝트**: Tetris Multi-Module Architecture  
+**버전**: 6.0 (Production Ready - 최종 점검 완료)  
+**작성일**: 2025-11-06  
+**최종 업데이트**: 2025-11-06  
+**승인 상태**: ✅ 최종 승인 (프로덕션 개발 시작 가능)  
+**목적**: Spring Boot 기반 아키텍처 구축 및 디자인 패턴 적용
+
+---
+
+## 📋 목차
+
+1. [시스템 요구사항 (Requirements)](#1-시스템-요구사항-requirements)
+2. [변경 파일 목록 (Change List)](#2-변경-파일-목록-change-list)
+3. [아키텍처 설계 (Architecture)](#3-아키텍처-설계-architecture)
+4. [디자인 패턴 적용 (Design Patterns)](#4-디자인-패턴-적용-design-patterns)
+5. [멀티플레이어 통신 (Multiplayer)](#5-멀티플레이어-통신-multiplayer)
+6. [UI 이벤트 시스템 (UI Events)](#6-ui-이벤트-시스템-ui-events)
+7. [모듈별 상세 구현 (Implementation)](#7-모듈별-상세-구현-implementation)
+8. [Spring Boot 설정 (Configuration)](#8-spring-boot-설정-configuration)
+9. [검증 체크리스트 (Verification)](#9-검증-체크리스트-verification)
+10. [설계 결정 및 트레이드오프 (Design Decisions)](#10-설계-결정-및-트레이드오프-design-decisions)
+11. [위험 관리 (Risk Management)](#11-위험-관리-risk-management)
+12. [배포 전략 (Deployment)](#12-배포-전략-deployment)
+
+**부록**
+- [부록 A: 구현 우선순위](#부록-a-구현-우선순위)
+- [부록 B: 체크리스트](#부록-b-체크리스트)
+- [부록 C: 용어집](#부록-c-용어집-glossary)
+- [부록 D: 참조 문서](#부록-d-참조-문서-references)
+- [부록 E: FAQ](#부록-e-faq)
+
+---
+
+## 1. 시스템 요구사항 (Requirements)
+
+### 1.0 사용자 요구사항 (User Requirements)
+
+#### UR-1: 사용자 경험 요구사항
+- **UR-1.1**: 게임 시작 시간
+  - **요구사항**: 애플리케이션 실행 후 3초 이내 메인 메뉴 표시
+  - **측정**: 로딩 화면부터 메인 메뉴까지 시간
+  - **근거**: 사용자 이탈 방지
+  
+- **UR-1.2**: 조작 반응 속도
+  - **요구사항**: 키 입력 후 50ms 이내 화면 반영
+  - **측정**: 키 이벤트부터 화면 갱신까지 시간
+  - **근거**: 테트리스는 빠른 반응이 필수
+  
+- **UR-1.3**: 게임 규칙 명확성
+  - **요구사항**: 처음 플레이하는 사용자도 5분 이내 이해 가능
+  - **구현**: 튜토리얼 모드 제공, 키 조작 가이드 표시
+  - **근거**: 진입 장벽 낮추기
+  
+- **UR-1.4**: 접근성 (Accessibility)
+  - **요구사항**: 색맹 사용자를 위한 색상 옵션 제공
+  - **구현**: 고대비 모드, 패턴/기호로 블록 구분
+  - **근거**: WCAG 2.1 레벨 AA 준수
+
+#### UR-2: 게임 밸런스 요구사항
+- **UR-2.1**: 난이도 곡선
+  - **요구사항**: 레벨 1 → 10까지 점진적 난이도 증가
+  - **구현**: 
+    - 레벨 1-3: 초보자 (낙하 속도 1초/칸)
+    - 레벨 4-7: 중급자 (낙하 속도 0.5초/칸)
+    - 레벨 8-10: 고급자 (낙하 속도 0.2초/칸)
+  - **근거**: Flow Theory (몰입 상태 유지)
+  
+- **UR-2.2**: 점수 시스템 공정성
+  - **요구사항**: 높은 난이도일수록 높은 점수 획득 (SRS 표준 준수)
+  - **구현**: 
+    - EASY: 0.5x 점수 (초보자 친화적)
+    - NORMAL: 1.0x 점수 (기본 배율)
+    - HARD: 1.5x 점수 (숙련자 보상)
+    - EXPERT: 2.0x 점수 (전문가 보상)
+  - **근거**: 노력과 실력에 대한 정당한 보상 (업계 표준)
+  
+- **UR-2.3**: 아이템 밸런스 (Arcade 모드)
+  - **요구사항**: 아이템이 게임 플레이를 지배하지 않음
+  - **제약사항**: 
+    - 아이템 드롭 확률 최대 30% (게임 밸런스 유지)
+    - 동일 아이템 연속 획득 확률 감소
+  - **구현**: 0.0 ~ 0.3 범위 제한 (FR-4.1 참조)
+  - **근거**: 실력 기반 게임 유지
+
+#### UR-3: 멀티플레이어 요구사항
+- **UR-3.1**: 매칭 시간
+  - **요구사항**: 30초 이내 상대 매칭
+  - **실패 시**: 봇 매칭 또는 싱글 플레이 전환 제안
+  - **근거**: 사용자 대기 시간 최소화
+  
+- **UR-3.2**: 공정한 경쟁 환경
+  - **요구사항**: 
+    - 동일한 블록 순서 제공 (선택사항)
+    - RTT 100ms 이상 차이 시 핸디캡 제공
+  - **구현**: 서버에서 시드값 동기화
+  - **근거**: 공정한 경쟁
+  
+- **UR-3.3**: 통신 끊김 처리
+  - **요구사항**: 상대방 접속 끊김 시 5초 대기 후 승리 처리
+  - **알림**: "상대방의 연결이 끊어졌습니다. 잠시 후 승리 처리됩니다."
+  - **근거**: 명확한 게임 종료 규칙
+
+#### UR-4: 데이터 영속성 요구사항
+- **UR-4.1**: 로컬 기록 저장
+  - **요구사항**: 싱글 플레이 최고 점수 로컬 저장
+  - **보관 기간**: 영구 (삭제 전까지)
+  - **파일 위치**: `~/.tetris/local_scores.json`
+  
+- **UR-4.2**: 서버 기록 동기화
+  - **요구사항**: 멀티 플레이 기록 서버 저장 + 순위표 제공
+  - **동기화**: 게임 종료 시 즉시 전송
+  - **실패 시**: 재시도 3회, 실패 시 로컬 저장 후 나중에 재전송
+  
+- **UR-4.3**: 개인정보 보호
+  - **요구사항**: 사용자 이름만 저장 (개인 식별 정보 제외)
+  - **준수**: GDPR, 개인정보보호법
+  - **삭제 권리**: 사용자 요청 시 모든 기록 삭제 가능
+
+#### UR-5: 운영 요구사항
+- **UR-5.1**: 시스템 가용성
+  - **요구사항**: 99.5% 이상 가동률 (월 3.6시간 이내 다운타임)
+  - **측정**: 서버 응답 실패율, 접속 성공률
+  - **근거**: 서비스 신뢰성
+  
+- **UR-5.2**: 백업 및 복구
+  - **요구사항**: 
+    - 데이터베이스 일일 백업
+    - 복구 시간 목표(RTO): 1시간 이내
+    - 복구 시점 목표(RPO): 24시간 이내
+  - **구현**: 자동화된 백업 스크립트, S3 저장
+  
+- **UR-5.3**: 모니터링 및 알림
+  - **요구사항**: 
+    - 서버 CPU/메모리 사용률 모니터링
+    - 에러율 1% 초과 시 알림
+    - 응답 시간 500ms 초과 시 알림
+  - **구현**: Prometheus + Grafana + Alertmanager
+  
+- **UR-5.4**: 로그 보관
+  - **요구사항**: 
+    - 애플리케이션 로그 90일 보관
+    - 접속 로그 30일 보관
+    - 보안 로그 1년 보관
+  - **구현**: Logrotate, S3 아카이빙
+
+### 1.1 기술 스택 (정확한 버전 명시)
+
+#### 필수 의존성
+- **언어**: Java 21 LTS (최소 21.0.1)
+- **프레임워크**: Spring Boot 3.2.0 이상
+- **빌드 도구**: Gradle 8.5 이상
+- **의존성 주입**: Spring DI (@Autowired, @Configuration)
+- **아키텍처**: Multi-Module (tetris-core, tetris-client, tetris-backend)
+
+#### 통신 및 네트워킹
+- **REST API**: Spring Web MVC
+- **WebSocket**: Spring WebSocket 6.1.0 이상
+- **HTTP Client**: Spring WebClient (reactive)
+
+#### 동시성 및 성능
+- **동시성**: java.util.concurrent (AtomicBoolean, AtomicInteger, ConcurrentHashMap)
+- **스케줄링**: ScheduledExecutorService
+
+#### 보안
+- **프레임워크**: Spring Security 6.2.0 이상
+- **인증**: JWT (jjwt 0.12.0 이상)
+- **암호화**: BCrypt
+
+#### 모니터링 및 로깅
+- **메트릭**: Micrometer 1.12.0 이상
+- **메트릭 수집**: Prometheus
+- **대시보드**: Grafana 10.0 이상
+- **로깅**: Logback (Spring Boot 기본)
+
+#### 데이터베이스 (Backend)
+- **RDBMS**: MySQL 8.0 이상
+- **ORM**: Spring Data JPA
+- **Connection Pool**: HikariCP
+
+#### 테스트
+- **단위 테스트**: JUnit 5.10.0 이상
+- **Mocking**: Mockito 5.5.0 이상
+- **통합 테스트**: Spring Boot Test
+- **컨테이너**: TestContainers 1.19.0 이상
+- **성능 테스트**: JMeter 5.6 또는 Gatling 3.10
+- **UI 테스트**: TestFX 4.0.18 (JavaFX)
+
+#### UI (Client)
+- **GUI**: JavaFX 21
+
+---
+
+### 1.2 모듈 구조 원칙
+
+#### M-1: tetris-core (Core Game Logic)
+- **M-1.1**: Spring 의존성 포함 가능 (설정 로드 제외)
+  - **허용**: @Component, @Service, @Autowired
+  - **금지**: @ConfigurationProperties, application.yml 로드
+- **M-1.2**: 게임 로직만 포함 (UI, 네트워크 제외)
+  - **포함**: GameEngine, GameState, ItemManager, Tetromino
+  - **제외**: JavaFX, REST Client, WebSocket
+- **M-1.3**: Spring Bean으로 등록 가능
+  - **방식**: @Component 스캔 또는 @Configuration에서 @Bean 등록
+- **M-1.4**: application.yml은 Client에서만 로드
+  - **이유**: 설정은 실행 환경에 따라 다름 (Client vs Server)
+- **M-1.5**: ✅ **GameEngine은 Interface로 구현** (다형성 지원)
+  - **이유**: Classic/Arcade 모드를 다형성으로 처리
+  - **구현**: ClassicGameEngine, ArcadeGameEngine
+- **M-1.6**: ✅ **GameState는 불변 객체** (@Value 사용)
+  - **이유**: 동시성 안정성, State Reconciliation 용이
+  - **구현**: Lombok @Value + @Builder(toBuilder = true)
+
+#### M-2: tetris-client (Spring Boot + JavaFX)
+- **M-2.1**: Spring Boot DI 컨테이너 사용
+  - **초기화**: SpringApplication.run()
+  - **JavaFX 통합**: Platform.startup()
+- **M-2.2**: @ConfigurationProperties로 설정 로드
+  - **파일**: application.yml
+  - **클래스**: TetrisGameConfig, NetworkConfig
+- **M-2.3**: tetris-core를 의존성으로 사용
+  - **방식**: Gradle implementation 'project(:tetris-core)'
+- **M-2.4**: @Configuration으로 Bean 등록
+  - **클래스**: GameEngineConfig, GameModeConfig, NetworkConfig
+- **M-2.5**: ✅ **모든 동시성 컴포넌트는 Thread-safe** (AtomicBoolean/Integer 사용)
+  - **대상**: UIEventHandler, MultiPlayStrategy, NetworkServiceProxy
+  - **구현**: AtomicBoolean, AtomicInteger, synchronized
+- **M-2.6**: ✅ **전역 예외 처리기 구현 필수** (@ControllerAdvice)
+  - **클래스**: GlobalExceptionHandler
+  - **처리**: NetworkException, ValidationException, StateConflictException
+
+#### M-3: tetris-backend (Spring Boot REST API)
+- **M-3.1**: REST API 서버
+  - **프레임워크**: Spring Web MVC
+  - **엔드포인트**: /api/game/*, /api/auth/*
+- **M-3.2**: MySQL 연동
+  - **ORM**: Spring Data JPA
+  - **Entity**: Player, GameSession, Score
+- **M-3.3**: Server Authoritative 게임 로직
+  - **원칙**: 모든 게임 상태는 서버가 최종 결정
+  - **검증**: Command 유효성, Cheating Detection
+- **M-3.4**: WebSocket으로 실시간 Push
+  - **용도**: Critical Events, Attack Events
+  - **프로토콜**: STOMP over WebSocket
+- **M-3.5**: ✅ **JWT 인증 필수**
+  - **필터**: JwtAuthenticationFilter
+  - **검증**: 모든 API 요청에 토큰 필요
+- **M-3.6**: ✅ **Rate Limiting 구현 필수**
+  - **인터셉터**: RateLimitingInterceptor
+  - **제한**: 100 req/min per player
+- **M-3.7**: ✅ **Cheating Detection 구현**
+  - **서비스**: CheatDetectionService
+  - **검증**: 점수 증가율, 라인 클리어 속도
+
+---
+
+### 1.3 기능 요구사항
+
+#### FR-1: 모드 조합 지원 (두 축 분리)
+- **FR-1.1**: **Axis 1 - PlayType** (플레이 방식)
+  - **LOCAL_SINGLE**: 싱글 플레이
+    - 서버 통신 없음
+    - 로컬에서 모든 로직 실행
+  - **ONLINE_MULTI**: 대전 플레이
+    - 서버 통신 필요
+    - Server Authoritative
+    
+- **FR-1.2**: **Axis 2 - GameplayType** (게임 규칙)
+  - **CLASSIC**: 기본 테트리스
+    - 표준 테트로미노 (7종)
+    - 표준 점수 계산
+  - **ARCADE**: 아이템 테트리스
+    - 아이템 블록 추가
+    - 특수 효과
+    
+- **FR-1.3**: 4가지 조합 지원
+  - **Single + Classic**: 기본 싱글 플레이
+  - **Single + Arcade**: 아이템 싱글 플레이
+  - **Multi + Classic**: 대전 테트리스
+  - **Multi + Arcade**: 아이템 대전
+
+- **FR-1.4**: 조합 선택 방식
+  - **설정 파일**: application.yml에서 PlayType 설정
+  - **런타임**: GameplayType은 메뉴에서 선택 가능
+
+#### FR-2: 멀티플레이어 Command 전송
+- **FR-2.1**: 모든 사용자 입력을 서버에 전송
+  - **이동**: MOVE_LEFT, MOVE_RIGHT, SOFT_DROP
+  - **회전**: ROTATE_CW, ROTATE_CCW
+  - **특수**: HARD_DROP, HOLD
+  - **아이템**: USE_ITEM (Arcade 모드)
+  
+- **FR-2.2**: Client-Side Prediction (즉시 반응)
+  - **목적**: 네트워크 지연 숨기기
+  - **구현**: 서버 전송 전 로컬에서 먼저 실행
+  - **효과**: 사용자는 즉시 반응 느낌
+  
+- **FR-2.3**: Server Authoritative (서버 검증)
+  - **원칙**: 서버 응답이 최종 진실
+  - **검증**: 서버에서 모든 Command 재실행
+  - **보안**: 치팅 방지
+  
+- **FR-2.4**: State Reconciliation (서버 상태로 보정)
+  - **비교**: 로컬 예측 vs 서버 응답
+  - **불일치**: 서버 상태로 강제 동기화
+  - **재실행**: 미처리 Pending Commands
+  
+- **FR-2.5**: ✅ **Command Throttling** (16ms 간격, 60 FPS)
+  - **제약사항**: 동일 타입 Command는 16ms 간격으로만 전송
+  - **구현**: MultiPlayStrategy에서 lastSentTime 체크
+  - **목적**: 서버 부하 방지
+    - 예시: 100명 접속 시
+      - Throttling 전: 6,000 req/s (각자 60 req/s)
+      - Throttling 후: 375 req/s (각자 3.75 req/s)
+
+#### FR-3: UI 이벤트 시스템 (Hybrid 방식)
+- **FR-3.1**: Critical Events - 서버 생성
+  - **점수 관련**: LINE_CLEAR, T_SPIN, COMBO, PERFECT_CLEAR
+  - **게임 진행**: LEVEL_UP, GAME_OVER
+  - **멀티플레이**: ATTACK_SENT, ATTACK_RECEIVED
+  - **특징**: 
+    - 서버에서만 생성
+    - 점수 계산 포함
+    - 일관성 보장
+    
+- **FR-3.2**: Local Events - 클라이언트 생성
+  - **블록 조작**: BLOCK_MOVE, BLOCK_ROTATE, BLOCK_LOCK
+  - **UI 효과**: GHOST_PIECE_UPDATE, HOLD_SWAP
+  - **특징**:
+    - 즉시 생성 (<50ms)
+    - 시각 피드백 용도
+    - 점수 계산 없음
+    
+- **FR-3.3**: 우선순위 기반 순차 표시
+  - **우선순위**: PERFECT_CLEAR(16) > LINE_CLEAR(15) > T_SPIN(14) > ...
+  - **순차 실행**: Priority Queue로 정렬 후 하나씩 표시
+  - **duration**: 각 이벤트마다 표시 시간 설정
+  
+- **FR-3.4**: GameState + Events 함께 전송
+  - **Response 구조**:
+    ```json
+    {
+      "state": {...},
+      "events": [...]
+    }
+    ```
+  - **이유**: 상태와 이벤트의 일관성 보장
+  
+- **FR-3.5**: ✅ **UIEventHandler는 Thread-safe 필수**
+  - **구현 조건**: 
+    - AtomicBoolean isProcessing
+    - synchronized (lock) { eventQueue.addAll() }
+    - CAS 패턴: compareAndSet(false, true)
+  - **제약사항**: Race Condition 방지
+
+#### FR-4: 아이템 시스템 (Arcade 모드)
+- **FR-4.1**: 아이템 드롭 확률 설정 가능
+  - **설정**: application.yml에서 drop-rate 조정
+  - **범위**: 0.0 ~ 0.3 (0% ~ 30%) - 게임 밸런스 제약 (UR-2.3)
+  - **기본값**: 0.15 (15%)
+  - **근거**: 아이템이 게임을 지배하지 않도록 최대값 제한
+  
+- **FR-4.2**: 활성화 아이템 선택 가능
+  - **설정**: enabled-items 리스트
+  - **선택**: 원하는 아이템만 활성화
+  
+- **FR-4.3**: 아이템 효과 적용
+  - **BOMB**: 주변 블록 제거 (3x3 영역)
+  - **PLUS_ONE_LINE**: 상대에게 1줄 추가
+  - **SPEED_RESET**: 낙하 속도 초기화
+  - **BONUS_SCORE**: 보너스 점수 (+1000)
+  
+- **FR-4.4**: 아이템 블록은 1칸짜리 특수 테트로미노
+  - **크기**: 1x1
+  - **이동**: 일반 테트로미노처럼 이동 가능
+  - **획득**: 바닥에 닿으면 자동 획득
+  
+- **FR-4.5**: 아이템 블록은 Hold 불가
+  - **제약**: HOLD Command 거부
+  - **이유**: 게임 밸런스
+
+#### FR-5: 난이도 시스템
+- **FR-5.1**: 난이도별 테트로미노 생성 확률 변경
+  - **EASY**: 균등 분포
+  - **NORMAL**: 약간 불균등
+  - **HARD**: 불리한 블록 높은 확률
+  - **EXPERT**: 매우 불리한 블록
+  
+- **FR-5.2**: 난이도별 점수 배율 적용 (SRS 표준)
+  - **EASY**: 0.5x (초보자 배율)
+  - **NORMAL**: 1.0x (기준 배율)
+  - **HARD**: 1.5x (숙련자 배율)
+  - **EXPERT**: 2.0x (전문가 배율)
+  - **근거**: 높은 난이도 = 높은 보상 (업계 표준 원칙)
+  
+- **FR-5.3**: 난이도: EASY, NORMAL, HARD, EXPERT
+  - **설정**: application.yml의 difficulty
+  - **기본값**: NORMAL
+
+#### FR-6: 네트워크 시스템 (Multi 모드)
+- **FR-6.1**: 공격 전송 (2줄 이상 클리어 시)
+  - **조건**: 한 번에 2줄 이상 클리어
+  - **계산**: 
+    - 2줄: 1 공격
+    - 3줄: 2 공격
+    - 4줄(Tetris): 4 공격
+  - **T-Spin 보너스**: +2 공격
+  
+- **FR-6.2**: 공격 수신 및 적용
+  - **타이밍**: 다음 블록 고정 시
+  - **효과**: 바닥에서 줄 추가
+  - **대응**: 라인 클리어로 상쇄 가능
+  
+- **FR-6.3**: 네트워크 장애 처리 (Proxy 패턴)
+  - **구현**: NetworkServiceProxy
+  - **기능**: 
+    - 장애 감지
+    - 오프라인 큐잉
+    - 자동 재연결
+    
+- **FR-6.4**: 오프라인 큐잉 및 자동 재전송
+  - **큐**: ConcurrentLinkedQueue
+  - **재전송**: 재연결 시 자동 Flush
+  
+- **FR-6.5**: ✅ **자동 재연결 로직 필수**
+  - **구현 조건**: 
+    - 5초 간격으로 Ping 테스트
+    - ScheduledExecutorService 사용
+  - **제약사항**: 최대 재연결 시도 횟수 없음 (계속 시도)
+  - **목적**: 일시적 네트워크 장애 대응
+  
+- **FR-6.6**: ✅ **오프라인 큐 크기 제한**
+  - **제약사항**: 최대 1000개 항목
+  - **초과 시**: 가장 오래된 항목 제거 (FIFO)
+  - **목적**: Memory Leak 방지
+
+#### FR-7: 동시성 처리 ⭐ 신규
+- **FR-7.1**: ✅ **모든 공유 변수는 Thread-safe 구현**
+  - **변환 목록**:
+    - `boolean isProcessing` → `AtomicBoolean isProcessing`
+    - `int sequenceNumber` → `AtomicInteger sequenceNumber`
+    - `int eventSequenceId` → `AtomicInteger eventSequenceId`
+  - **이유**: Race Condition 방지
+  
+- **FR-7.2**: ✅ **Queue 접근 시 synchronized 사용**
+  - **패턴**:
+    ```java
+    synchronized (lock) {
+        eventQueue.addAll(events);
+    }
+    ```
+  - **대상**: UIEventHandler.eventQueue, NetworkServiceProxy.offlineQueue
+  
+- **FR-7.3**: ✅ **CAS (Compare-And-Swap) 패턴 사용**
+  - **패턴**:
+    ```java
+    if (isProcessing.compareAndSet(false, true)) {
+        processNextEvent();
+    }
+    ```
+  - **목적**: 원자적 상태 변경
+
+#### FR-8: 예외 처리 전략 ⭐ 신규
+- **FR-8.1**: ✅ **전역 예외 처리기 구현 필수**
+  - **구현**: @ControllerAdvice
+  - **변환**: 모든 예외를 ErrorResponse DTO로 변환
+  - **로깅**: ERROR 레벨로 기록
+  
+- **FR-8.2**: ✅ **에러 코드 표준화**
+  | 코드 | 이름 | 설명 | HTTP 상태 |
+  |------|------|------|-----------|
+  | 400 | INVALID_COMMAND | 잘못된 Command | Bad Request |
+  | 408 | NETWORK_TIMEOUT | 네트워크 타임아웃 | Request Timeout |
+  | 409 | STATE_CONFLICT | 상태 불일치 | Conflict |
+  | 429 | TOO_MANY_REQUESTS | Rate Limit 초과 | Too Many Requests |
+  | 500 | INTERNAL_ERROR | 내부 오류 | Internal Server Error |
+  | 503 | SERVICE_UNAVAILABLE | 서비스 불가 | Service Unavailable |
+  
+- **FR-8.3**: ✅ **예외 계층 구조**
+  ```
+  TetrisException (extends RuntimeException)
+  ├── NetworkException
+  │   ├── ConnectionException
+  │   └── TimeoutException
+  ├── ValidationException
+  │   ├── InvalidCommandException
+  │   └── InvalidStateException
+  ├── StateConflictException
+  └── CheatDetectedException
+  ```
+  
+- **FR-8.4**: ✅ **Graceful Degradation**
+  | 예외 | 처리 방식 | 사용자 메시지 |
+  |------|----------|--------------|
+  | NetworkException | 오프라인 모드 전환 | "네트워크 연결이 끊어졌습니다. 오프라인 모드로 전환합니다." |
+  | StateConflictException | 서버 상태로 강제 동기화 | "게임 상태가 동기화되었습니다." |
+  | ValidationException | 사용자에게 에러 메시지 표시 | "잘못된 조작입니다." |
+  | CheatDetectedException | 게임 종료 | "의심스러운 행위가 감지되었습니다." |
+
+#### FR-9: 보안 시스템 ⭐ 신규
+- **FR-9.1**: ✅ **JWT 인증 필수** (멀티플레이어)
+  - **토큰 구조**:
+    ```json
+    {
+      "sub": "player123",
+      "iat": 1699999999,
+      "exp": 1700003599
+    }
+    ```
+  - **만료 시간**: 1시간 (3600초)
+  - **Refresh Token**: 지원 (7일 유효)
+  - **헤더**: Authorization: Bearer {token}
+  
+- **FR-9.2**: ✅ **Rate Limiting**
+  - **제한**: 플레이어당 최대 100 req/min
+  - **알고리즘**: Sliding Window
+  - **구현**: Guava RateLimiter
+  - **초과 시**: 429 Too Many Requests
+  
+- **FR-9.3**: ✅ **Cheating Detection**
+  - **검증 항목**:
+    | 항목 | 임계값 | 조치 |
+    |------|--------|------|
+    | 점수 증가율 | 최대 1000점/초 | 경고 → 거부 |
+    | 라인 클리어 | 최대 10줄/초 | 경고 → 거부 |
+    | Command 간격 | 최소 5ms | 경고 → 거부 |
+  - **탐지 시**: 
+    1. Command 거부
+    2. 경고 로그 기록
+    3. 위반 횟수 증가
+  - **3회 탐지 시**: 게임 강제 종료 + IP 차단 (선택)
+
+---
+
+### 1.4 비기능 요구사항
+
+#### NFR-1: 확장성
+- **NFR-1.1**: Strategy 패턴으로 PlayType 확장 용이
+  - **인터페이스**: PlayTypeStrategy
+  - **구현**: SinglePlayStrategy, MultiPlayStrategy
+  - **추가**: 새 Strategy 클래스만 추가하면 됨
+  
+- **NFR-1.2**: Composition 패턴으로 GameplayType 독립 구성
+  - **인터페이스**: GameEngine
+  - **구현**: ClassicGameEngine, ArcadeGameEngine
+  - **조합**: PlayType + GameplayType 독립적
+  
+- **NFR-1.3**: 새 모드 추가 시 기존 코드 수정 최소화
+  - **목표**: Open/Closed Principle 준수
+  - **측정**: 신규 모드 추가 시 변경되는 파일 수 < 3개
+
+#### NFR-2: 반응성
+- **NFR-2.1**: Client-Side Prediction으로 즉시 피드백
+  - **목표**: 사용자 입력에 즉시 반응
+  - **구현**: 서버 전송 전 로컬에서 먼저 실행
+  
+- **NFR-2.2**: Local Events 즉시 표시 (<50ms)
+  - **목표**: 블록 이동, 회전 시 즉시 피드백
+  - **측정**: 입력 → 화면 갱신 시간
+  
+- **NFR-2.3**: 네트워크 지연 허용 범위 (100-200ms)
+  - **허용**: RTT(Round Trip Time) 200ms까지
+  - **초과 시**: 경고 표시
+  
+- **NFR-2.4**: ✅ **Command 처리 시간 제한**
+  - **목표**: 
+    - 평균 <50ms
+    - 최대 <100ms
+  - **측정**: @Measured 어노테이션으로 성능 로깅
+
+#### NFR-3: 일관성
+- **NFR-3.1**: Server Authoritative로 치팅 방지
+  - **원칙**: 서버 응답이 최종 진실
+  - **검증**: 서버에서 모든 로직 재실행
+  
+- **NFR-3.2**: State Reconciliation으로 동기화
+  - **비교**: 로컬 예측 vs 서버 응답
+  - **불일치**: 서버 상태 우선
+  
+- **NFR-3.3**: Critical Events 서버 생성으로 일관성 보장
+  - **생성**: CriticalEventGenerator (서버)
+  - **전송**: GameUpdateResponse.events[]
+  
+- **NFR-3.4**: ✅ **State Mismatch 감지**
+  - **검증 항목**:
+    - currentTetromino (위치, 타입)
+    - score (점수)
+    - grid (보드 상태)
+  - **불일치 시**:
+    1. 에러 로그 기록
+    2. 서버 상태로 강제 동기화
+    3. Pending Commands 재실행
+    
+- **NFR-3.5**: ✅ **Pending Commands 타임아웃**
+  - **제약사항**: 5초 내 서버 응답 없으면 타임아웃
+  - **타임아웃 시**:
+    1. Command 제거
+    2. 재전송 (최대 3회)
+    3. 재전송 실패 시 취소
+
+#### NFR-4: 유지보수성
+- **NFR-4.1**: 단일 책임 원칙 준수
+  - **각 클래스**: 하나의 책임만
+  - **예시**: CommandHandler는 Command 처리만
+  
+- **NFR-4.2**: 모듈 경계 명확
+  - **Core**: 게임 로직만
+  - **Client**: UI + 네트워크
+  - **Backend**: API + DB
+  
+- **NFR-4.3**: Spring Boot 컨벤션 준수
+  - **구조**: Controller-Service-Repository
+  - **설정**: application.yml
+  - **Bean 등록**: @Component, @Service, @Repository
+  
+- **NFR-4.4**: ✅ **BoardController 책임 분리** (선택적)
+  - **분리 대상**:
+    - CommandHandler: Command 처리
+    - GameStateManager: 상태 관리
+    - ServerCommunicator: 서버 통신
+    - UIRenderer: 렌더링
+  - **적용 시점**: Phase 3 (선택)
+
+#### NFR-5: 테스트 가능성
+- **NFR-5.1**: 각 컴포넌트 독립적 테스트 가능
+  - **의존성 주입**: Spring DI 활용
+  - **Interface**: Mock 주입 용이
+  
+- **NFR-5.2**: Mock 주입 용이
+  - **도구**: Mockito
+  - **패턴**: @Mock, @InjectMocks
+  
+- **NFR-5.3**: Spring Test 활용
+  - **단위**: @SpringBootTest(classes = {...})
+  - **통합**: @SpringBootTest
+  - **웹**: @WebMvcTest, @AutoConfigureMockMvc
+
+#### NFR-6: 동시성 안정성 ⭐ 신규
+- **NFR-6.1**: ✅ **Race Condition 제거**
+  - **방법**:
+    - AtomicBoolean/AtomicInteger 사용
+    - synchronized block 사용
+    - CAS 패턴 사용
+  - **검증**: 멀티스레드 환경 테스트 (100 스레드)
+  
+- **NFR-6.2**: ✅ **Deadlock 방지**
+  - **원칙**:
+    - Lock 순서 일관성 유지
+    - 중첩 Lock 최소화
+    - Timeout 설정 (tryLock)
+  - **검증**: 장시간 부하 테스트
+  
+- **NFR-6.3**: ✅ **Memory Visibility 보장**
+  - **volatile**: 단순 플래그 (connected)
+  - **AtomicReference**: 객체 참조 (gameState)
+
+#### NFR-7: 오류 복구 능력 ⭐ 신규
+- **NFR-7.1**: ✅ **네트워크 장애 자동 복구**
+  - **재연결**: 5초 간격 자동 시도
+  - **오프라인 큐**: 최대 1000개
+  - **재연결 시**: 자동 Flush
+  
+- **NFR-7.2**: ✅ **상태 불일치 자동 복구**
+  - **감지**: Mismatch 비교
+  - **복구**: 서버 상태로 동기화
+  - **재실행**: Pending Commands
+  
+- **NFR-7.3**: ✅ **Graceful Degradation**
+  - **원칙**: 전체 실패보다 부분 성공
+  - **예시**:
+    - 서버 오류 → 싱글 플레이 제안
+    - UI 오류 → 기본 UI로 대체
+
+#### NFR-8: 보안성 ⭐ 신규
+- **NFR-8.1**: ✅ **인증 필수**
+  - **검증**: 모든 API 요청에 JWT 검증
+  - **실패**: 401 Unauthorized
+  
+- **NFR-8.2**: ✅ **입력 검증**
+  - **서버**: 모든 Command 검증
+  - **검증**: 범위 체크, 타입 체크, 유효성 체크
+  
+- **NFR-8.3**: ✅ **치팅 방지**
+  - **검증**: 점수/라인 클리어 속도
+  - **로그**: 의심 행위 기록
+  - **조치**: 3회 탐지 시 게임 종료
+
+#### NFR-9: 성능 ⭐ 신규
+- **NFR-9.1**: ✅ **응답 시간**
+  | 작업 | 평균 | 최대 | 측정 방법 |
+  |------|------|------|----------|
+  | Command 처리 | <50ms | <100ms | @Measured |
+  | State Update | <100ms | <200ms | @Measured |
+  | Local Event 표시 | <50ms | N/A | Stopwatch |
+  
+- **NFR-9.2**: ✅ **처리량**
+  - **동시 접속**: 1000명
+  - **서버 처리량**: 1000 req/s (Throttling 적용 시)
+  - **측정**: JMeter, Gatling
+  
+- **NFR-9.3**: ✅ **메모리**
+  | 항목 | 제한 | 측정 방법 |
+  |------|------|----------|
+  | 클라이언트 | 최대 512MB | JVM -Xmx |
+  | 서버 (플레이어당) | 최대 10MB | Profiler |
+  | 오프라인 큐 | 최대 100KB | sizeof |
+
+#### NFR-10: 테스트 전략 ⭐ 신규
+- **NFR-10.1**: ✅ **단위 테스트**
+  - **커버리지**: 최소 80%
+  - **도구**: JUnit 5, Mockito
+  - **대상**: GameEngine, PlayTypeStrategy, UIEventHandler
+  - **실행**: mvn test
+  
+- **NFR-10.2**: ✅ **통합 테스트**
+  - **커버리지**: 주요 흐름 100%
+  - **도구**: Spring Boot Test, TestContainers
+  - **시나리오**: 
+    - Command → 서버 → 응답
+    - State Reconciliation
+    - 네트워크 장애
+    
+- **NFR-10.3**: ✅ **성능 테스트**
+  - **도구**: JMeter, Gatling
+  - **시나리오**:
+    - 1000명 동시 접속
+    - 응답 시간 <100ms
+    - 에러율 <1%
+    
+- **NFR-10.4**: ✅ **E2E 테스트**
+  - **도구**: TestFX (JavaFX)
+  - **시나리오**: 전체 게임 플레이
+
+#### NFR-11: 모니터링 ⭐ 신규
+- **NFR-11.1**: ✅ **메트릭 수집**
+  | 메트릭 | 타입 | 설명 |
+  |--------|------|------|
+  | game.commands.total | Counter | 총 Command 수 |
+  | game.commands.duration | Timer | Command 처리 시간 |
+  | game.active.players | Gauge | 활성 플레이어 수 |
+  | game.state.conflicts | Counter | 상태 불일치 횟수 |
+  
+- **NFR-11.2**: ✅ **알림 설정**
+  | 조건 | 레벨 | 액션 |
+  |------|------|------|
+  | 에러율 > 5% | 경고 | Slack 알림 |
+  | 응답 시간 > 200ms | 경고 | Slack 알림 |
+  | 동시 접속 > 900명 | 주의 | Email 알림 |
+  | 서비스 다운 | 긴급 | PagerDuty |
+  
+- **NFR-11.3**: ✅ **대시보드**
+  - **도구**: Grafana
+  - **패널**:
+    - 요청 수 (시계열)
+    - 응답 시간 (히스토그램)
+    - 에러율 (게이지)
+    - 활성 플레이어 (게이지)
+  - **보관**: 히스토리 데이터 7일
+
+#### NFR-12: 로깅 전략 ⭐ 신규
+- **NFR-12.1**: ✅ **로그 레벨**
+  | 레벨 | 용도 | 환경 |
+  |------|------|------|
+  | TRACE | 상세 디버깅 | 개발 |
+  | DEBUG | 일반 디버깅 | 개발 |
+  | INFO | 중요 이벤트 | 운영 |
+  | WARN | 경고 (100ms 이상) | 운영 |
+  | ERROR | 오류 | 운영 |
+  
+- **NFR-12.2**: ✅ **로그 포맷**
+  - **형식**: JSON (구조화된 로그)
+  - **필드**:
+    - timestamp: ISO 8601
+    - thread: 스레드명
+    - level: 로그 레벨
+    - logger: 로거명
+    - message: 로그 메시지
+    - exception: 예외 스택 (ERROR)
+    
+- **NFR-12.3**: ✅ **로그 보관**
+  - **파일**: logs/tetris-client.log
+  - **크기**: 최대 10MB per file
+  - **보관**: 30일
+  - **압축**: gzip
+  
+- **NFR-12.4**: ✅ **성능 로깅**
+  - **어노테이션**: @Measured
+  - **AOP**: PerformanceLoggingAspect
+  - **임계값**: 100ms 이상 걸리면 WARN
+
+---
+
+### 1.5 비즈니스 규칙 (Business Rules)
+
+#### BR-1: 점수 계산 규칙
+- **BR-1.1**: 라인 클리어 점수
+  ```
+  기본 점수 = (라인 수)² × 100 × 레벨 × 난이도 배율
+  
+  난이도 배율 (SRS 표준):
+  - EASY: 0.5x (초보자)
+  - NORMAL: 1.0x (기준)
+  - HARD: 1.5x (숙련자)
+  - EXPERT: 2.0x (전문가)
+  
+  예시 1 (NORMAL, 레벨 5):
+  - 1줄: 1² × 100 × 5 × 1.0 = 500점
+  - 2줄: 2² × 100 × 5 × 1.0 = 2,000점
+  - 3줄: 3² × 100 × 5 × 1.0 = 4,500점
+  - 4줄: 4² × 100 × 5 × 1.0 = 8,000점
+  
+  예시 2 (HARD, 레벨 5, 4줄 클리어):
+  - 4줄: 4² × 100 × 5 × 1.5 = 12,000점 (NORMAL 대비 1.5배)
+  
+  예시 3 (EASY, 레벨 5, 4줄 클리어):
+  - 4줄: 4² × 100 × 5 × 0.5 = 4,000점 (NORMAL 대비 0.5배)
+  ```
+  - **근거**: 많은 줄을 동시에 클리어할수록 높은 점수 (전략적 플레이 유도), 높은 난이도에 대한 정당한 보상
+
+- **BR-1.2**: T-Spin 보너스
+  ```
+  T-Spin: 기본 점수 × 2
+  T-Spin Mini: 기본 점수 × 1.5
+  
+  예시 (T-Spin Double, NORMAL, 레벨 5):
+  - 기본: 2² × 100 × 5 × 1.0 = 2,000점
+  - T-Spin: 2,000 × 2 = 4,000점
+  ```
+  - **근거**: 고난이도 기술에 대한 보상
+
+- **BR-1.3**: 콤보 보너스
+  ```
+  콤보 점수 = 콤보 수 × 50 × 레벨
+  최대 콤보: 20 (콤보 수가 20을 넘어도 20으로 계산)
+  
+  예시 (콤보 5, 레벨 5):
+  - 콤보 점수: 5 × 50 × 5 = 1,250점
+  ```
+  - **근거**: 연속 클리어 유도, 게임의 재미 증가
+
+- **BR-1.4**: Perfect Clear 보너스
+  ```
+  보드 완전 클리어 시: 10,000점 × 레벨
+  
+  예시 (레벨 5):
+  - Perfect Clear: 10,000 × 5 = 50,000점
+  ```
+  - **근거**: 최고 난이도 달성에 대한 큰 보상
+
+- **BR-1.5**: 소프트 드롭 / 하드 드롭 점수
+  ```
+  소프트 드롭: 1점 per 칸
+  하드 드롭: 2점 per 칸
+  ```
+  - **근거**: 빠른 플레이 유도
+
+#### BR-2: 레벨 진행 규칙
+- **BR-2.1**: 레벨 업 조건
+  ```
+  레벨 업 = 게임 시작 후 누적 클리어 줄 수
+  공식: 레벨 N 달성 = 10 × N 줄 (누적)
+  
+  예시:
+  - 레벨 0 → 1: 누적 10줄 (추가 10줄 클리어)
+  - 레벨 1 → 2: 누적 20줄 (추가 10줄 클리어)
+  - 레벨 2 → 3: 누적 30줄 (추가 10줄 클리어)
+  ```
+  - **코드 구현**: `currentLevel = totalLinesCleared / 10`
+  - **근거**: 일정한 진행 속도 유지, 명확한 레벨 계산
+
+- **BR-2.2**: 낙하 속도 증가
+  ```
+  낙하 속도 = max(100ms, 1000ms - (레벨 × 80ms))
+  최소 속도 = 100ms (레벨 12 이상부터 최소값 적용)
+  
+  예시:
+  - 레벨 1: max(100, 920) = 920ms per 칸
+  - 레벨 5: max(100, 600) = 600ms per 칸
+  - 레벨 10: max(100, 200) = 200ms per 칸
+  - 레벨 11: max(100, 120) = 120ms per 칸
+  - 레벨 12: max(100, 40) = 100ms per 칸 (최소값 적용 시작)
+  - 레벨 15+: max(100, 음수) = 100ms per 칸 (최소)
+  ```
+  - **코드 구현**: `Math.max(100L, 1000L - (level * 80L))`
+  - **근거**: 점진적 난이도 증가, 수학적으로 정확한 최소값 적용
+
+- **BR-2.3**: 레벨 표시
+  ```
+  화면 표시: "Level 5"
+  최대 레벨: 무제한 (UI는 3자리까지 표시)
+  ```
+
+#### BR-3: 게임 종료 규칙
+- **BR-3.1**: 패배 조건 (싱글 플레이)
+  ```
+  조건: 새 테트로미노 생성 시 충돌 발생
+  타이밍: lockTetromino() 후 새 블록 생성 시
+  ```
+  - **처리**: 
+    1. 게임 즉시 정지
+    2. GAME_OVER 이벤트 생성
+    3. 최종 점수 표시
+    4. 서버 전송 (멀티 플레이)
+
+- **BR-3.2**: 승리 조건 (멀티 플레이)
+  ```
+  조건 1: 상대방 GAME_OVER
+  조건 2: 상대방 연결 끊김 (5초 대기 후)
+  조건 3: 제한 시간 종료 시 높은 점수
+  ```
+  - **처리**:
+    1. VICTORY 이벤트 생성
+    2. 승리 화면 표시
+    3. 순위표 업데이트
+
+- **BR-3.3**: 무승부 조건 (멀티 플레이)
+  ```
+  조건: 동시 GAME_OVER (동일 턴)
+  ```
+  - **처리**: 양쪽 모두 DRAW 이벤트
+
+#### BR-4: 멀티플레이 공격 규칙
+- **BR-4.1**: 공격 라인 계산
+  ```
+  1줄: 0 공격 (공격 없음)
+  2줄: 1 공격
+  3줄: 2 공격
+  4줄 (Tetris): 4 공격
+  
+  T-Spin 보너스:
+  - T-Spin Mini: +1 공격
+  - T-Spin Single: +2 공격
+  - T-Spin Double: +4 공격
+  - T-Spin Triple: +6 공격
+  
+  콤보 보너스:
+  - 콤보 1: +0 공격
+  - 콤보 2-4: +1 공격
+  - 콤보 5-8: +2 공격
+  - 콤보 9+: +3 공격
+  ```
+
+- **BR-4.2**: 공격 적용 타이밍
+  ```
+  타이밍: 다음 테트로미노 고정(lock) 시
+  위치: 보드 맨 아래에서 추가
+  패턴: 랜덤 구멍 (한 줄당 1개)
+  ```
+
+- **BR-4.3**: 공격 상쇄
+  ```
+  상쇄: 공격 받기 전에 라인 클리어 시 공격 감소
+  
+  예시:
+  - 대기 공격: 3줄
+  - 2줄 클리어: 1 공격 발동
+  - 남은 공격: 3 - 1 = 2줄
+  ```
+
+#### BR-5: 아이템 사용 규칙 (Arcade 모드)
+- **BR-5.1**: 아이템 획득
+  ```
+  조건: 아이템 블록이 바닥에 닿음
+  효과: 즉시 인벤토리에 추가
+  최대 보유: 3개
+  ```
+
+- **BR-5.2**: 아이템 사용
+  ```
+  타이밍: 게임 중 언제든지 (키 입력)
+  제약: 게임 종료 시 사용 불가
+  ```
+
+- **BR-5.3**: 아이템 효과 지속 시간
+  ```
+  SPEED_RESET: 즉시 효과 (영구)
+  BOMB: 즉시 효과 (1회)
+  PLUS_ONE_LINE: 즉시 효과 (상대방에게)
+  BONUS_SCORE: 즉시 효과 (1회)
+  ```
+
+#### BR-6: 순위표 규칙
+- **BR-6.1**: 순위 계산
+  ```
+  1순위: 점수 (높은순)
+  2순위: 레벨 (높은순)
+  3순위: 플레이 시간 (짧은순)
+  ```
+
+- **BR-6.2**: 순위표 표시
+  ```
+  전체 순위: 상위 100명
+  개인 최고 기록: 모드별 / 난이도별
+  일일 순위: 매일 자정 초기화
+  ```
+
+- **BR-6.3**: 기록 유효성
+  ```
+  싱글 플레이: 로컬 저장 + 서버 전송 (선택)
+  멀티 플레이: 서버 검증 필수
+  Arcade 모드: 별도 순위표
+  ```
+
+---
+
+### 1.6 시스템 제약사항 (System Constraints)
+
+#### SC-1: 하드웨어 제약사항
+- **SC-1.1**: 클라이언트 최소 사양
+  ```
+  CPU: 2코어 이상 (2.0 GHz)
+  RAM: 4GB 이상
+  GPU: OpenGL 2.0 지원 (JavaFX 요구사항)
+  저장공간: 500MB 이상
+  네트워크: 1Mbps 이상 (멀티 플레이)
+  ```
+
+- **SC-1.2**: 서버 권장 사양
+  ```
+  CPU: 8코어 이상 (3.0 GHz)
+  RAM: 16GB 이상
+  저장공간: 100GB SSD
+  네트워크: 100Mbps 이상
+  ```
+
+- **SC-1.3**: 동시 접속자 수 제한
+  ```
+  Phase 1: 최대 100명
+  Phase 2: 최대 500명
+  Phase 3: 최대 1,000명
+  ```
+
+#### SC-2: 소프트웨어 제약사항
+- **SC-2.1**: 운영체제
+  ```
+  지원: Windows 10+, macOS 11+, Ubuntu 20.04+
+  JVM: Java 21 필수
+  ```
+
+- **SC-2.2**: 데이터베이스
+  ```
+  엔진: MySQL 8.0+
+  인코딩: UTF-8MB4
+  타임존: UTC
+  ```
+
+- **SC-2.3**: 외부 라이브러리 버전 고정
+  ```
+  Spring Boot: 3.2.0 ~ 3.2.x
+  JavaFX: 21.x
+  MySQL Connector: 8.0.33
+  ```
+
+#### SC-3: 네트워크 제약사항
+- **SC-3.1**: 통신 프로토콜
+  ```
+  REST API: HTTPS 필수 (운영 환경)
+  WebSocket: WSS 필수 (운영 환경)
+  포트: 8080 (HTTP), 8443 (HTTPS)
+  ```
+
+- **SC-3.2**: 메시지 크기 제한
+  ```
+  REST Request: 최대 1MB
+  WebSocket Message: 최대 64KB
+  ```
+
+- **SC-3.3**: 연결 타임아웃
+  ```
+  Connection Timeout: 10초
+  Read Timeout: 30초
+  WebSocket Idle: 5분 (Ping/Pong)
+  ```
+
+#### SC-4: 보안 제약사항
+- **SC-4.1**: 인증 토큰
+  ```
+  알고리즘: HS256
+  만료: 1시간
+  Refresh: 7일
+  ```
+
+- **SC-4.2**: 패스워드 정책 (향후 구현)
+  ```
+  최소 길이: 8자
+  조합: 영문 + 숫자 + 특수문자
+  해시: BCrypt (cost 10)
+  ```
+
+- **SC-4.3**: Rate Limiting
+  ```
+  API: 100 req/min per IP
+  WebSocket: 60 msg/min per connection
+  ```
+
+#### SC-5: 데이터 제약사항
+- **SC-5.1**: 데이터 크기 제한
+  ```
+  플레이어명: 최대 20자
+  점수: 최대 999,999,999
+  레벨: 최대 999
+  ```
+
+- **SC-5.2**: 데이터 보관 기간
+  ```
+  게임 기록: 영구
+  접속 로그: 30일
+  에러 로그: 90일
+  세션 데이터: 24시간
+  ```
+
+- **SC-5.3**: 데이터베이스 용량
+  ```
+  초기: 10GB
+  확장: 필요 시 100GB까지
+  백업: 일일 풀 백업 (압축)
+  ```
+
+#### SC-6: 개발 제약사항
+- **SC-6.1**: 코드 스타일
+  ```
+  포맷터: Google Java Style Guide
+  Indent: 4 spaces
+  Line Length: 120자
+  ```
+
+- **SC-6.2**: Git 브랜치 전략
+  ```
+  main: 프로덕션
+  develop: 개발
+  feature/*: 기능 개발
+  hotfix/*: 긴급 수정
+  ```
+
+- **SC-6.3**: 코드 리뷰
+  ```
+  필수: PR 승인 1명 이상
+  자동 검사: SonarQube
+  커버리지: 80% 이상 유지
+  ```
+
+#### SC-7: 배포 제약사항
+- **SC-7.1**: 배포 환경
+  ```
+  개발: localhost
+  스테이징: staging.tetris.com
+  프로덕션: tetris.com
+  ```
+
+- **SC-7.2**: 배포 주기
+  ```
+  패치: 주 1회 (화요일)
+  마이너: 월 1회 (첫째 주)
+  메이저: 분기 1회
+  ```
+
+- **SC-7.3**: 롤백 정책
+  ```
+  자동 롤백: 에러율 5% 초과 시
+  수동 롤백: 중대 버그 발견 시
+  롤백 시간: 5분 이내
+  ```
+
+---
+
+## 2. 변경 파일 목록 (Change List)
+
+### 2.1 tetris-core 모듈
+
+#### 수정 파일
+```
+tetris-core/src/main/java/seoultech/se/core/
+├── GameEngine.java                          [REFACTOR] Static → Interface
+│   - public interface GameEngine
+│   - GameState lockTetromino(GameState state)
+│   - GameState tryMoveLeft/Right(GameState state)
+│   - GameState tryRotate(GameState state, RotationDirection dir)
+│   - GameState hardDrop(GameState state)
+│
+├── ClassicGameEngine.java                   [NEW] Classic 구현
+│   - @Component
+│   - implements GameEngine
+│   - 표준 테트리스 로직
+│
+├── ArcadeGameEngine.java                    [NEW] Arcade 구현
+│   - @Component @Primary
+│   - implements GameEngine
+│   - 아이템 로직 추가
+│
+├── GameState.java                           [REFACTOR] Mutable → Immutable
+│   - @Value @Builder(toBuilder = true)
+│   - private final int score, level, ...
+│   - public GameState withScore(int newScore) {...}
+│   - public GameState withLevel(int newLevel) {...}
+│
+├── config/
+│   ├── GameConfig.java                      [NEW] @ConfigurationProperties
+│   │   - @ConfigurationProperties("tetris.game")
+│   │   - int boardWidth, boardHeight
+│   │   - boolean srsEnabled
+│   │   - Difficulty difficulty
+│   │
+│   └── ItemConfig.java                      [MODIFY] @ConfigurationProperties
+│       - @ConfigurationProperties("tetris.game.item")
+│       - boolean enabled
+│       - double dropRate
+│       - List<ItemType> enabledItems
+│
+├── exception/                               [NEW] 예외 계층 구조
+│   ├── TetrisException.java                [NEW] extends RuntimeException
+│   ├── NetworkException.java               [NEW] extends TetrisException
+│   ├── ValidationException.java            [NEW] extends TetrisException
+│   ├── StateConflictException.java         [NEW] extends TetrisException
+│   └── CheatDetectedException.java         [NEW] extends TetrisException
+│
+└── item/
+    ├── ItemManager.java                     [NO CHANGE]
+    └── ItemSystem.java                      [OPTIONAL] ItemManager 래퍼
+```
+
+#### 중요 변경사항
+```java
+// ============================================================
+// 1. GameEngine Interface 도입
+// ============================================================
+
+// ✅ Interface 정의
+public interface GameEngine {
+    GameState lockTetromino(GameState state);
+    GameState tryMoveLeft(GameState state);
+    GameState tryMoveRight(GameState state);
+    GameState tryRotate(GameState state, RotationDirection dir);
+    GameState hardDrop(GameState state);
+    GameState softDrop(GameState state);
+    GameState hold(GameState state);
+}
+
+// ✅ Classic 구현
+@Component
+@ConditionalOnProperty(name = "tetris.game.item.enabled", havingValue = "false")
+public class ClassicGameEngine implements GameEngine {
+    
+    @Override
+    public GameState lockTetromino(GameState state) {
+        // 기존 static 메서드 로직 이동
+        GameState locked = state.toBuilder().build();
+        locked = checkAndClearLines(locked);
+        return locked;
+    }
+    
+    @Override
+    public GameState tryMoveLeft(GameState state) {
+        // 기존 로직
+    }
+    
+    // ... 나머지 메서드 구현
+}
+
+// ✅ Arcade 구현
+@Component
+@Primary
+@ConditionalOnProperty(name = "tetris.game.item.enabled", havingValue = "true")
+public class ArcadeGameEngine implements GameEngine {
+    
+    private final ItemManager itemManager;
+    
+    @Autowired
+    public ArcadeGameEngine(ItemManager itemManager) {
+        this.itemManager = itemManager;
+    }
+    
+    @Override
+    public GameState lockTetromino(GameState state) {
+        // Classic 로직
+        GameState locked = super.lockTetromino(state);
+        
+        // 아이템 처리 추가
+        locked = itemManager.processItems(locked);
+        
+        return locked;
+    }
+    
+    // ... 나머지 메서드 구현
+}
+
+// ============================================================
+// 2. GameState 불변 객체로 변경
+// ============================================================
+
+// ✅ 불변 객체
+@Value
+@Builder(toBuilder = true)
+public class GameState {
+    // final로 변경
+    private final int score;
+    private final int level;
+    private final int lines;
+    private final Tetromino currentTetromino;
+    private final int[][] grid;
+    private final List<Tetromino> nextPieces;
+    private final Tetromino holdPiece;
+    
+    // Metadata
+    private final int lastLinesCleared;
+    private final boolean lastLockWasTSpin;
+    private final boolean lastLockWasTSpinMini;
+    private final boolean lastIsPerfectClear;
+    private final int comboCount;
+    private final int backToBackCount;
+    
+    // Multiplayer
+    private final int lastProcessedSequence;
+    
+    // ✅ 상태 변경 메서드 (새 객체 생성)
+    public GameState withScore(int newScore) {
+        return this.toBuilder().score(newScore).build();
+    }
+    
+    public GameState withLevel(int newLevel) {
+        return this.toBuilder().level(newLevel).build();
+    }
+    
+    public GameState withCurrentTetromino(Tetromino tetromino) {
+        return this.toBuilder().currentTetromino(tetromino).build();
+    }
+    
+    // ✅ Grid 복사 (깊은 복사)
+    public GameState withGrid(int[][] newGrid) {
+        int[][] copiedGrid = new int[newGrid.length][];
+        for (int i = 0; i < newGrid.length; i++) {
+            copiedGrid[i] = Arrays.copyOf(newGrid[i], newGrid[i].length);
+        }
+        return this.toBuilder().grid(copiedGrid).build();
+    }
+    
+    // ✅ 복사 메서드
+    public GameState copy() {
+        return this.toBuilder()
+            .grid(deepCopyGrid(this.grid))
+            .nextPieces(new ArrayList<>(this.nextPieces))
+            .build();
+    }
+    
+    private int[][] deepCopyGrid(int[][] original) {
+        int[][] copy = new int[original.length][];
+        for (int i = 0; i < original.length; i++) {
+            copy[i] = Arrays.copyOf(original[i], original[i].length);
+        }
+        return copy;
+    }
+}
+
+// ============================================================
+// 3. 예외 계층 구조
+// ============================================================
+
+// ✅ 최상위 예외
+public class TetrisException extends RuntimeException {
+    private final ErrorCode errorCode;
+    
+    public TetrisException(ErrorCode errorCode, String message) {
+        super(message);
+        this.errorCode = errorCode;
+    }
+    
+    public TetrisException(ErrorCode errorCode, String message, Throwable cause) {
+        super(message, cause);
+        this.errorCode = errorCode;
+    }
+    
+    public ErrorCode getErrorCode() {
+        return errorCode;
+    }
+}
+
+// ✅ 네트워크 예외
+public class NetworkException extends TetrisException {
+    public NetworkException(String message) {
+        super(ErrorCode.NETWORK_TIMEOUT, message);
+    }
+    
+    public NetworkException(String message, Throwable cause) {
+        super(ErrorCode.NETWORK_TIMEOUT, message, cause);
+    }
+}
+
+// ✅ 검증 예외
+public class ValidationException extends TetrisException {
+    public ValidationException(String message) {
+        super(ErrorCode.INVALID_COMMAND, message);
+    }
+}
+
+// ✅ 상태 불일치 예외
+public class StateConflictException extends TetrisException {
+    private final GameState serverState;
+    
+    public StateConflictException(String message, GameState serverState) {
+        super(ErrorCode.STATE_CONFLICT, message);
+        this.serverState = serverState;
+    }
+    
+    public GameState getServerState() {
+        return serverState;
+    }
+}
+```
+
+---
+
+### 2.2 tetris-client 모듈
+
+#### 신규 생성 파일
+```
+tetris-client/src/main/java/seoultech/se/client/
+├── config/
+│   ├── GameEngineConfig.java               [NEW] GameEngine Bean 등록
+│   │   - @Configuration
+│   │   - @Bean GameEngine (Classic/Arcade 조건부 생성)
+│   │
+│   ├── GameModeConfig.java                 [NEW] PlayTypeStrategy Bean 등록
+│   │   - @Configuration
+│   │   - @Bean PlayTypeStrategy (Single/Multi 조건부 생성)
+│   │
+│   ├── NetworkConfig.java                  [NEW] NetworkService + Proxy
+│   │   - @Configuration
+│   │   - @Bean NetworkService
+│   │   - @Bean NetworkServiceProxy (@Primary)
+│   │
+│   └── TetrisGameConfig.java               [NEW] @ConfigurationProperties
+│       - @ConfigurationProperties("tetris")
+│       - PlayType playType
+│       - NetworkSettings network
+│       - GameSettings game
+│
+├── strategy/
+│   ├── PlayTypeStrategy.java               [NEW] Strategy 인터페이스
+│   │   - void onLineClear(GameState state)
+│   │   - boolean beforeCommand(GameCommand command)
+│   │   - void afterCommand(GameCommand command, GameState result)
+│   │   - void onServerStateUpdate(GameState serverState)
+│   │   - void onAttackReceived(int lines, String fromPlayerId)
+│   │   - void initialize()
+│   │   - void cleanup()
+│   │   - PlayType getType()
+│   │
+│   ├── SinglePlayStrategy.java             [NEW] Single 구현
+│   │   - @Component
+│   │   - implements PlayTypeStrategy
+│   │   - beforeCommand() → always return true
+│   │   - afterCommand() → no-op
+│   │
+│   └── MultiPlayStrategy.java              [CRITICAL] AtomicInteger 사용
+│       - @Component
+│       - implements PlayTypeStrategy
+│       - AtomicInteger sequenceNumber  ← Thread-safe
+│       - ConcurrentHashMap<Integer, PendingCommand> pendingCommands
+│       - beforeCommand() → 서버 전송 + 큐잉
+│       - afterCommand() → 예측 저장
+│       - onServerStateUpdate() → Reconciliation
+│
+├── proxy/
+│   └── NetworkServiceProxy.java            [CRITICAL] 재연결 + 큐 제한
+│       - @Service @Primary
+│       - implements NetworkService
+│       - AtomicBoolean connected  ← Thread-safe
+│       - ConcurrentLinkedQueue<Object> offlineQueue
+│       - ScheduledExecutorService reconnectScheduler
+│       - MAX_QUEUE_SIZE = 1000  ← 크기 제한
+│       - startReconnectTask()  ← 5초 간격 재연결
+│       - flushOfflineQueue()  ← 재연결 시 Flush
+│
+├── service/
+│   ├── NetworkService.java                 [NEW] 네트워크 통신 인터페이스
+│   │   - void sendCommand(GameCommand command)
+│   │   - void sendAttack(int attackLines)
+│   │   - void ping()  ← 재연결용
+│   │
+│   └── NetworkServiceImpl.java             [NEW] 실제 네트워크 통신
+│       - @Service
+│       - implements NetworkService
+│       - RestTemplate restTemplate
+│       - WebSocketClient webSocketClient
+│
+├── event/
+│   ├── UIEvent.java                        [NEW] UI 이벤트 DTO
+│   │   - @Data @Builder
+│   │   - UIEventType type
+│   │   - Map<String, Object> data
+│   │   - int priority
+│   │   - long duration (ms)
+│   │   - long timestamp
+│   │   - int sequenceId
+│   │
+│   ├── UIEventHandler.java                 [CRITICAL] AtomicBoolean + synchronized
+│   │   - @Component
+│   │   - AtomicBoolean isProcessing  ← Thread-safe
+│   │   - PriorityQueue<UIEvent> eventQueue
+│   │   - Object lock = new Object()  ← synchronized용
+│   │   - ScheduledExecutorService scheduler
+│   │   - void handleEvents(List<UIEvent>) ← synchronized
+│   │   - void processNextEvent() ← CAS 패턴
+│   │
+│   └── LocalUIEventGenerator.java          [NEW] Local Event 생성
+│       - @Component
+│       - UIEvent generateLocalEvent(GameCommand, GameState)
+│       - BLOCK_MOVE, BLOCK_ROTATE, BLOCK_LOCK 생성
+│
+├── exception/
+│   ├── NetworkException.java               [NEW] 네트워크 예외
+│   │   - extends TetrisException
+│   │
+│   └── GlobalExceptionHandler.java         [NEW] @ControllerAdvice
+│       - @ControllerAdvice
+│       - @ExceptionHandler(NetworkException.class)
+│       - @ExceptionHandler(StateConflictException.class)
+│       - @ExceptionHandler(ValidationException.class)
+│       - ErrorResponse handleException(Exception)
+│
+├── security/                               [NEW] 보안 컴포넌트
+│   ├── JwtAuthenticationFilter.java        [NEW] JWT 필터
+│   │   - extends OncePerRequestFilter
+│   │   - doFilterInternal() ← JWT 검증
+│   │
+│   └── RateLimitingInterceptor.java        [NEW] Rate Limiting
+│       - implements HandlerInterceptor
+│       - ConcurrentHashMap<String, RateLimiter> limiters
+│       - preHandle() ← Rate Limit 체크
+│
+├── monitoring/                             [NEW] 모니터링
+│   ├── GameMetrics.java                    [NEW] Micrometer 메트릭
+│   │   - @Component
+│   │   - MeterRegistry registry
+│   │   - recordCommand(String type, long duration)
+│   │   - recordStateConflict()
+│   │   - setActivePlayers(int count)
+│   │
+│   └── PerformanceLoggingAspect.java       [NEW] @Measured AOP
+│       - @Aspect @Component
+│       - @Around("@annotation(Measured)")
+│       - 100ms 이상 걸리면 WARN 로그
+│
+└── dto/
+    ├── GameCommand.java                    [NEW] Command DTO
+    │   - @Data @Builder
+    │   - CommandType commandType
+    │   - int sequenceNumber
+    │   - String playerId
+    │   - Map<String, Object> data
+    │
+    ├── GameUpdateResponse.java             [NEW] Response DTO
+    │   - @Data @Builder
+    │   - boolean success
+    │   - int sequenceNumber
+    │   - long timestamp
+    │   - GameState state
+    │   - List<UIEvent> events
+    │
+    ├── ErrorResponse.java                  [NEW] 에러 응답 DTO
+    │   - @Data @Builder
+    │   - int code
+    │   - String message
+    │   - long timestamp
+    │   - String path
+    │
+    └── AttackEvent.java                    [NEW] 공격 이벤트 DTO
+        - @Data @Builder
+        - int attackLines
+        - String fromPlayerId
+        - String toPlayerId
+        - long timestamp
+```
+
+#### 수정 파일 (CRITICAL)
+```
+tetris-client/src/main/java/seoultech/se/client/
+├── controller/
+│   └── BoardController.java                [MAJOR REFACTOR]
+│       
+│       주요 변경사항:
+│       1. GameEngine을 DI로 주입 (Interface)
+│       2. PlayTypeStrategy를 DI로 주입
+│       3. UIEventHandler를 DI로 주입
+│       4. LocalUIEventGenerator를 DI로 주입
+│       
+│       추가 메서드:
+│       - forceStateUpdate(GameState serverState)
+│       - handleNetworkError(NetworkException e)
+│       
+│       변경 메서드:
+│       - executeCommand(GameCommand command)
+│         → beforeCommand() 호출 추가
+│         → Local Event 생성 추가
+│         → afterCommand() 호출 추가
+│       
+│       - onServerUpdate(GameUpdateResponse response)
+│         → onServerStateUpdate() 호출 추가
+│         → Critical Events 처리 추가
+│       
+└── mode/
+    ├── PlayType.java                        [MOVE] tetris-core에서 이동
+    │   - enum PlayType { LOCAL_SINGLE, ONLINE_MULTI }
+    │
+    └── GameplayType.java                    [NEW] Axis 2 정의
+        - enum GameplayType { CLASSIC, ARCADE }
+```
+
+---
+
+### 2.3 tetris-backend 모듈
+
+#### 신규 생성 파일
+```
+tetris-backend/src/main/java/seoultech/se/backend/
+├── game/
+│   ├── GameService.java                    [NEW] 게임 로직 서비스
+│   │   - @Service
+│   │   - GameUpdateResponse processCommand(GameCommand)
+│   │   - GameState loadGameState(String playerId)
+│   │   - void saveGameState(String playerId, GameState state)
+│   │
+│   ├── CriticalEventGenerator.java         [CRITICAL] AtomicInteger 사용
+│   │   - @Component
+│   │   - AtomicInteger eventSequenceId  ← Thread-safe
+│   │   - List<UIEvent> generate(GameState old, GameState new)
+│   │   - generateLineClearEvent()
+│   │   - generateTSpinEvent()
+│   │   - generateComboEvent()
+│   │   - generateLevelUpEvent()
+│   │
+│   ├── GameStateStore.java                 [NEW] 게임 상태 저장소
+│   │   - @Component
+│   │   - ConcurrentHashMap<String, GameState> states
+│   │   - GameState get(String playerId)
+│   │   - void save(String playerId, GameState state)
+│   │   - void remove(String playerId)
+│   │
+│   └── CheatDetectionService.java          [NEW] 치팅 검증
+│       - @Service
+│       - void validateCommand(GameCommand, GameState)
+│       - void validateScoreIncrease(GameState old, GameState new)
+│       - void validateLineClearSpeed(GameState old, GameState new)
+│       - ConcurrentHashMap<String, ViolationCount> violations
+│
+├── controller/
+│   └── GameController.java                 [NEW] REST API 엔드포인트
+│       - @RestController @RequestMapping("/api/game")
+│       - @PostMapping("/command") processCommand()
+│       - @GetMapping("/state") getGameState()
+│       - @PostMapping("/attack") sendAttack()
+│
+├── security/
+│   ├── JwtUtil.java                        [NEW] JWT 유틸리티
+│   │   - @Component
+│   │   - String generateToken(String playerId)
+│   │   - String getPlayerId(String token)
+│   │   - boolean validateToken(String token)
+│   │
+│   ├── JwtAuthenticationFilter.java        [NEW] JWT 필터
+│   │   - extends OncePerRequestFilter
+│   │   - doFilterInternal() ← JWT 검증
+│   │
+│   └── SecurityConfig.java                 [NEW] Spring Security 설정
+│       - @Configuration @EnableWebSecurity
+│       - SecurityFilterChain filterChain()
+│       - /api/auth/** permit all
+│       - /api/game/** authenticated
+│
+├── exception/
+│   ├── GlobalExceptionHandler.java         [NEW] @RestControllerAdvice
+│   │   - @RestControllerAdvice
+│   │   - @ExceptionHandler(...)
+│   │   - ErrorResponse handleException()
+│   │
+│   └── ErrorCode.java                      [NEW] 에러 코드 Enum
+│       - enum ErrorCode {
+│           INVALID_COMMAND(400),
+│           NETWORK_TIMEOUT(408),
+│           STATE_CONFLICT(409),
+│           TOO_MANY_REQUESTS(429),
+│           INTERNAL_ERROR(500),
+│           SERVICE_UNAVAILABLE(503)
+│         }
+│
+└── websocket/
+    └── GameWebSocketHandler.java           [NEW] WebSocket 핸들러
+        - @Component
+        - implements WebSocketHandler
+        - onOpen(), onMessage(), onClose()
+        - broadcast(UIEvent event)
+```
+
+---
+
+## 3. 아키텍처 설계 (Architecture)
+
+### 3.1 핵심 설계 원칙
+
+#### 원칙 1: 두 축 명확히 분리 (Composition)
+
+```
+┌────────────────────────────────────────────────────────┐
+│                  BoardController                        │
+│                   (Orchestrator)                        │
+│                                                         │
+│  executeCommand(GameCommand command) {                 │
+│    try {                                               │
+│      // Axis 1: PlayType (Single/Multi)               │
+│      boolean shouldExecute =                           │
+│        playTypeStrategy.beforeCommand(command);        │ ← 서버 전송 (Multi만)
+│                                                         │
+│      if (!shouldExecute) return;                       │
+│                                                         │
+│      // Local Event 생성 (즉시 피드백)                    │
+│      UIEvent localEvent =                              │
+│        localEventGen.generateLocalEvent(command);      │
+│      eventHandler.handle(localEvent);                  │ ← 즉시 표시
+│                                                         │
+│      // Axis 2: GameplayType (Classic/Arcade)         │
+│      GameState newState =                              │
+│        gameEngine.execute(command, currentState);      │ ← 로컬 예측
+│                                                         │
+│      // Axis 1: 예측 결과 저장                          │
+│      playTypeStrategy.afterCommand(command, newState); │ ← Multi: 큐잉
+│                                                         │
+│      // 상태 업데이트                                    │
+│      this.currentState = newState;                     │
+│      renderState(newState);                            │
+│                                                         │
+│    } catch (NetworkException e) {                     │
+│      handleNetworkError(e);  // 오프라인 모드 전환       │
+│    } catch (ValidationException e) {                  │
+│      showErrorMessage(e.getMessage());                 │
+│    }                                                    │
+│  }                                                      │
+│                                                         │
+│  onServerUpdate(GameUpdateResponse response) {         │
+│    // Axis 1: State Reconciliation                    │
+│    playTypeStrategy.onServerStateUpdate(              │
+│      response.getState()                              │
+│    );                                                   │ ← Mismatch 감지 + 동기화
+│                                                         │
+│    // Critical Events 처리                             │
+│    if (!response.getEvents().isEmpty()) {              │
+│      eventHandler.handleEvents(response.getEvents());  │ ← 순차 표시
+│    }                                                    │
+│                                                         │
+│    // 상태 업데이트                                      │
+│    this.currentState = response.getState();            │
+│    renderState(currentState);                          │
+│  }                                                      │
+└───────────┬────────────────────────┬───────────────────┘
+            │                        │
+            │ Axis 2                 │ Axis 1
+            │ (Gameplay)             │ (PlayType)
+            ▼                        ▼
+   ┌─────────────────┐      ┌─────────────────┐
+   │   GameEngine    │      │ PlayTypeStrategy│
+   │  (Interface)    │      │  (Interface)    │
+   └────────┬────────┘      └────────┬────────┘
+            │                        │
+     ┌──────┴──────┐        ┌────────┴────────┐
+     │             │        │                 │
+     ▼             ▼        ▼                 ▼
+┌─────────┐  ┌─────────┐  ┌──────┐     ┌──────┐
+│Classic  │  │ Arcade  │  │Single│     │Multi │
+│Engine   │  │ Engine  │  │Play  │     │Play  │
+└─────────┘  └─────────┘  └──────┘     └──────┘
+```
+
+**설계 의도**:
+- **두 축 독립성**: PlayType과 GameplayType을 완전히 분리
+- **조합 가능**: 2 x 2 = 4가지 조합 자동 지원
+- **확장 용이**: 새 PlayType 또는 GameplayType 추가 시 다른 축 코드 수정 불필요
+
+---
+
+#### 원칙 2: Server Authoritative + Cheating Detection
+
+```
+┌─────────────┐                    ┌─────────────┐
+│   Client    │                    │   Server    │
+│             │                    │             │
+│  1. Input   │──sendCommand()────→│ 2. JWT 검증 │
+│     ↓       │  + JWT Token       │  & Rate     │
+│  2. Local   │                    │  Limiting   │
+│  Prediction │                    │     ↓       │
+│     ↓       │                    │ 3. Command  │
+│  3. Render  │                    │  Validation │
+│  (즉시)     │                    │     ↓       │
+│             │                    │ 4. Execute  │
+│             │                    │  GameEngine │
+│             │                    │     ↓       │
+│             │                    │ 5. Cheat    │
+│             │                    │  Detection  │
+│             │                    │     ↓       │
+│  4. Receive │←──GameState +──────│ 6. Generate │
+│     ↓       │   Events[]         │  Events     │
+│  5. Recon-  │                    │     ↓       │
+│  ciliation  │                    │ 7. Save     │
+│     ↓       │                    │  State      │
+│  6. Render  │                    │     ↓       │
+│  (보정)     │                    │ 8. Broadcast│
+└─────────────┘                    └─────────────┘
+```
+
+**설계 의도**:
+- **Server Authoritative**: 서버 응답이 최종 진실
+- **Client-Side Prediction**: 네트워크 지연 숨기기
+- **Cheating Detection**: 서버에서 모든 로직 재실행 + 검증
+- **State Reconciliation**: 불일치 시 서버 상태로 동기화
+
+---
+
+#### 원칙 3: 동시성 안정성 (Thread-safe)
+
+```
+┌──────────────────────────────────────────────────────┐
+│              UIEventHandler                           │
+│                                                        │
+│  ✅ Thread-safe 변수                                   │
+│  private final AtomicBoolean isProcessing;  ←────┐   │
+│  private final PriorityQueue<UIEvent> eventQueue;│   │
+│  private final Object lock = new Object();  ←────┤   │
+│                                                   │   │
+│  public void handleEvents(List<UIEvent> events) { │   │
+│    // 1. Queue 접근은 synchronized                │   │
+│    synchronized (lock) {  ←─────────────────────┘   │
+│      eventQueue.addAll(events);                      │
+│    }                                                  │
+│                                                        │
+│    // 2. CAS 패턴으로 원자적 상태 변경                  │
+│    if (isProcessing.compareAndSet(false, true)) {  ← CAS
+│      processNextEvent();                              │
+│    }                                                  │
+│  }                                                     │
+│                                                        │
+│  private void processNextEvent() {                    │
+│    UIEvent event;                                     │
+│    synchronized (lock) {  ←─────────────────────┐   │
+│      event = eventQueue.poll();                  │   │
+│      if (event == null) {                        │   │
+│        isProcessing.set(false);  ← Atomic       │   │
+│        return;                                   │   │
+│      }                                           │   │
+│    }  ←──────────────────────────────────────────┘   │
+│                                                        │
+│    displayEvent(event);                               │
+│                                                        │
+│    scheduler.schedule(                                │
+│      this::processNextEvent,                          │
+│      event.getDuration(),                             │
+│      TimeUnit.MILLISECONDS                            │
+│    );                                                  │
+│  }                                                     │
+└────────────────────────────────────────────────────────┘
+```
+
+**설계 의도**:
+- **AtomicBoolean**: CAS 패턴으로 Race Condition 방지
+- **synchronized**: Queue 접근 시 동기화
+- **Lock 최소화**: Critical Section 최소화로 성능 유지
+
+---
+
+### 3.2 실행 흐름
+
+#### 흐름 1: 멀티플레이어 Command 전송 및 처리 (단순 이동)
+
+```
+[Client 측]
+
+1. User Input (LEFT 키 누름)
+   │
+   ▼
+2. BoardController.handleMoveLeft()
+   │
+   ▼
+3. GameCommand command = GameCommand.builder()
+     .commandType(CommandType.MOVE_LEFT)
+     .build();
+   │
+   ▼
+4. ✅ playTypeStrategy.beforeCommand(command)
+   │
+   ├─ Single: return true (로컬만 실행)
+   │
+   └─ Multi:
+      ├─ command.setSequenceNumber(sequenceNumber.getAndIncrement())  ← AtomicInteger
+      ├─ networkService.sendCommand(command)  ← 서버 전송
+      ├─ pendingCommands.put(seq, command)  ← 큐잉
+      └─ return true  ← 로컬 예측 허용
+   │
+   ▼
+5. ✅ localEventGen.generateLocalEvent(command, gameState)
+   │  → UIEvent {type: BLOCK_MOVE, duration: 50ms}
+   │
+   ▼
+6. ✅ eventHandler.handle(localEvent)  ← 즉시 표시 ⚡ (<50ms)
+   │
+   ▼
+7. gameEngine.tryMoveLeft(gameState)  ← Local Prediction
+   │  → newState = state.withCurrentTetromino(moved)
+   │
+   ▼
+8. ✅ playTypeStrategy.afterCommand(command, newState)
+   │
+   ├─ Single: (아무것도 안 함)
+   │
+   └─ Multi: 
+      └─ predictedStates.put(seq, newState)  ← 예측 결과 저장
+   │
+   ▼
+9. this.gameState = newState;
+   renderState(newState);  ← UI 업데이트
+
+─────────────────────────────────────────────────────────
+
+[Server 측] (비동기)
+
+10. Server receives POST /api/game/command
+    Body: {
+      "commandType": "MOVE_LEFT",
+      "sequenceNumber": 42,
+      "playerId": "player123"
+    }
+    │
+    ▼
+11. JwtAuthenticationFilter: JWT 검증 ✅
+    │
+    ▼
+12. RateLimitingInterceptor: Rate Limit 체크 ✅
+    │
+    ▼
+13. GameController.processCommand(command)
+    │
+    ▼
+14. GameService.processCommand(command)
+    │
+    ├─ GameState oldState = stateStore.get("player123")
+    │
+    ├─ GameState newState = gameEngine.tryMoveLeft(oldState)
+    │
+    ├─ newState.setLastProcessedSequence(42)
+    │
+    ├─ stateStore.save("player123", newState)
+    │
+    └─ List<UIEvent> events = []  ← 단순 이동은 Critical Event 없음
+    │
+    ▼
+15. return GameUpdateResponse {
+      success: true,
+      sequenceNumber: 42,
+      timestamp: 1730899200050,
+      state: newState,
+      events: []
+    }
+
+─────────────────────────────────────────────────────────
+
+[Client 측] (서버 응답 수신)
+
+16. onServerUpdate(response)
+    │
+    ▼
+17. ✅ playTypeStrategy.onServerStateUpdate(response.getState())
+    │
+    └─ Multi:
+       ├─ int serverSeq = serverState.getLastProcessedSequence()  // 42
+       │
+       ├─ PredictedState predicted = predictedStates.get(42)
+       │
+       ├─ if (statesMatch(predicted.state, serverState)) {
+       │    // ✅ 예측 성공! 보정 불필요
+       │    System.out.println("✅ Prediction correct");
+       │  } else {
+       │    // ❌ 예측 실패! 서버 상태로 강제 동기화
+       │    System.err.println("❌ Prediction mismatch!");
+       │    boardController.forceStateUpdate(serverState);
+       │  }
+       │
+       └─ pendingCommands.keySet().removeIf(seq -> seq <= 42)  ← 처리된 Command 제거
+    │
+    ▼
+18. this.gameState = response.getState();
+    renderState(gameState);  ← 필요시 UI 업데이트
+
+완료! (전체 시간: ~150ms)
+```
+
+**핵심 포인트**:
+- **즉시 반응**: Local Event 표시 (<50ms)
+- **예측 정확성**: 대부분의 경우 예측 성공 (보정 불필요)
+- **네트워크 지연**: 숨겨짐 (사용자는 느끼지 못함)
+
+---
+
+## 3.5 컴포넌트 및 인터페이스 명세
+
+### 3.5.1 tetris-core 모듈 컴포넌트
+
+#### A. GameEngine (게임 엔진)
+
+**역할**: 테트리스 게임의 핵심 로직 처리
+
+**주요 메서드**:
+```java
+public class GameEngine {
+    /**
+     * 게임 엔진 초기화
+     * @param config 게임 모드 설정
+     */
+    public void initialize(GameModeConfig config)
+    
+    /**
+     * 테트로미노를 왼쪽으로 이동
+     * @param state 현재 게임 상태
+     * @return 업데이트된 게임 상태
+     */
+    public GameState tryMoveLeft(GameState state)
+    
+    /**
+     * 테트로미노를 오른쪽으로 이동
+     * @param state 현재 게임 상태
+     * @return 업데이트된 게임 상태
+     */
+    public GameState tryMoveRight(GameState state)
+    
+    /**
+     * 테트로미노 회전
+     * @param state 현재 게임 상태
+     * @param direction 회전 방향 (CW/CCW)
+     * @return 업데이트된 게임 상태
+     */
+    public GameState tryRotate(GameState state, RotationDirection direction)
+    
+    /**
+     * 하드 드롭 (즉시 바닥까지)
+     * @param state 현재 게임 상태
+     * @return 업데이트된 게임 상태 (블록 고정됨)
+     */
+    public GameState hardDrop(GameState state)
+    
+    /**
+     * 홀드 기능
+     * @param state 현재 게임 상태
+     * @return 업데이트된 게임 상태
+     */
+    public GameState hold(GameState state)
+    
+    /**
+     * 블록 고정 및 라인 클리어 처리
+     * @param state 현재 게임 상태
+     * @return 업데이트된 게임 상태 (점수, 레벨 계산 완료)
+     */
+    public GameState lockTetromino(GameState state)
+    
+    /**
+     * T-Spin 감지
+     * @param state 현재 게임 상태
+     * @param tetromino 테트로미노
+     * @return T-Spin 여부 및 Mini 여부
+     */
+    private TSpinResult detectTSpin(GameState state, Tetromino tetromino)
+}
+```
+
+**의존성**:
+- ItemManager (아케이드 모드에서 사용)
+- GameModeConfig
+
+---
+
+#### B. GameState (게임 상태)
+
+**역할**: 게임의 모든 상태 정보를 불변 객체로 관리
+
+**주요 필드**:
+```java
+@Data
+public class GameState {
+    // 보드 정보
+    private final int boardWidth;
+    private final int boardHeight;
+    private final Cell[][] grid;
+    
+    // 현재 테트로미노
+    private Tetromino currentTetromino;
+    private int currentX;
+    private int currentY;
+    private ItemType currentItemType;  // 아케이드 모드
+    
+    // Hold & Next
+    private boolean holdUsedThisTurn;
+    private TetrominoType heldPiece;
+    private TetrominoType[] nextQueue;
+    
+    // 게임 통계
+    private long score;
+    private int linesCleared;
+    private int level;
+    private int linesForNextLevel;
+    private boolean isGameOver;
+    private String gameOverReason;
+    
+    // 콤보 & 백투백
+    private int comboCount;
+    private boolean lastActionClearedLines;
+    private int backToBackCount;
+    private boolean lastClearWasDifficult;
+    
+    // Lock Delay
+    private boolean isLockDelayActive;
+    private int lockDelayResets;
+    
+    // 게임 상태
+    private boolean isPaused;
+    
+    // T-Spin 메타데이터
+    private boolean lastActionWasRotation;
+    private int lastRotationKickIndex;
+    private boolean lastLockWasTSpin;
+    private boolean lastLockWasTSpinMini;
+    
+    // Lock 메타데이터 (이벤트 생성용)
+    private Tetromino lastLockedTetromino;
+    private int lastLockedX;
+    private int lastLockedY;
+    private int lastLinesCleared;
+    private int[] lastClearedRows;
+    private long lastScoreEarned;
+    private boolean lastIsPerfectClear;
+    private boolean lastLeveledUp;
+    
+    /**
+     * 생성자
+     */
+    public GameState(int width, int height)
+    
+    /**
+     * 그리드 복사 (깊은 복사)
+     */
+    public Cell[][] copyGrid()
+    
+    /**
+     * 완전한 상태 복사
+     */
+    public GameState copy()
+}
+```
+
+**특징**:
+- 불변 객체 패턴 (모든 필드 final)
+- Builder 패턴 지원
+- Thread-safe
+
+---
+
+#### C. GameMode (인터페이스 - Strategy Pattern)
+
+**역할**: 게임 모드별 추가 로직을 정의하는 전략 인터페이스
+
+**인터페이스 정의**:
+```java
+public interface GameMode {
+    /**
+     * 모드 타입 반환
+     */
+    GameModeType getType();
+    
+    /**
+     * 게임 모드 초기화
+     * @param state 초기 게임 상태
+     */
+    void initialize(GameState state);
+    
+    /**
+     * 라인 클리어 후 추가 처리
+     * @param state 라인 클리어 후 상태
+     * @param linesCleared 지워진 라인 수
+     * @return 모드별 추가 처리가 반영된 상태
+     */
+    GameState onLineClear(GameState state, int linesCleared);
+    
+    /**
+     * 블록 고정 후 추가 처리
+     * @param state 블록 고정 후 상태
+     * @return 모드별 추가 처리가 반영된 상태
+     */
+    GameState onBlockLock(GameState state);
+    
+    /**
+     * 커맨드 실행 가능 여부 검증
+     * @param command 실행하려는 커맨드
+     * @param state 현재 상태
+     * @return 실행 가능 여부
+     */
+    boolean canExecuteCommand(GameCommand command, GameState state);
+    
+    /**
+     * 게임 모드 설정 반환
+     */
+    GameModeConfig getConfig();
+    
+    /**
+     * 게임 모드 설정 변경
+     */
+    void setConfig(GameModeConfig config);
+    
+    /**
+     * 리소스 정리
+     */
+    void cleanup();
+}
+```
+
+**구현 클래스**:
+- `SingleMode`: 싱글 플레이 모드
+- `MultiMode`: 멀티 플레이 모드 (미구현)
+
+---
+
+#### D. ItemManager (아이템 관리자)
+
+**역할**: 아케이드 모드의 아이템 생성 및 관리
+
+**주요 메서드**:
+```java
+public class ItemManager {
+    /**
+     * 아이템 드롭 (확률 기반)
+     * @return 생성된 아이템 타입 (null이면 일반 블록)
+     */
+    public ItemType generateItemDrop()
+    
+    /**
+     * 아이템 사용
+     * @param state 현재 게임 상태
+     * @param itemType 사용할 아이템 타입
+     * @return 아이템 효과가 적용된 게임 상태
+     */
+    public GameState useItem(GameState state, ItemType itemType)
+    
+    /**
+     * 아이템 활성화 설정
+     * @param itemTypes 활성화할 아이템 타입 목록
+     */
+    public void setEnabledItems(Set<ItemType> itemTypes)
+    
+    /**
+     * 아이템 드롭 확률 설정
+     * @param dropRate 드롭 확률 (0.0 ~ 0.3) - 최대 30% 제한
+     * @throws IllegalArgumentException dropRate가 0.3 초과 시
+     */
+    public void setItemDropRate(double dropRate)
+}
+```
+
+**지원 아이템**:
+- `BOMB_ITEM`: 폭탄 (라인 삭제)
+- `BONUS_SCORE_ITEM`: 보너스 점수
+- `SPEED_RESET_ITEM`: 낙하 속도 초기화
+- `PLUS_ITEM`: 추가 효과
+
+---
+
+#### E. Command 인터페이스 및 구현
+
+**Command 인터페이스**:
+```java
+public interface GameCommand {
+    /**
+     * 커맨드 타입 반환
+     */
+    CommandType getType();
+    
+    /**
+     * 커맨드 설명 (디버깅용)
+     */
+    default String getDescription() {
+        return getType().toString();
+    }
+}
+```
+
+**구현 클래스**:
+```java
+// 이동 커맨드
+public class MoveCommand implements GameCommand {
+    private final Direction direction;  // LEFT, RIGHT, DOWN
+}
+
+// 회전 커맨드
+public class RotateCommand implements GameCommand {
+    private final RotationDirection direction;  // CW, CCW
+}
+
+// 하드 드롭 커맨드
+public class HardDropCommand implements GameCommand {
+}
+
+// 홀드 커맨드
+public class HoldCommand implements GameCommand {
+}
+
+// 일시정지/재개 커맨드
+public class PauseCommand implements GameCommand {
+}
+
+public class ResumeCommand implements GameCommand {
+}
+```
+
+---
+
+### 3.5.2 tetris-client 모듈 컴포넌트
+
+#### A. BoardController (게임 컨트롤러)
+
+**역할**: 게임 로직과 UI 사이의 중재자
+
+**주요 메서드**:
+```java
+@Component
+public class BoardController {
+    /**
+     * 게임 시작
+     */
+    public void startGame()
+    
+    /**
+     * 게임 일시정지
+     */
+    public void pauseGame()
+    
+    /**
+     * 게임 재개
+     */
+    public void resumeGame()
+    
+    /**
+     * 커맨드 실행
+     * @param command 실행할 커맨드
+     */
+    public void executeCommand(GameCommand command)
+    
+    /**
+     * 자동 낙하 (타이머 기반)
+     */
+    public void autoFall()
+    
+    /**
+     * 현재 게임 상태 반환
+     */
+    public GameState getGameState()
+    
+    /**
+     * 게임 모드 설정
+     */
+    public void setGameMode(GameMode gameMode)
+    
+    /**
+     * 난이도 설정
+     */
+    public void setDifficulty(Difficulty difficulty)
+}
+```
+
+**의존성**:
+- GameEngine
+- GameMode
+- RandomGenerator
+- TetrominoGenerator
+
+---
+
+#### B. BoardRenderer (보드 렌더러)
+
+**역할**: GameState를 JavaFX UI로 렌더링
+
+**주요 메서드**:
+```java
+public class BoardRenderer {
+    /**
+     * 게임 상태 렌더링
+     * @param state 렌더링할 게임 상태
+     */
+    public void render(GameState state)
+    
+    /**
+     * 셀 업데이트
+     * @param row 행
+     * @param col 열
+     * @param cell 셀 정보
+     */
+    public void updateCell(int row, int col, Cell cell)
+    
+    /**
+     * Hold 영역 렌더링
+     * @param tetrominoType 홀드된 테트로미노 타입
+     */
+    public void renderHold(TetrominoType tetrominoType)
+    
+    /**
+     * Next 영역 렌더링
+     * @param nextQueue 다음 테트로미노 큐
+     */
+    public void renderNext(TetrominoType[] nextQueue)
+    
+    /**
+     * 고스트 피스 렌더링
+     * @param state 현재 게임 상태
+     */
+    public void renderGhostPiece(GameState state)
+}
+```
+
+---
+
+#### C. InputHandler (입력 처리기)
+
+**역할**: 키보드 입력을 GameCommand로 변환
+
+**주요 메서드**:
+```java
+public class InputHandler {
+    /**
+     * 키 입력 처리
+     * @param event JavaFX 키 이벤트
+     */
+    public void handleKeyPress(KeyEvent event)
+    
+    /**
+     * 키 매핑 설정
+     * @param action 게임 액션
+     * @param keyCode 키 코드
+     */
+    public void setKeyMapping(GameAction action, KeyCode keyCode)
+    
+    /**
+     * 커맨드 생성
+     * @param action 게임 액션
+     * @return 생성된 커맨드
+     */
+    private GameCommand createCommand(GameAction action)
+}
+```
+
+---
+
+#### D. GameLoopManager (게임 루프 관리자)
+
+**역할**: 게임 루프 실행 및 타이밍 관리
+
+**주요 메서드**:
+```java
+public class GameLoopManager {
+    /**
+     * 게임 루프 시작
+     */
+    public void start()
+    
+    /**
+     * 게임 루프 중지
+     */
+    public void stop()
+    
+    /**
+     * 프레임 업데이트 (60 FPS)
+     */
+    private void update()
+    
+    /**
+     * 자동 낙하 타이머
+     */
+    private void scheduleAutoFall()
+}
+```
+
+---
+
+#### E. SingleMode / MultiMode (플레이 모드)
+
+**SingleMode (싱글 플레이)**:
+```java
+@Component
+public class SingleMode implements GameMode {
+    @Override
+    public GameModeType getType() {
+        return GameModeType.SINGLE;
+    }
+    
+    @Override
+    public void initialize(GameState state) {
+        // 로컬 게임 초기화
+    }
+    
+    @Override
+    public GameState onLineClear(GameState state, int linesCleared) {
+        // 추가 로직 없음 (기본 점수 계산만)
+        return state;
+    }
+    
+    @Override
+    public GameState onBlockLock(GameState state) {
+        // 아이템 드롭 등 처리
+        return state;
+    }
+    
+    @Override
+    public boolean canExecuteCommand(GameCommand command, GameState state) {
+        return !state.isPaused();
+    }
+}
+```
+
+**MultiMode (멀티 플레이 - 미구현)**:
+```java
+@Component
+public class MultiMode implements GameMode {
+    private NetworkService networkService;
+    
+    @Override
+    public GameModeType getType() {
+        return GameModeType.MULTI;
+    }
+    
+    @Override
+    public void initialize(GameState state) {
+        // 서버 연결
+        networkService.connect();
+    }
+    
+    @Override
+    public GameState onLineClear(GameState state, int linesCleared) {
+        // 공격 전송
+        networkService.sendAttack(calculateAttack(linesCleared));
+        return state;
+    }
+    
+    // ... 나머지 구현
+}
+```
+
+---
+
+### 3.5.3 tetris-backend 모듈 컴포넌트
+
+#### A. GameService (게임 서비스)
+
+**역할**: 게임 비즈니스 로직 처리 (현재 미구현, 향후 확장)
+
+**주요 메서드**:
+```java
+@Service
+public class GameService {
+    /**
+     * 커맨드 처리 (Server Authoritative)
+     * @param command 클라이언트로부터 받은 커맨드
+     * @param playerId 플레이어 ID
+     * @return 처리 결과 (업데이트된 GameState)
+     */
+    public GameUpdateResponse processCommand(GameCommand command, String playerId)
+    
+    /**
+     * 게임 세션 생성
+     * @param playerId 플레이어 ID
+     * @return 생성된 세션 ID
+     */
+    public String createGameSession(String playerId)
+    
+    /**
+     * 게임 상태 조회
+     * @param sessionId 세션 ID
+     * @return 게임 상태
+     */
+    public GameState getGameState(String sessionId)
+    
+    /**
+     * 공격 전송
+     * @param fromPlayerId 공격자 ID
+     * @param toPlayerId 대상자 ID
+     * @param attackLines 공격 라인 수
+     */
+    public void sendAttack(String fromPlayerId, String toPlayerId, int attackLines)
+}
+```
+
+---
+
+#### B. ScoreService (점수 서비스)
+
+**역할**: 점수 저장 및 랭킹 조회
+
+**주요 메서드**:
+```java
+@Service
+public class ScoreService {
+    /**
+     * 점수 저장
+     * @param scoreRequest 점수 정보
+     * @return 저장된 점수 ID
+     */
+    public Long saveScore(ScoreRequestDto scoreRequest)
+    
+    /**
+     * 랭킹 조회
+     * @param gameMode 게임 모드
+     * @param limit 조회 개수
+     * @return 랭킹 목록
+     */
+    public List<ScoreRankDto> getRanking(GameMode gameMode, int limit)
+    
+    /**
+     * 개인 최고 점수 조회
+     * @param playerName 플레이어 이름
+     * @param gameMode 게임 모드
+     * @return 최고 점수
+     */
+    public ScoreResponseDto getPersonalBest(String playerName, GameMode gameMode)
+}
+```
+
+---
+
+### 3.5.4 컴포넌트 간 상호작용
+
+#### 게임 실행 흐름
+
+```
+1. 사용자 입력 (키보드)
+   ↓
+2. InputHandler.handleKeyPress()
+   ↓
+3. GameCommand 생성
+   ↓
+4. BoardController.executeCommand()
+   ↓
+5. GameEngine.tryMoveLeft/tryRotate/... ()
+   ↓
+6. GameState 업데이트 (불변 객체 반환)
+   ↓
+7. GameMode.onBlockLock() / onLineClear()
+   ↓
+8. BoardRenderer.render(newState)
+   ↓
+9. UI 업데이트 (JavaFX)
+```
+
+#### 아이템 사용 흐름 (아케이드 모드)
+
+```
+1. 사용자가 아이템 사용 키 입력
+   ↓
+2. InputHandler → UseItemCommand 생성
+   ↓
+3. BoardController.executeCommand()
+   ↓
+4. ItemManager.useItem(state, itemType)
+   ↓
+5. Item.apply(state) 실행
+   ↓
+6. GameState 업데이트 (아이템 효과 적용)
+   ↓
+7. BoardRenderer.render(newState)
+```
+
+#### 멀티플레이어 커맨드 흐름 (향후 구현)
+
+```
+Client:
+1. 사용자 입력
+   ↓
+2. GameCommand 생성
+   ↓
+3. Client-Side Prediction (로컬 실행)
+   ↓
+4. NetworkService.sendCommand() → 서버 전송
+   ↓
+
+Server:
+5. GameService.processCommand()
+   ↓
+6. 커맨드 검증 (Cheating Detection)
+   ↓
+7. GameEngine 실행 (Server Authoritative)
+   ↓
+8. GameUpdateResponse 생성
+   ↓
+9. 클라이언트로 응답 전송
+   ↓
+
+Client:
+10. State Reconciliation (서버 상태와 비교)
+    ↓
+11. 필요시 Pending Commands 재실행
+    ↓
+12. UI 업데이트
+```
+
+---
+
+### 3.5.5 핵심 데이터 구조
+
+#### Tetromino (테트로미노)
+
+```java
+public class Tetromino {
+    private final TetrominoType type;  // I, O, T, S, Z, J, L
+    private final int[][] shape;        // 2D 배열 (4x4)
+    private final RotationState rotation;  // 0, 90, 180, 270
+    private final seoultech.se.core.model.enumType.Color color;
+    
+    /**
+     * 회전된 새 테트로미노 반환
+     */
+    public Tetromino rotate(RotationDirection direction)
+    
+    /**
+     * 이동된 새 테트로미노 반환
+     */
+    public Tetromino move(int dx, int dy)
+}
+```
+
+#### Cell (셀)
+
+```java
+public class Cell {
+    private boolean filled;  // 블록이 있는지
+    private seoultech.se.core.model.enumType.Color color;  // 블록 색상
+    private ItemType itemType;  // 아이템 타입 (null이면 일반 블록)
+    
+    /**
+     * 빈 셀 생성
+     */
+    public static Cell empty()
+    
+    /**
+     * 일반 블록 셀 생성
+     */
+    public static Cell filled(seoultech.se.core.model.enumType.Color color)
+    
+    /**
+     * 아이템 블록 셀 생성
+     */
+    public static Cell item(ItemType itemType, seoultech.se.core.model.enumType.Color color)
+}
+```
+
+---
+
+(문서 계속...)

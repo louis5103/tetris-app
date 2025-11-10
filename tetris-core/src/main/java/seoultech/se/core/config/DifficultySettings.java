@@ -1,13 +1,12 @@
 package seoultech.se.core.config;
 
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
-import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotNull;
 
 /**
  * 난이도 설정값을 담는 POJO (Plain Old Java Object)
@@ -53,8 +52,9 @@ public class DifficultySettings {
      *   <li>1.2: 20% 증가 (17.1%)</li>
      *   <li>0.8: 20% 감소 (11.4%)</li>
      * </ul>
+     * <p>Note: @Min/@Max는 정수만 지원하므로 실제 값 × 100으로 저장</p>
      */
-    @Min(value = 1, message = "I-block multiplier must be at least 0.1")
+    @Min(value = 10, message = "I-block multiplier must be at least 0.1")
     @Max(value = 300, message = "I-block multiplier must not exceed 3.0")
     @Builder.Default
     private double iBlockMultiplier = 1.0;
@@ -68,23 +68,26 @@ public class DifficultySettings {
      *   <li>0.8: 20% 완만 (Easy 모드)</li>
      *   <li>1.2: 20% 급격 (Hard 모드)</li>
      * </ul>
+     * <p>Note: @Min/@Max는 정수만 지원하므로 실제 값 × 100으로 저장</p>
      */
-    @Min(value = 1, message = "Speed increase multiplier must be at least 0.1")
+    @Min(value = 10, message = "Speed increase multiplier must be at least 0.1")
     @Max(value = 300, message = "Speed increase multiplier must not exceed 3.0")
     @Builder.Default
     private double speedIncreaseMultiplier = 1.0;
     
     /**
-     * 점수 배율
+     * 점수 배율 (SRS 표준 준수)
      * 
      * <p>획득하는 점수에 곱해지는 배율입니다.</p>
+     * <p>높은 난이도 = 높은 보상 (업계 표준 원칙)</p>
      * <ul>
-     *   <li>1.0: 기본값</li>
-     *   <li>1.2: 20% 증가 (Easy 모드 - 높은 점수)</li>
-     *   <li>0.8: 20% 감소 (Hard 모드 - 낮은 점수)</li>
+     *   <li>0.5: Easy 모드 (초보자 친화적)</li>
+     *   <li>1.0: Normal 모드 (기본 배율)</li>
+     *   <li>1.5: Hard 모드 (숙련자 보상)</li>
+     *   <li>2.0: Expert 모드 (전문가 보상)</li>
      * </ul>
      */
-    @Min(value = 1, message = "Score multiplier must be at least 0.1")
+    @Min(value = 10, message = "Score multiplier must be at least 0.1")
     @Max(value = 300, message = "Score multiplier must not exceed 3.0")
     @Builder.Default
     private double scoreMultiplier = 1.0;
@@ -98,8 +101,9 @@ public class DifficultySettings {
      *   <li>1.2: 20% 증가 (600ms - Easy 모드)</li>
      *   <li>0.8: 20% 감소 (400ms - Hard 모드)</li>
      * </ul>
+     * <p>Note: @Min/@Max는 정수만 지원하므로 실제 값 × 100으로 저장</p>
      */
-    @Min(value = 1, message = "Lock delay multiplier must be at least 0.1")
+    @Min(value = 10, message = "Lock delay multiplier must be at least 0.1")
     @Max(value = 300, message = "Lock delay multiplier must not exceed 3.0")
     @Builder.Default
     private double lockDelayMultiplier = 1.0;
@@ -109,13 +113,13 @@ public class DifficultySettings {
     // =========================================================================
     
     /**
-     * Easy 모드 기본 설정 생성
+     * Easy 모드 기본 설정 생성 (SRS 표준)
      * 
      * <p>특징:</p>
      * <ul>
      *   <li>I형 블록 20% 증가</li>
      *   <li>속도 증가 20% 완만</li>
-     *   <li>점수 20% 증가</li>
+     *   <li>점수 50% (초보자 친화적 - 낮은 배율)</li>
      *   <li>락 딜레이 20% 증가</li>
      * </ul>
      * 
@@ -126,7 +130,7 @@ public class DifficultySettings {
             .displayName("쉬움")
             .iBlockMultiplier(1.2)
             .speedIncreaseMultiplier(0.8)
-            .scoreMultiplier(1.2)
+            .scoreMultiplier(0.5)  // SRS 표준: 낮은 난이도 = 낮은 배율
             .lockDelayMultiplier(1.2)
             .build();
     }
@@ -149,13 +153,13 @@ public class DifficultySettings {
     }
     
     /**
-     * Hard 모드 기본 설정 생성
+     * Hard 모드 기본 설정 생성 (SRS 표준)
      * 
      * <p>특징:</p>
      * <ul>
      *   <li>I형 블록 20% 감소</li>
      *   <li>속도 증가 20% 급격</li>
-     *   <li>점수 20% 감소</li>
+     *   <li>점수 150% (숙련자 보상 - 높은 배율)</li>
      *   <li>락 딜레이 20% 감소</li>
      * </ul>
      * 
@@ -166,8 +170,31 @@ public class DifficultySettings {
             .displayName("어려움")
             .iBlockMultiplier(0.8)
             .speedIncreaseMultiplier(1.2)
-            .scoreMultiplier(0.8)
+            .scoreMultiplier(1.5)  // SRS 표준: 높은 난이도 = 높은 배율
             .lockDelayMultiplier(0.8)
+            .build();
+    }
+    
+    /**
+     * Expert 모드 기본 설정 생성 (SRS 표준)
+     * 
+     * <p>특징:</p>
+     * <ul>
+     *   <li>I형 블록 40% 감소 (매우 불리)</li>
+     *   <li>속도 증가 50% 급격 (매우 빠른 가속)</li>
+     *   <li>점수 200% (전문가 보상 - 최고 배율)</li>
+     *   <li>락 딜레이 40% 감소 (매우 빠른 고정)</li>
+     * </ul>
+     * 
+     * @return Expert 모드 설정
+     */
+    public static DifficultySettings createExpertDefaults() {
+        return DifficultySettings.builder()
+            .displayName("전문가")
+            .iBlockMultiplier(0.6)
+            .speedIncreaseMultiplier(1.5)
+            .scoreMultiplier(2.0)  // SRS 표준: 최고 난이도 = 최고 배율
+            .lockDelayMultiplier(0.6)
             .build();
     }
     
