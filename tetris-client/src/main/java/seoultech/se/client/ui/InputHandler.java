@@ -169,11 +169,18 @@ public class InputHandler {
      * @param gridPane 키 이벤트를 받을 GridPane (게임 보드)
      */
     public void setupKeyboardControls(javafx.scene.layout.GridPane gridPane) {
-        gridPane.sceneProperty().addListener((obs, oldScene, newScene) -> {
-            if (newScene != null) {
-                newScene.setOnKeyPressed(this::handleKeyPress);
-                System.out.println("⌨️  Keyboard controls enabled");
-            }
-        });
+        if (gridPane.getScene() != null) {
+            // Scene이 이미 존재하면 즉시 설정
+            gridPane.getScene().setOnKeyPressed(this::handleKeyPress);
+            System.out.println("⌨️  Keyboard controls enabled");
+        } else {
+            // Scene이 아직 없으면 리스너로 대기 (한 번만 등록)
+            gridPane.sceneProperty().addListener((obs, oldScene, newScene) -> {
+                if (newScene != null && oldScene == null) {
+                    newScene.setOnKeyPressed(this::handleKeyPress);
+                    System.out.println("⌨️  Keyboard controls enabled");
+                }
+            });
+        }
     }
 }

@@ -389,3 +389,11 @@ docker-compose.override.yml
 * 2
 *2
 tetris-client/custom_settings.properties
+
+gradlew
+
+gradlew.bat
+
+gradle/wrapper/gradle-wrapper.jar
+
+*.properties

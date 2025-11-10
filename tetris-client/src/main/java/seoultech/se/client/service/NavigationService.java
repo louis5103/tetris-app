@@ -38,6 +38,9 @@ public class NavigationService {
         stage.setScene(scene);
         stage.setResizable(false);  // 창 크기 조절 불가 유지
         
+        // 화면 크기 CSS 클래스 적용
+        settingsService.applyScreenSizeClass();
+        
         // 새 Scene 크기 가져오기
         stage.sizeToScene();  // Scene 크기에 맞게 Stage 크기 조정
         double newWidth = stage.getWidth();

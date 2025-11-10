@@ -55,8 +55,11 @@ public class TetrisApplication extends Application {
         System.setProperty("java.awt.headless", "false");
         System.setProperty("spring.main.web-application-type", "none");
 
-        springContext = SpringApplication.run(TetrisApplication.class);
-        System.out.println("✅ Spring Boot context initialized with JavaFX");
+        // desktop-client 프로필 명시적 설정
+        SpringApplication app = new SpringApplication(TetrisApplication.class);
+        app.setAdditionalProfiles("desktop-client");
+        springContext = app.run();
+        System.out.println("✅ Spring Boot context initialized with JavaFX (profile: desktop-client)");
     }
 
     /**
@@ -75,6 +78,10 @@ public class TetrisApplication extends Application {
         primaryStage.setTitle("Tetris Project");
         primaryStage.setScene(scene);
         primaryStage.setResizable(false);  // 창 크기 조절 불가
+        
+        // 화면 크기 CSS 클래스 적용
+        settingsService.applyScreenSizeClass();
+        
         primaryStage.show();
 
         System.out.println("✅ JavaFX UI started with main-view.fxml");

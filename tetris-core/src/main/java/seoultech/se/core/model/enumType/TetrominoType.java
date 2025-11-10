@@ -45,7 +45,15 @@ public enum TetrominoType {
             {0, 0, 0},
             {1, 1, 0},
             {0, 1, 1}
-    }, Color.RED, 1, 1);
+    }, Color.RED, 1, 1),
+    
+    /**
+     * 아이템 블록 (1칸짜리)
+     * 아이템 사용 시 테트로미노가 이 타입으로 변환됩니다.
+     */
+    ITEM(new int[][]{
+            {1}
+    }, Color.NONE, 0, 0);
 
     public final int [][] shape;
     public final Color color;
@@ -54,7 +62,8 @@ public enum TetrominoType {
 
 
     public static TetrominoType getRandomTetrominoType() {
-        TetrominoType[] types = TetrominoType.values();
+        // ITEM 타입은 랜덤 생성에서 제외
+        TetrominoType[] types = {I, J, L, O, S, T, Z};
         int randomIndex = (int) (Math.random() * types.length);
         return types[randomIndex];
     }

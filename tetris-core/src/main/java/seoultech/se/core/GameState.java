@@ -1,6 +1,7 @@
 package seoultech.se.core;
 
 import lombok.Data;
+import seoultech.se.core.item.ItemType;
 import seoultech.se.core.model.Cell;
 import seoultech.se.core.model.Tetromino;
 import seoultech.se.core.model.enumType.TetrominoType;
@@ -16,6 +17,13 @@ public class GameState {
     private Tetromino currentTetromino;
     private int currentX;
     private int currentY;
+    
+    // 아이템 시스템 (아케이드 모드)
+    /**
+     * 현재 테트로미노가 아이템 블록인지 여부
+     * null이면 일반 블록, ItemType이 설정되어 있으면 아이템 블록
+     */
+    private ItemType currentItemType;
 
     // Hold 기능 관련 정보
     private boolean holdUsedThisTurn;
@@ -97,6 +105,9 @@ public class GameState {
         // Hold 초기화
         this.heldPiece = null;
         this.holdUsedThisTurn = false;
+        
+        // 아이템 시스템 초기화
+        this.currentItemType = null;
 
         // Lock Delay 초기화
         this.isLockDelayActive = false;
@@ -137,6 +148,9 @@ public class GameState {
         copy.currentTetromino = this.currentTetromino != null ? this.currentTetromino : null;
         copy.currentX = this.currentX;
         copy.currentY = this.currentY;
+        
+        // 아이템 타입 복사
+        copy.currentItemType = this.currentItemType;
 
         // Hold 기능 관련 정보 복사
         copy.holdUsedThisTurn = this.holdUsedThisTurn;

@@ -22,6 +22,32 @@
     -fx-spacing: 1.5em;
 }
 
+.mode-button-container {
+    -fx-spacing: 0.5em;
+}
+
+.mode-settings-icon {
+    -fx-font-size: 1.2em;
+    -fx-min-width: 2.5em;
+    -fx-max-width: 2.5em;
+    -fx-min-height: 2.5em;
+    -fx-max-height: 2.5em;
+    -fx-background-color: rgba(74, 158, 255, 0.2);
+    -fx-text-fill: #4a9eff;
+    -fx-border-color: #4a9eff;
+    -fx-border-width: 0.083em;
+    -fx-border-radius: 0.417em;
+    -fx-background-radius: 0.417em;
+}
+
+.mode-settings-icon:hover {
+    -fx-background-color: rgba(74, 158, 255, 0.4);
+    -fx-text-fill: white;
+    -fx-cursor: hand;
+    -fx-scale-x: 1.1;
+    -fx-scale-y: 1.1;
+}
+
 .settings-box {
     -fx-padding: 1em 0em 1em 3em;
     -fx-spacing: 2em;
@@ -32,4 +58,10 @@
     -fx-text-fill: white;
     -fx-font-size: 1.7em;
     -fx-font-family: "Arial Black";
+}
+
+/* 키보드 및 마우스 네비게이션으로 선택된 버튼 하이라이트 (녹색) */
+.menu-button.highlighted {
+    -fx-background-color: #4CAF50 !important;
+    -fx-cursor: hand;
 }
