@@ -20,9 +20,11 @@ import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 import javafx.stage.Window;
+import seoultech.se.client.config.ApplicationContextProvider;
 import seoultech.se.client.constants.UIConstants;
 import seoultech.se.client.service.KeyMappingService;
 import seoultech.se.client.service.NavigationService;
+import seoultech.se.client.service.SettingsService;
 import seoultech.se.client.ui.BoardRenderer;
 import seoultech.se.client.ui.GameInfoManager;
 import seoultech.se.client.ui.GameLoopManager;
@@ -31,8 +33,6 @@ import seoultech.se.client.ui.ItemInventoryPanel;
 import seoultech.se.client.ui.NotificationManager;
 // import seoultech.se.client.ui.PopupManager; // PopupManager 제거
 import seoultech.se.client.util.ColorMapper;
-import seoultech.se.client.service.SettingsService;
-import seoultech.se.client.config.ApplicationContextProvider;
 import seoultech.se.core.GameState;
 import seoultech.se.core.command.Direction;
 import seoultech.se.core.command.MoveCommand;
@@ -87,10 +87,6 @@ public class GameController {
 
     @Autowired
     private NavigationService navigationService;
-    
-    // ✨ Phase 5: SettingsService 추가
-    @Autowired
-    private seoultech.se.client.service.SettingsService settingsService;
 
     @Autowired
     private SettingsService settingsService;
@@ -434,42 +430,64 @@ public class GameController {
      * 키보드 입력을 처리합니다
      */
     private void setupKeyboardControls() {
-        inputHandler.setupKeyboardControls(boardGridPane);
-        
-        // 아이템 사용 키보드 단축키 추가 (1, 2, 3)
+        // 아이템 시스템이 활성화된 경우 아이템 키와 게임 키를 함께 처리
         if (itemInventoryPanel != null) {
-            boardGridPane.setOnKeyPressed(event -> {
-                // 먼저 게임 상태 확인
-                GameState state = boardController.getGameState();
-                if (state.isGameOver() || state.isPaused()) {
-                    return; // 게임 오버 또는 일시정지 중에는 아이템 사용 불가
-                }
-                
-                // InputHandler의 기존 키 처리
-                inputHandler.handleKeyPress(event);
-                
-                // 아이템 사용 키 처리
-                switch (event.getCode()) {
-                    case DIGIT1:
-                    case NUMPAD1:
-                        itemInventoryPanel.useItemByKey(1);
-                        event.consume();
-                        break;
-                    case DIGIT2:
-                    case NUMPAD2:
-                        itemInventoryPanel.useItemByKey(2);
-                        event.consume();
-                        break;
-                    case DIGIT3:
-                    case NUMPAD3:
-                        itemInventoryPanel.useItemByKey(3);
-                        event.consume();
-                        break;
-                    default:
-                        // 다른 키는 무시
-                        break;
-                }
-            });
+            // Scene이 준비되면 키 이벤트 설정 (한 번만)
+            if (boardGridPane.getScene() != null) {
+                boardGridPane.getScene().setOnKeyPressed(this::handleAllKeyPress);
+                System.out.println("⌨️  Keyboard controls enabled (with item support)");
+            } else {
+                boardGridPane.sceneProperty().addListener((obs, oldScene, newScene) -> {
+                    if (newScene != null && oldScene == null) {
+                        newScene.setOnKeyPressed(this::handleAllKeyPress);
+                        System.out.println("⌨️  Keyboard controls enabled (with item support)");
+                    }
+                });
+            }
+        } else {
+            // 일반 게임 모드는 InputHandler만 사용
+            inputHandler.setupKeyboardControls(boardGridPane);
+        }
+    }
+    
+    /**
+     * 모든 키 입력 처리 (게임 키 + 아이템 키)
+     * Arcade 모드 전용
+     */
+    private void handleAllKeyPress(javafx.scene.input.KeyEvent event) {
+        GameState state = boardController.getGameState();
+        if (state.isGameOver() || state.isPaused()) {
+            return; // 게임 오버 또는 일시정지 중에는 입력 무시
+        }
+        
+        // 먼저 아이템 키 확인
+        boolean isItemKey = false;
+        switch (event.getCode()) {
+            case DIGIT1:
+            case NUMPAD1:
+                itemInventoryPanel.useItemByKey(1);
+                isItemKey = true;
+                break;
+            case DIGIT2:
+            case NUMPAD2:
+                itemInventoryPanel.useItemByKey(2);
+                isItemKey = true;
+                break;
+            case DIGIT3:
+            case NUMPAD3:
+                itemInventoryPanel.useItemByKey(3);
+                isItemKey = true;
+                break;
+            default:
+                // 아이템 키가 아님
+                break;
+        }
+        
+        // 아이템 키가 아니면 일반 게임 키로 처리
+        if (!isItemKey) {
+            inputHandler.handleKeyPress(event);
+        } else {
+            event.consume();
         }
     }
 
@@ -699,6 +717,12 @@ public class GameController {
      */
     private void showPausePopup() {
         try {
+            // Scene이 아직 설정되지 않았다면 팝업을 띄우지 않음
+            if (boardGridPane.getScene() == null) {
+                System.out.println("⚠️ Scene not ready yet, skipping pause popup");
+                return;
+            }
+            
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/view/pause-pop.fxml"));
             
             // Spring 컨텍스트에서 컨트롤러 인스턴스를 가져오도록 설정
@@ -786,6 +810,104 @@ public class GameController {
             alert.setContentText(message);
             alert.showAndWait();
         });
+    }
+    
+    // ========== 오버레이 이벤트 핸들러 ==========
+    
+    /**
+     * 일시정지 오버레이에서 Resume 버튼 클릭 시
+     */
+    @FXML
+    public void handleResumeFromOverlay() {
+        System.out.println("▶️ Resume button clicked from pause overlay");
+        if (pauseOverlay != null) {
+            pauseOverlay.setVisible(false);
+            pauseOverlay.setManaged(false);
+        }
+        // 게임 재개
+        if (gameLoopManager != null) {
+            gameLoopManager.resume();
+        }
+    }
+    
+    /**
+     * 일시정지/게임오버 오버레이에서 Quit 버튼 클릭 시
+     */
+    @FXML
+    public void handleQuitFromOverlay() {
+        System.out.println("🚪 Quit button clicked from overlay");
+        try {
+            // 게임 루프 정지
+            if (gameLoopManager != null) {
+                gameLoopManager.stop();
+            }
+            // 메인 메뉴로 이동
+            navigationService.navigateTo("/view/main-view.fxml");
+        } catch (IOException e) {
+            e.printStackTrace();
+            showError("네비게이션 오류", "메인 메뉴로 돌아가는 데 실패했습니다.");
+        }
+    }
+    
+    /**
+     * 게임오버 오버레이에서 Restart 버튼 클릭 시
+     */
+    @FXML
+    public void handleRestartFromOverlay() {
+        System.out.println("🔄 Restart button clicked from game over overlay");
+        if (gameOverOverlay != null) {
+            gameOverOverlay.setVisible(false);
+            gameOverOverlay.setManaged(false);
+        }
+        // 게임 재시작
+        restartGame();
+    }
+    
+    /**
+     * 게임을 재시작합니다
+     */
+    private void restartGame() {
+        try {
+            System.out.println("🔄 Restarting game...");
+            
+            // 1. 게임 루프 정리
+            if (gameLoopManager != null) {
+                gameLoopManager.cleanup();
+                System.out.println("   ✓ GameLoopManager cleaned up");
+            }
+            
+            // 2. 키보드 이벤트 핸들러 제거
+            javafx.scene.Scene currentScene = boardGridPane.getScene();
+            if (currentScene != null) {
+                currentScene.setOnKeyPressed(null);
+                System.out.println("   ✓ Keyboard handlers removed");
+            }
+            
+            // 3. 오버레이 숨기기
+            if (gameOverOverlay != null) {
+                gameOverOverlay.setVisible(false);
+                gameOverOverlay.setManaged(false);
+            }
+            if (pauseOverlay != null) {
+                pauseOverlay.setVisible(false);
+                pauseOverlay.setManaged(false);
+            }
+            
+            // 4. UI 요소 초기화 (gameOverLabel 숨기기)
+            if (gameOverLabel != null) {
+                gameOverLabel.setVisible(false);
+                gameOverLabel.setManaged(false);
+            }
+            
+            // 5. 게임 재초기화 (현재 gameModeConfig 유지)
+            System.out.println("🎮 Reinitializing game with current config...");
+            startInitialization();
+            
+            System.out.println("✅ Game restarted successfully");
+        } catch (Exception e) {
+            e.printStackTrace();
+            showError("재시작 오류", "게임을 재시작하는 데 실패했습니다.");
+        }
     }
 }
 

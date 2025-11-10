@@ -118,44 +118,23 @@
                         </VBox>
                     </VBox>
                     
-                    <!-- 세 번째 라인: Line Clear Notification -->
-                    <Label fx:id="lineClearNotificationLabel" 
-                           text="" 
-                           styleClass="line-clear-notification-label" 
-                           alignment="CENTER"
-                           visible="false"
-                           managed="false"/>
-                </VBox>
-                
-                <!-- Pause 팝업 오버레이 (평소에는 숨김) -->
-                <!-- <VBox fx:id="pauseOverlay" 
-                      alignment="CENTER" 
-                      styleClass="popup-overlay"
-                      visible="false"
-                      managed="false"
-                      StackPane.alignment="CENTER">
-                    <VBox alignment="CENTER" styleClass="popup-container">
-                        <Label text="PAUSED" styleClass="popup-title"/>
-                        <Button text="Resume" styleClass="menu-button-middle" onAction="#handleResumeFromOverlay"/>
-                        <Button text="Quit" styleClass="menu-button-middle" onAction="#handleQuitFromOverlay"/>
+                    <!-- Game Over 팝업 오버레이 (평소에는 숨김) -->
+                    <VBox fx:id="gameOverOverlay" 
+                          alignment="CENTER" 
+                          styleClass="popup-overlay"
+                          visible="false"
+                          managed="false"
+                          StackPane.alignment="CENTER">
+                        <VBox alignment="CENTER" styleClass="popup-container">
+                            <Label text="GAME OVER" styleClass="popup-title"/>
+                            <Label text="Your Score" styleClass="popup-label"/>
+                            <Label fx:id="finalScoreLabel" text="0" styleClass="popup-score"/>
+                            <HBox styleClass="gameover-buttons" alignment="CENTER">
+                                <Button text="Main" styleClass="menu-button-small" onAction="#handleQuitFromOverlay"/>
+                                <Button text="Restart" styleClass="menu-button-small" onAction="#handleRestartFromOverlay"/>
+                            </HBox>
+                        </VBox>
                     </VBox>
-                </VBox> -->
-                
-                <!-- Game Over 팝업 오버레이 (평소에는 숨김) -->
-                <!-- <VBox fx:id="gameOverOverlay" 
-                      alignment="CENTER" 
-                      styleClass="popup-overlay"
-                      visible="false"
-                      managed="false"
-                      StackPane.alignment="CENTER">
-                    <VBox alignment="CENTER" styleClass="popup-container">
-                        <Label text="GAME OVER" styleClass="popup-title"/>
-                        <Label text="Your Score" styleClass="popup-label"/>
-                        <Label fx:id="finalScoreLabel" text="0" styleClass="popup-score"/>
-                        <HBox styleClass="gameover-buttons" alignment="CENTER">
-                            <Button text="Main" styleClass="menu-button-small" onAction="#handleMainFromOverlay"/>
-                            <Button text="Restart" styleClass="menu-button-small" onAction="#handleRestartFromOverlay"/>
-                        </HBox>
                     
                     <!-- Mode Selection 팝업 오버레이 (평소에는 숨김) -->
                     <VBox fx:id="modeSelectionOverlay" 

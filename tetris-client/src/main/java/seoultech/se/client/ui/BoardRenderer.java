@@ -145,14 +145,13 @@ public class BoardRenderer {
                         rect.getStyleClass().removeAll(UIConstants.ALL_TETROMINO_COLOR_CLASSES);
                         if (colorClass != null) {
                             rect.getStyleClass().add(colorClass);
+                        }
                         // 아이템 블록인 경우 특별한 스타일 적용
                         if (isItemBlock) {
                             applyItemBlockStyle(rect, itemType);
                         } else {
                             // 일반 블록
                             rect.setFill(ColorMapper.toJavaFXColor(color));
-                            
-                            String colorClass = ColorMapper.toCssClass(color);
                             rect.getStyleClass().removeAll(UIConstants.ALL_TETROMINO_COLOR_CLASSES);
                             rect.getStyleClass().removeAll("range-bomb-block", "cross-bomb-block", "line-clear-block", "selectable-block");
                             if (colorClass != null) {

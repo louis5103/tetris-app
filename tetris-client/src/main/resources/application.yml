@@ -29,7 +29,7 @@ spring:
     basename: messages
     encoding: UTF-8
   
-  # JPA 설정 (H2 데이터베이스)
+  # JPA 설정 - desktop-client 프로필에서 MySQL 설정으로 오버라이드됨
   jpa:
     hibernate:
       ddl-auto: update
@@ -38,17 +38,8 @@ spring:
       hibernate:
         format_sql: true
   
-  # H2 데이터베이스 설정
-  datasource:
-    url: jdbc:h2:file:./data/tetris;AUTO_SERVER=TRUE
-    driver-class-name: org.h2.Driver
-    username: sa
-    password:
-  
-  h2:
-    console:
-      enabled: true
-      path: /h2-console
+  # 데이터베이스 설정은 application-desktop-client.properties에서 관리
+  # (MySQL 사용 - docker-compose.yml 참고)
 
 # =============================================================================
 # JavaFX 설정

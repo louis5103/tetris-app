@@ -8,15 +8,12 @@ import org.springframework.stereotype.Component;
 
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
-import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
-import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.scene.input.KeyEvent;
-import javafx.stage.Stage;
 import javafx.scene.control.Button;
+import javafx.stage.Stage;
 import seoultech.se.backend.service.GameService;
 import seoultech.se.client.TetrisApplication;
 import seoultech.se.client.config.ApplicationContextProvider;
@@ -49,9 +46,11 @@ public class MainController extends BaseController {
     private NavigationService navigationService;
 
    @FXML
-    private Button startButton;
+    private Button classicButton;
     @FXML
-    private Button itemStartButton;
+    private Button arcadeButton;
+    @FXML
+    private Button multiplayerButton;
     @FXML
     private Button scoreButton;
     @FXML
@@ -78,49 +77,109 @@ public class MainController extends BaseController {
         System.out.println("📊 Service Status: " + gameService.getStatus());
 
         buttons = new Button[] {
-            startButton,
-            itemStartButton,
-            scoreButton,
-            endButton,
-            settingsButton
+            classicButton,      // 0
+            arcadeButton,       // 1
+            multiplayerButton,  // 2
+            scoreButton,        // 3
+            endButton           // 4
         };
 
-        // rootPane이 키 이벤트를 받을 수 있도록 설정
-        rootPane.setFocusTraversable(true);
-        rootPane.addEventFilter(KeyEvent.KEY_PRESSED, this::handleKeyPressed);
-
-        // Scene이 준비된 후 초기 포커스 설정
-        rootPane.sceneProperty().addListener((obs, oldScene, newScene) -> {
-            if (newScene != null) {
-                Platform.runLater(() -> rootPane.requestFocus());
+        // 버튼이 모두 로드되었는지 확인
+        System.out.println("📋 Button Array Order:");
+        boolean allButtonsLoaded = true;
+        for (int i = 0; i < buttons.length; i++) {
+            if (buttons[i] == null) {
+                allButtonsLoaded = false;
+                System.err.println("⚠️ Button " + i + " not loaded from FXML");
+                break;
+            } else {
+                System.out.println("  [" + i + "] " + buttons[i].getText() + " (fx:id=" + buttons[i].getId() + ")");
             }
-        });
+        }
+
+        if (!allButtonsLoaded) {
+            System.err.println("❌ Not all buttons loaded. Skipping key navigation setup.");
+            return;
+        }
+
+        // 각 버튼에 이벤트 리스너 추가
+        for (int i = 0; i < buttons.length; i++) {
+            final int index = i;
+            
+            // 1. 포커스 리스너 (Tab 네비게이션)
+            buttons[i].focusedProperty().addListener((obs, wasFocused, isNowFocused) -> {
+                if (isNowFocused && currentButtonIndex != index) {
+                    // Tab으로 이동했을 때만 currentButtonIndex 업데이트
+                    System.out.println("🔄 Focus changed by Tab: " + currentButtonIndex + " → " + index);
+                    currentButtonIndex = index;
+                    syncButtonHighlight(); // requestFocus 없이 하이라이트만 동기화
+                }
+            });
+            
+            // 2. 마우스 진입 이벤트 (호버 시 하이라이트 및 포커스 이동)
+            buttons[i].setOnMouseEntered(event -> {
+                if (currentButtonIndex != index) {
+                    currentButtonIndex = index;
+                    buttons[index].requestFocus(); // 포커스도 이동
+                    syncButtonHighlight();
+                    System.out.println("🖱️  Mouse hover: focus moved to button " + index + " [" + buttons[index].getText() + "]");
+                }
+            });
+            
+            // 3. 마우스 이탈 이벤트는 제거하지 않음 (선택 상태 유지)
+        }
+
+        // Scene이 준비되면 키 이벤트 설정 (한 번만 등록)
+        if (rootPane.getScene() != null) {
+            // Scene이 이미 존재하면 즉시 등록
+            rootPane.getScene().addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED, this::handleKeyPressed);
+            System.out.println("🎯 Key navigation setup completed on Scene");
+        } else {
+            // Scene이 아직 없으면 리스너로 대기
+            rootPane.sceneProperty().addListener((obs, oldScene, newScene) -> {
+                if (newScene != null && oldScene == null) {
+                    // Scene이 처음 설정될 때만 등록
+                    newScene.addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED, this::handleKeyPressed);
+                    System.out.println("🎯 Scene key handler registered");
+                }
+            });
+        }
         
         // 초기 버튼 하이라이트
         updateButtonHighlight();
+        
+        System.out.println("🎮 Key navigation: ↑/↓ to move, Enter to select");
+        System.out.println("🖱️  Mouse: Click buttons directly or use Tab to navigate");
     }
 
     /**
      * 키 입력 이벤트를 처리하는 메서드
      */
     private void handleKeyPressed(javafx.scene.input.KeyEvent event) {
-        System.out.println("🔑 Key pressed: " + event.getCode());
+        // COMMAND 등 수정자 키는 무시
+        if (event.getCode().isModifierKey()) {
+            return;
+        }
+        
+        System.out.println("🔑 Key pressed: " + event.getCode() + " | Current: " + currentButtonIndex);
         
         switch (event.getCode()) {
             case UP:
+                int prevIndex = currentButtonIndex;
                 currentButtonIndex = (currentButtonIndex - 1 + buttons.length) % buttons.length;
                 updateButtonHighlight();
-                System.out.println("⬆️ Moved to button: " + currentButtonIndex);
+                System.out.println("⬆️ UP: " + prevIndex + " → " + currentButtonIndex + " [" + buttons[currentButtonIndex].getText() + "]");
                 event.consume();
                 break;
             case DOWN:
+                prevIndex = currentButtonIndex;
                 currentButtonIndex = (currentButtonIndex + 1) % buttons.length;
                 updateButtonHighlight();
-                System.out.println("⬇️ Moved to button: " + currentButtonIndex);
+                System.out.println("⬇️ DOWN: " + prevIndex + " → " + currentButtonIndex + " [" + buttons[currentButtonIndex].getText() + "]");
                 event.consume();
                 break;
             case ENTER:
-                System.out.println("✅ Enter pressed - Firing button: " + currentButtonIndex);
+                System.out.println("✅ ENTER: Firing button " + currentButtonIndex + " [" + buttons[currentButtonIndex].getText() + "]");
                 buttons[currentButtonIndex].fire();
                 event.consume();
                 break;
@@ -130,15 +189,33 @@ public class MainController extends BaseController {
     }
 
     /**
-     * 현재 선택된 버튼을 시각적으로 강조
+     * 현재 선택된 버튼을 시각적으로 강조하고 포커스 이동
+     * (키보드 화살표 키 사용 시)
      */
     private void updateButtonHighlight() {
-        buttons[currentButtonIndex].requestFocus();
+        syncButtonHighlight();
+        
+        // 키보드 네비게이션일 때만 포커스 이동
+        if (currentButtonIndex >= 0 && currentButtonIndex < buttons.length) {
+            buttons[currentButtonIndex].requestFocus();
+            System.out.println("🎯 Highlighted button " + currentButtonIndex + ": " + buttons[currentButtonIndex].getText());
+        }
     }
     
-
-    private void setupKeyNavigation() {
-        // 이 메서드는 더 이상 필요하지 않으므로 내용을 비우거나 삭제할 수 있습니다.
+    /**
+     * 하이라이트만 동기화 (포커스 이동 없이)
+     * (Tab 네비게이션 또는 마우스 클릭 시)
+     */
+    private void syncButtonHighlight() {
+        // 모든 버튼의 하이라이트 제거
+        for (Button button : buttons) {
+            button.getStyleClass().remove("highlighted");
+        }
+        
+        // 현재 버튼에 하이라이트 추가
+        if (currentButtonIndex >= 0 && currentButtonIndex < buttons.length) {
+            buttons[currentButtonIndex].getStyleClass().add("highlighted");
+        }
     }
 
     /**
@@ -416,8 +493,12 @@ public class MainController extends BaseController {
      */
     private void startGameWithConfig(ActionEvent event, GameModeConfig config, String modeName) {
         try {
-            // 1단계: 현재 Stage 가져오기
-            Stage stage = (Stage) ((Node) event.getSource()).getScene().getWindow();
+            // 1단계: 현재 Stage 가져오기 (rootPane을 통해 안전하게 가져오기)
+            Stage stage = (Stage) rootPane.getScene().getWindow();
+            if (stage == null) {
+                System.err.println("❌ Cannot get Stage from rootPane");
+                return;
+            }
             
             // 2단계: game-view.fxml 로드
             FXMLLoader loader = new FXMLLoader(

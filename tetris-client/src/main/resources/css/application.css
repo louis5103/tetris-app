@@ -75,20 +75,19 @@
     -fx-border-radius: 0.667em;
 }
 
-.menu-button:hover, .menu-button:focused {
-    -fx-background-color: #4CAF50;
+/* 호버 효과를 .highlighted로 통일하기 위해 제거 */
+.menu-button:hover {
     -fx-cursor: hand;
 }
 
+/* :focused는 제거 (JavaFX에서 포커스 시각화 안 함) */
+
 .menu-button-middle:hover, .menu-button-middle:focused {
-    -fx-background-color: #4CAF50;
     -fx-cursor: hand;
 }
 
 .menu-button-small:hover, .menu-button-small:focused {
-    -fx-background-color: #4CAF50;
     -fx-cursor: hand;
-    -fx-effect: dropshadow(gaussian, rgba(255,255,255,0.5), 0.833em, 0, 0, 0);
 }
 
 /* ========== 설정 버튼 ========== */
