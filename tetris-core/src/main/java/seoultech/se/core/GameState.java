@@ -24,6 +24,12 @@ public class GameState {
      * null이면 일반 블록, ItemType이 설정되어 있으면 아이템 블록
      */
     private ItemType currentItemType;
+    
+    /**
+     * 다음 블록에 포함될 아이템 타입 (Phase 2)
+     * null이면 일반 블록, ItemType이 설정되어 있으면 다음 블록에 아이템 포함
+     */
+    private ItemType nextBlockItemType;
 
     // Hold 기능 관련 정보
     private boolean holdUsedThisTurn;
@@ -108,6 +114,7 @@ public class GameState {
         
         // 아이템 시스템 초기화
         this.currentItemType = null;
+        this.nextBlockItemType = null;
 
         // Lock Delay 초기화
         this.isLockDelayActive = false;
@@ -151,6 +158,7 @@ public class GameState {
         
         // 아이템 타입 복사
         copy.currentItemType = this.currentItemType;
+        copy.nextBlockItemType = this.nextBlockItemType;
 
         // Hold 기능 관련 정보 복사
         copy.holdUsedThisTurn = this.holdUsedThisTurn;

@@ -15,18 +15,17 @@ import seoultech.se.core.GameState;
 /**
  * 아이템 관리자
  * 
- * 게임 내 아이템의 생성, 관리, 사용을 담당하는 클래스입니다.
- * Singleton 패턴을 사용하여 게임 전체에서 하나의 인스턴스만 존재합니다.
+ * Phase 2: Req2 준수 - 10줄 카운터 기반 아이템 생성
+ * 
+ * 게임 내 아이템의 생성, 관리를 담당하는 클래스입니다.
  * 
  * 주요 기능:
- * - 아이템 팩토리: 아이템 타입별로 인스턴스 생성
+ * - 10줄 카운터: 10줄 클리어마다 아이템 생성 (Req2 명세)
  * - 아이템 활성화 관리: 설정에 따라 아이템 활성화/비활성화
- * - 아이템 드롭: 확률에 따라 아이템 생성
- * - 아이템 인벤토리: 플레이어가 획득한 아이템 관리
+ * - 랜덤 아이템 선택: 활성화된 아이템 중 무작위 선택
  * 
  * 설계 원칙:
  * - Factory Pattern: 아이템 생성을 중앙화
- * - Strategy Pattern: 각 아이템의 효과를 독립적으로 관리
  * - Thread-Safe: ConcurrentHashMap 사용
  */
 public class ItemManager {
@@ -38,8 +37,9 @@ public class ItemManager {
     private final Map<ItemType, Item> itemPrototypes;
     
     /**
-     * 아이템 드롭 확률 (기본: 10%)
+     * 아이템 드롭 확률 (Deprecated - Req2에서는 10줄 카운터 사용)
      */
+    @Deprecated
     private double itemDropRate;
     
     /**
@@ -51,6 +51,12 @@ public class ItemManager {
      * 랜덤 생성기
      */
     private final Random random;
+    
+    /**
+     * 10줄 카운터 (Req2 명세)
+     * 다음 아이템이 나올 때까지 남은 줄 수
+     */
+    private int linesUntilNextItem = 10;
     
     /**
      * 생성자
@@ -81,14 +87,13 @@ public class ItemManager {
     
     /**
      * 프로토타입 등록
-     * 각 아이템 타입에 대한 프로토타입 인스턴스를 생성합니다.
+     * Phase 2: 기존 아이템 제거, 향후 필요 시 추가
      */
     private void registerPrototypes() {
-        // 4가지 기본 아이템 등록
-        registerItem(new seoultech.se.core.item.impl.BombItem());
-        registerItem(new seoultech.se.core.item.impl.PlusItem());
-        registerItem(new seoultech.se.core.item.impl.SpeedResetItem());
-        registerItem(new seoultech.se.core.item.impl.BonusScoreItem());
+        // Phase 2: 기존 아이템 제거됨
+        // Phase 3에서 LINE_CLEAR 아이템 추가 예정
+        // Phase 4에서 WEIGHT_BOMB 아이템 추가 예정
+        System.out.println("📦 ItemManager: No items registered yet (Phase 2)");
     }
     
     /**
@@ -160,36 +165,104 @@ public class ItemManager {
     }
     
     /**
-     * 아이템을 드롭할지 결정
+     * 아이템을 드롭할지 결정 (Deprecated - Req2에서는 10줄 카운터 사용)
      * 
      * @return 아이템을 드롭하면 true
+     * @deprecated Req2 명세에 따라 10줄 카운터 기반으로 변경됨
      */
+    @Deprecated
     public boolean shouldDropItem() {
         return random.nextDouble() < itemDropRate;
     }
     
     /**
-     * 랜덤 아이템 생성
+     * 라인 클리어 시 아이템 드롭 체크 (Req2 명세)
+     * 
+     * 10줄을 클리어할 때마다 아이템을 생성합니다.
+     * 확률 기반이 아닌 카운터 기반입니다.
+     * 
+     * @param linesCleared 이번에 클리어된 줄 수
+     * @return 생성된 아이템 타입 (없으면 null)
+     */
+    public ItemType checkAndGenerateItem(int linesCleared) {
+        if (linesCleared <= 0) {
+            return null;
+        }
+        
+        linesUntilNextItem -= linesCleared;
+        
+        if (linesUntilNextItem <= 0) {
+            // 10줄 달성! 아이템 생성
+            linesUntilNextItem = 10;  // 카운터 리셋
+            ItemType itemType = generateRandomItemType();
+            
+            if (itemType != null) {
+                System.out.println("🎁 [ItemManager] Item generated after 10 lines: " + itemType);
+                System.out.println("   - Lines until next item: " + linesUntilNextItem);
+            }
+            
+            return itemType;
+        } else {
+            System.out.println("📊 [ItemManager] Lines cleared: " + linesCleared + 
+                ", remaining: " + linesUntilNextItem);
+            return null;
+        }
+    }
+    
+    /**
+     * 다음 아이템까지 남은 줄 수 반환
+     * 
+     * @return 남은 줄 수
+     */
+    public int getLinesUntilNextItem() {
+        return linesUntilNextItem;
+    }
+    
+    /**
+     * 10줄 카운터 리셋
+     */
+    public void resetLineCounter() {
+        this.linesUntilNextItem = 10;
+        System.out.println("🔄 [ItemManager] Line counter reset to 10");
+    }
+    
+    /**
+     * 랜덤 아이템 타입 생성
      * 활성화된 아이템 중에서 무작위로 하나를 선택합니다.
      * 
-     * @return 생성된 아이템, 활성화된 아이템이 없으면 null
+     * @return 생성된 아이템 타입, 활성화된 아이템이 없으면 null
      */
-    public Item generateRandomItem() {
+    public ItemType generateRandomItemType() {
         if (enabledItemTypes.isEmpty()) {
-            System.out.println("⚠️ No enabled items to generate");
+            System.out.println("⚠️ [ItemManager] No enabled items to generate");
             return null;
         }
         
         List<ItemType> enabledList = new ArrayList<>(enabledItemTypes);
         ItemType randomType = enabledList.get(random.nextInt(enabledList.size()));
         
-        Item prototype = itemPrototypes.get(randomType);
+        return randomType;
+    }
+    
+    /**
+     * 랜덤 아이템 생성 (Deprecated)
+     * 
+     * @return 생성된 아이템, 활성화된 아이템이 없으면 null
+     * @deprecated Phase 2에서 generateRandomItemType()으로 변경됨
+     */
+    @Deprecated
+    public Item generateRandomItem() {
+        ItemType itemType = generateRandomItemType();
+        if (itemType == null) {
+            return null;
+        }
+        
+        Item prototype = itemPrototypes.get(itemType);
         if (prototype != null) {
-            System.out.println("🎁 Item generated: " + randomType);
             return prototype;
         }
         
-        System.out.println("⚠️ No prototype found for item type: " + randomType);
+        System.out.println("⚠️ No prototype found for item type: " + itemType);
         return null;
     }
     
