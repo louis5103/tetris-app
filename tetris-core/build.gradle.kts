@@ -12,13 +12,16 @@ plugins {
 description = "Tetris Core Domain Logic"
 
 dependencies {
+    // 🌱 Spring Framework (Configuration 및 DI용)
+    implementation(libs.backend.spring.boot.starter)
+    
     // 📊 Utility Libraries
     implementation(libs.common.commons.lang3)
     
     // ✅ Validation (설정값 검증용)
     implementation(libs.common.jakarta.validation.api)
     
-    // �️ Development Tools (공통 의존성)
+    // 🛠️ Development Tools (공통 의존성)
     compileOnly(libs.common.lombok)
     annotationProcessor(libs.common.lombok)
     testCompileOnly(libs.common.lombok)

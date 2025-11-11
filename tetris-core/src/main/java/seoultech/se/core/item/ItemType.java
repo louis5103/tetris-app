@@ -31,7 +31,27 @@ public enum ItemType {
      * - 바닥/블록에 닿으면: 좌우 이동 불가, 아래로만 이동
      * - 떨어지면서 아래에 있는 모든 블록 제거
      */
-    WEIGHT_BOMB("Weight Bomb", "⚓", "Clears all blocks below while falling");
+    WEIGHT_BOMB("Weight Bomb", "⚓", "Clears all blocks below while falling"),
+    
+    /**
+     * Plus 아이템 - 십자 모양으로 블록 제거
+     */
+    PLUS("Plus", "+", "Clears blocks in a plus shape"),
+    
+    /**
+     * Speed Reset 아이템 - 속도를 초기화
+     */
+    SPEED_RESET("Speed Reset", "S", "Resets falling speed"),
+    
+    /**
+     * Bonus Score 아이템 - 보너스 점수
+     */
+    BONUS_SCORE("Bonus Score", "B", "Grants bonus score"),
+    
+    /**
+     * Bomb 아이템 - 폭발 범위 제거
+     */
+    BOMB("Bomb", "💣", "Clears blocks in explosion range");
     
     /**
      * 아이템 표시 이름

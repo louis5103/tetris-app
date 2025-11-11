@@ -4,6 +4,7 @@ import seoultech.se.core.GameState;
 import seoultech.se.core.config.GameModeConfig;
 import seoultech.se.core.item.ItemManager;
 import seoultech.se.core.item.ItemType;
+import seoultech.se.core.model.enumType.TetrominoType;
 
 /**
  * 아케이드 게임 엔진
