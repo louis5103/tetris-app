@@ -31,6 +31,12 @@ import seoultech.se.core.GameState;
 public class ItemManager {
     
     /**
+     * 아이템 생성 간격 (줄 수)
+     * Req2 명세: 10줄마다 아이템 생성
+     */
+    private static final int LINES_PER_ITEM = 2;
+    
+    /**
      * 아이템 팩토리 맵
      * 각 아이템 타입에 대한 팩토리 함수를 저장
      */
@@ -53,10 +59,10 @@ public class ItemManager {
     private final Random random;
     
     /**
-     * 10줄 카운터 (Req2 명세)
-     * 다음 아이템이 나올 때까지 남은 줄 수
+     * 다음 아이템까지 남은 줄 수 (Req2 명세)
+     * LINES_PER_ITEM 값으로 초기화되며, 라인 클리어 시마다 감소
      */
-    private int linesUntilNextItem = 10;
+    private int linesUntilNextItem = LINES_PER_ITEM;
     
     /**
      * 생성자
@@ -83,6 +89,19 @@ public class ItemManager {
      */
     public ItemManager() {
         this(0.1, EnumSet.allOf(ItemType.class));
+    }
+    
+    /**
+     * 테스트용 생성자 (아이템 생성 간격 커스터마이징)
+     * 
+     * @param itemDropRate 아이템 드롭 확률
+     * @param enabledItemTypes 활성화할 아이템 타입들
+     * @param linesPerItem 아이템 생성 간격 (줄 수)
+     */
+    public ItemManager(double itemDropRate, Set<ItemType> enabledItemTypes, int linesPerItem) {
+        this(itemDropRate, enabledItemTypes);
+        this.linesUntilNextItem = linesPerItem;
+        System.out.println("🧪 [ItemManager] Custom lines per item: " + linesPerItem);
     }
     
     /**
@@ -201,12 +220,12 @@ public class ItemManager {
         linesUntilNextItem -= linesCleared;
         
         if (linesUntilNextItem <= 0) {
-            // 10줄 달성! 아이템 생성
-            linesUntilNextItem = 10;  // 카운터 리셋
+            // LINES_PER_ITEM 줄 달성! 아이템 생성
+            linesUntilNextItem = LINES_PER_ITEM;  // 카운터 리셋
             ItemType itemType = generateRandomItemType();
             
             if (itemType != null) {
-                System.out.println("🎁 [ItemManager] Item generated after 10 lines: " + itemType);
+                System.out.println("🎁 [ItemManager] Item generated after " + LINES_PER_ITEM + " lines: " + itemType);
                 System.out.println("   - Lines until next item: " + linesUntilNextItem);
             }
             
@@ -228,11 +247,11 @@ public class ItemManager {
     }
     
     /**
-     * 10줄 카운터 리셋
+     * 라인 카운터 리셋
      */
     public void resetLineCounter() {
-        this.linesUntilNextItem = 10;
-        System.out.println("🔄 [ItemManager] Line counter reset to 10");
+        this.linesUntilNextItem = LINES_PER_ITEM;
+        System.out.println("🔄 [ItemManager] Line counter reset to " + LINES_PER_ITEM);
     }
     
     /**

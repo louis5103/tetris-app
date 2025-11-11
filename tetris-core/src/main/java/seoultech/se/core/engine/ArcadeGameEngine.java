@@ -313,25 +313,58 @@ public class ArcadeGameEngine extends ClassicGameEngine {
         
         // 1. Phase 4: 무게추 최종 처리 (고정 전)
         int weightBombScore = 0;
+        GameState stateAfterWeightBomb = state;
+        
         if (state.getCurrentTetromino().getType() == seoultech.se.core.model.enumType.TetrominoType.WEIGHT_BOMB) {
             // 무게추 위치 계산
             int[] weightBombX = seoultech.se.core.item.impl.WeightBombItem.getWeightBombXPositions(state);
             int weightBombY = state.getCurrentY();
             
+            // 🔥 CRITICAL FIX: deepCopy 후 블록 제거
+            stateAfterWeightBomb = state.deepCopy();
+            
             // 수직 경로의 모든 블록 제거
             int blocksCleared = seoultech.se.core.item.impl.WeightBombItem.clearVerticalPath(
-                state, weightBombX, weightBombY
+                stateAfterWeightBomb, weightBombX, weightBombY
             );
             
             // 점수 계산 (블록당 10점)
             weightBombScore = blocksCleared * 10;
             
-            System.out.println("⚓ [ArcadeGameEngine] WEIGHT_BOMB final clear: " + 
+            System.out.println("⚓ [ArcadeGameEngine] WEIGHT_BOMB cleared: " + 
                 blocksCleared + " blocks, " + weightBombScore + " points");
+            
+            // 🔥 CRITICAL FIX: 블록 제거 후 무게추를 다시 아래로 떨어뜨림
+            if (blocksCleared > 0) {
+                int newY = stateAfterWeightBomb.getCurrentY();
+                int maxDropDistance = stateAfterWeightBomb.getBoardHeight();
+                int dropCount = 0;
+                
+                // 바닥까지 떨어뜨리기 (무한 루프 방지)
+                while (isValidPosition(stateAfterWeightBomb, 
+                                      stateAfterWeightBomb.getCurrentTetromino(), 
+                                      stateAfterWeightBomb.getCurrentX(), 
+                                      newY + 1) && dropCount < maxDropDistance) {
+                    newY++;
+                    dropCount++;
+                }
+                
+                // 무한 루프 감지
+                if (dropCount >= maxDropDistance) {
+                    System.err.println("⚠️ [ArcadeGameEngine] WEIGHT_BOMB drop exceeded max distance!");
+                    System.err.println("   - Current Y: " + stateAfterWeightBomb.getCurrentY());
+                    System.err.println("   - Board height: " + maxDropDistance);
+                }
+                
+                stateAfterWeightBomb.setCurrentY(newY);
+                
+                System.out.println("⚓ [ArcadeGameEngine] WEIGHT_BOMB dropped to Y=" + newY + 
+                    " (dropped " + dropCount + " rows)");
+            }
         }
         
         // 2. 기본 고정 처리 (부모 클래스)
-        GameState newState = super.lockTetromino(state);
+        GameState newState = super.lockTetromino(stateAfterWeightBomb);
         
         // 게임 오버 시 early return
         if (newState.isGameOver()) {

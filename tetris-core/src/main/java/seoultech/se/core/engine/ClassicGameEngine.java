@@ -276,6 +276,9 @@ public class ClassicGameEngine implements GameEngine {
      * 2. Hold가 비어있으면: 현재 블록 보관 + Next에서 새 블록 가져오기
      * 3. Hold에 블록이 있으면: 현재 블록과 Hold 블록 교체
      * 
+     * Classic 모드는 아이템이 없으므로 순수한 테트로미노만 처리합니다.
+     * Arcade 모드에서 아이템 Hold가 필요한 경우, ArcadeGameEngine에서 이 메서드를 오버라이드하여 구현합니다.
+     * 
      * @param state 현재 게임 상태
      * @return 새로운 게임 상태 (Hold 실패 시 원본 상태 반환)
      */
@@ -396,6 +399,8 @@ public class ClassicGameEngine implements GameEngine {
         Tetromino lockedTetromino = state.getCurrentTetromino();
         int lockedX = state.getCurrentX();
         int lockedY = state.getCurrentY();
+        int lockedPivotX = state.getCurrentX();  // Pivot 위치 저장 (아이템 효과 중심점)
+        int lockedPivotY = state.getCurrentY();  // Pivot 위치 저장
 
         // T-Spin 감지 (블록이 고정되기 전에 체크)
         boolean isTSpin = detectTSpin(state);
@@ -425,6 +430,8 @@ public class ClassicGameEngine implements GameEngine {
                         newState.setLastLockedTetromino(lockedTetromino);
                         newState.setLastLockedX(lockedX);
                         newState.setLastLockedY(lockedY);
+                        newState.setLastLockedPivotX(lockedPivotX);
+                        newState.setLastLockedPivotY(lockedPivotY);
                         newState.setLastLinesCleared(0);
                         newState.setLastClearedRows(new int[0]);
                         newState.setLastScoreEarned(0);
@@ -441,6 +448,11 @@ public class ClassicGameEngine implements GameEngine {
         // Phase 3: 아이템 블록인 경우 'L' 마커 추가
         java.util.List<int[]> blockPositions = new java.util.ArrayList<>();
         
+        // 🔥 CRITICAL FIX: 실제로 Lock된 첫 번째 블록의 위치 저장
+        // pivot이 보드 밖에 있을 수 있으므로, 실제 블록 위치를 추적
+        int firstBlockX = -1;
+        int firstBlockY = -1;
+        
         for(int row = 0; row < shape.length; row++) {
             for(int col = 0; col < shape[row].length; col++) {
                 if (shape[row][col] == 1) {
@@ -455,9 +467,21 @@ public class ClassicGameEngine implements GameEngine {
                         
                         // 블록 위치 저장 (아이템 마커 추가용)
                         blockPositions.add(new int[]{absY, absX});
+                        
+                        // 🔥 첫 번째 블록 위치 기록 (아이템 효과 적용 위치)
+                        if (firstBlockX == -1) {
+                            firstBlockX = absX;
+                            firstBlockY = absY;
+                        }
                     }
                 }
             }
+        }
+        
+        // 🔥 실제 블록 위치를 lastLocked 변수에 업데이트
+        if (firstBlockX != -1) {
+            lockedX = firstBlockX;
+            lockedY = firstBlockY;
         }
         
         // Phase 3: 'L' 마커 추가 (아이템 블록인 경우)
@@ -525,6 +549,8 @@ public class ClassicGameEngine implements GameEngine {
         newState.setLastLockedTetromino(lockedTetromino);
         newState.setLastLockedX(lockedX);
         newState.setLastLockedY(lockedY);
+        newState.setLastLockedPivotX(lockedPivotX);  // Pivot X 위치 저장
+        newState.setLastLockedPivotY(lockedPivotY);  // Pivot Y 위치 저장
         newState.setLastLeveledUp(leveledUp);
         
         return newState;
@@ -668,18 +694,29 @@ public class ClassicGameEngine implements GameEngine {
         for (int row = state.getBoardHeight() - 1; row >= 0; row--) {
             boolean isFullLine = true;
             int occupiedCount = 0;
+            boolean hasLineMarker = false;  // 'L' 마커 체크
 
             for(int col = 0; col < state.getBoardWidth(); col++) {
-                if(!state.getGrid()[row][col].isOccupied()) {
+                Cell cell = state.getGrid()[row][col];
+                if(!cell.isOccupied()) {
                     isFullLine = false;
                 } else {
                     occupiedCount++;
                 }
+                
+                // 🔥 FIX: 'L' 마커가 있는지 확인
+                if (cell.hasItemMarker() && 
+                    cell.getItemMarker() == seoultech.se.core.item.ItemType.LINE_CLEAR) {
+                    hasLineMarker = true;
+                }
             }
 
-            if (isFullLine) {
+            // 🔥 FIX: 'L' 마커가 있는 줄은 일반 라인 클리어에서 제외 (ArcadeGameEngine에서 처리)
+            if (isFullLine && !hasLineMarker) {
                 clearedRowsList.add(row);
                 System.out.println("✨ [ClassicGameEngine] Full line detected at row " + row);
+            } else if (isFullLine && hasLineMarker) {
+                System.out.println("Ⓛ [ClassicGameEngine] Full line with 'L' marker at row " + row + " - skipping (will be handled by ArcadeGameEngine)");
             } else if (occupiedCount > 0) {
                 // 디버그: 부분적으로 채워진 줄 정보
                 System.out.println("📊 [ClassicGameEngine] Row " + row + ": " + occupiedCount + "/" + state.getBoardWidth() + " cells occupied");

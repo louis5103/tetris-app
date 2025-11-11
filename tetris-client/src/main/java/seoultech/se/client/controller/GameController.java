@@ -368,8 +368,16 @@ public class GameController {
                 // CSS 클래스 추가
                 rect.getStyleClass().add(UIConstants.BOARD_CELL_CLASS);
 
-                // GridPane에 추가
-                boardGridPane.add(rect, col, row);
+                // ✨ StackPane으로 감싸서 아이템 마커 오버레이 가능하도록
+                javafx.scene.layout.StackPane cellPane = new javafx.scene.layout.StackPane();
+                cellPane.getChildren().add(rect);
+                cellPane.setAlignment(javafx.geometry.Pos.CENTER);
+                cellPane.setPrefSize(UIConstants.CELL_SIZE, UIConstants.CELL_SIZE);
+                cellPane.setMaxSize(UIConstants.CELL_SIZE, UIConstants.CELL_SIZE);
+                cellPane.setMinSize(UIConstants.CELL_SIZE, UIConstants.CELL_SIZE);
+
+                // GridPane에 StackPane 추가
+                boardGridPane.add(cellPane, col, row);
                 cellRectangles[row][col] = rect;
             }
         }

@@ -130,10 +130,6 @@ public class BoardRenderer {
         boolean isItemBlock = gameState.getCurrentItemType() != null;
         seoultech.se.core.item.ItemType itemType = gameState.getCurrentItemType();
         
-        if (isItemBlock) {
-            System.out.println("🎨 [BoardRenderer] Drawing ITEM block: " + itemType + ", tetromino: " + tetromino.getType());
-        }
-        
         for (int row = 0; row < shape.length; row++) {
             for (int col = 0; col < shape[0].length; col++) {
                 if (shape[row][col] == 1) {
@@ -152,10 +148,8 @@ public class BoardRenderer {
                         boolean shouldShowItemMarker = isItemBlock && isPivotBlock && !isWeightBomb;
                         
                         if (shouldShowItemMarker) {
-                            // pivot 블록에만 아이템 마커 적용 (LINE_CLEAR='L', BOMB=폭탄 이미지 등)
-                            applyItemBlockStyle(rect, itemType);
-                        } else {
-                            // 일반 블록 - 기본 색상 적용
+                            // ✨ 수정: pivot 블록에는 배경색 + 아이템 마커 오버레이
+                            // 배경색 먼저 적용
                             rect.setFill(ColorMapper.toJavaFXColor(color));
                             rect.getStyleClass().removeAll(UIConstants.ALL_TETROMINO_COLOR_CLASSES);
                             rect.getStyleClass().removeAll("range-bomb-block", "cross-bomb-block", "line-clear-block", "selectable-block");
@@ -164,6 +158,22 @@ public class BoardRenderer {
                             if (colorClass != null) {
                                 rect.getStyleClass().add(colorClass);
                             }
+                            
+                            // 아이템 마커는 투명 오버레이로 표시 (별도 처리)
+                            applyItemMarkerOverlay(rect, itemType);
+                        } else {
+                            // 일반 블록 - 기본 색상만 적용
+                            rect.setFill(ColorMapper.toJavaFXColor(color));
+                            rect.getStyleClass().removeAll(UIConstants.ALL_TETROMINO_COLOR_CLASSES);
+                            rect.getStyleClass().removeAll("range-bomb-block", "cross-bomb-block", "line-clear-block", "selectable-block");
+                            
+                            String colorClass = ColorMapper.toCssClass(color, currentColorBlindMode);
+                            if (colorClass != null) {
+                                rect.getStyleClass().add(colorClass);
+                            }
+                            
+                            // 기존 마커 제거
+                            removeItemMarkerOverlay(rect);
                         }
                     }
                 }
@@ -172,78 +182,108 @@ public class BoardRenderer {
     }
     
     /**
-     * 아이템 블록에 특별한 스타일 적용
+     * 🎨 아이템 마커를 Rectangle 위에 오버레이로 표시
+     * 
+     * Rectangle의 parent가 StackPane인 경우, ImageView를 추가하여
+     * 배경색 위에 아이템 아이콘을 겹쳐서 표시합니다.
+     * 
+     * ✨ 핵심 개선:
+     * 1. 배경색이 보이도록 반투명 이미지 사용
+     * 2. 회전해도 아이콘은 항상 정방향 유지 (rotate=0)
      * 
      * @param rect 대상 Rectangle
      * @param itemType 아이템 타입
      */
-    private void applyItemBlockStyle(Rectangle rect, seoultech.se.core.item.ItemType itemType) {
-        // ✅ FIXED: null 방어 코드 추가
+    private void applyItemMarkerOverlay(Rectangle rect, seoultech.se.core.item.ItemType itemType) {
         if (itemType == null) {
-            System.err.println("⚠️ [BoardRenderer] applyItemBlockStyle called with null itemType");
-            // 기본 스타일 적용하여 블록이 보이지 않는 문제 방지
-            rect.setFill(Color.LIGHTGRAY);
-            rect.getStyleClass().add("selectable-block");
+            System.err.println("⚠️ [BoardRenderer] applyItemMarkerOverlay called with null itemType");
             return;
         }
         
-        // 모든 기존 스타일 제거
-        rect.getStyleClass().removeAll(UIConstants.ALL_TETROMINO_COLOR_CLASSES);
-        rect.getStyleClass().removeAll("range-bomb-block", "cross-bomb-block", "line-clear-block", "selectable-block");
+        // Rectangle의 부모가 StackPane인지 확인
+        if (!(rect.getParent() instanceof javafx.scene.layout.StackPane)) {
+            System.err.println("⚠️ [BoardRenderer] Rectangle parent is not StackPane, cannot add ImageView overlay");
+            return;
+        }
         
-        // 아이템 타입에 따라 다른 이미지 표시
+        javafx.scene.layout.StackPane parentPane = (javafx.scene.layout.StackPane) rect.getParent();
+        
+        // 기존 마커 제거
+        removeItemMarkerOverlay(rect);
+        
+        // 아이템 타입에 따라 이미지 선택
         String imagePath = null;
         
         switch (itemType) {
-                case WEIGHT_BOMB:
-                case BOMB:
-                    imagePath = "/image/bomb.png";
-                    break;
-                case PLUS:
-                    imagePath = "/image/cross.png";
-                    break;
-                case LINE_CLEAR:
-                    imagePath = "/image/L.png";
-                    break;
-                case SPEED_RESET:
-                case BONUS_SCORE:
-                    imagePath = "/image/L.png";
-                    break;
-                default:
-                    // ✅ FIXED: 새 아이템 타입 추가 시 누락 방지를 위한 경고 로그
-                    System.err.println("⚠️ [BoardRenderer] Unknown item type: " + itemType + ", using default GOLD style");
-                    rect.setFill(Color.GOLD);
-                    rect.getStyleClass().add("selectable-block");
-                    return;
+            case WEIGHT_BOMB:
+            case BOMB:
+                imagePath = "/image/bomb.png";
+                break;
+            case PLUS:
+                imagePath = "/image/cross.png";
+                break;
+            case LINE_CLEAR:
+                imagePath = "/image/L.png";
+                break;
+            case SPEED_RESET:
+            case BONUS_SCORE:
+                imagePath = "/image/L.png";
+                break;
+            default:
+                System.err.println("⚠️ [BoardRenderer] Unknown item type: " + itemType);
+                return;
+        }
+        
+        // ImageView 생성 및 추가
+        if (imagePath != null) {
+            try {
+                String imageUrl = getClass().getResource(imagePath).toExternalForm();
+                javafx.scene.image.Image image = new javafx.scene.image.Image(imageUrl);
+                javafx.scene.image.ImageView imageView = new javafx.scene.image.ImageView(image);
+                
+                // 🔥 FIX: 이미지를 정확히 정사각형으로 만들어 대각선 문제 해결
+                double size = rect.getWidth() * 0.8;  // 80% 크기
+                imageView.setFitWidth(size);
+                imageView.setFitHeight(size);
+                imageView.setPreserveRatio(false);  // 🔥 비율 유지 끄기 - 정사각형으로 강제
+                imageView.setSmooth(true);
+                
+                // ✨ 핵심: 항상 회전 0도로 고정
+                imageView.setRotate(0);
+                
+                // 마우스 이벤트 무시 (Rectangle이 클릭 받도록)
+                imageView.setMouseTransparent(true);
+                
+                // userData에 저장하여 나중에 제거 가능하도록
+                rect.setUserData(imageView);
+                
+                // StackPane에 추가 (StackPane의 alignment가 CENTER이므로 자동 중앙 정렬)
+                parentPane.getChildren().add(imageView);
+                
+                System.out.println("🎨 [BoardRenderer] Item marker overlay added: " + itemType);
+            } catch (Exception e) {
+                System.err.println("⚠️ [BoardRenderer] Failed to load item image: " + imagePath + " - " + e.getMessage());
             }
+        }
+    }
+    
+    /**
+     * 아이템 마커 오버레이 제거
+     * 
+     * @param rect 대상 Rectangle
+     */
+    private void removeItemMarkerOverlay(Rectangle rect) {
+        if (rect.getParent() instanceof javafx.scene.layout.StackPane) {
+            javafx.scene.layout.StackPane parentPane = (javafx.scene.layout.StackPane) rect.getParent();
             
-            // 이미지를 배경으로 설정
-            if (imagePath != null) {
-                try {
-                    String imageUrl = getClass().getResource(imagePath).toExternalForm();
-                    rect.setFill(new javafx.scene.paint.ImagePattern(
-                        new javafx.scene.image.Image(imageUrl)
-                    ));
-                } catch (Exception e) {
-                    System.err.println("⚠️ Failed to load item image: " + imagePath);
-                    // 폴백: CSS 클래스 사용
-                    switch (itemType) {
-                        case WEIGHT_BOMB:
-                        case BOMB:
-                            rect.getStyleClass().add("range-bomb-block");
-                            break;
-                        case PLUS:
-                            rect.getStyleClass().add("cross-bomb-block");
-                            break;
-                        case LINE_CLEAR:
-                            rect.getStyleClass().add("line-clear-block");
-                            break;
-                        default:
-                            rect.getStyleClass().add("selectable-block");
-                            break;
-                    }
-                }
-            }
+            // 🔥 FIX: StackPane에서 Rectangle을 제외한 모든 노드(ImageView) 제거
+            // userData 기반 제거는 불안정할 수 있으므로, StackPane의 모든 ImageView 제거
+            parentPane.getChildren().removeIf(node -> 
+                node instanceof javafx.scene.image.ImageView
+            );
+            
+            rect.setUserData(null);
+        }
     }
     
     /**
@@ -251,6 +291,9 @@ public class BoardRenderer {
      */
     private void updateCellInternal(int row, int col, Cell cell) {
         Rectangle rect = cellRectangles[row][col];
+        
+        // 🔥 FIX: Lock된 셀에 남아있는 아이템 마커 제거 (메모리 누수 방지)
+        removeItemMarkerOverlay(rect);
         
         if (cell.isOccupied()) {
             rect.setFill(ColorMapper.toJavaFXColor(cell.getColor()));

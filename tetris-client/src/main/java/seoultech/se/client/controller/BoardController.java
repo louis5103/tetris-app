@@ -192,12 +192,12 @@ public class BoardController {
         // Hard Drop 실행
         GameState newState = gameEngine.hardDrop(gameState);
         
-        // 🔥 CRITICAL FIX: Hard Drop 후 Lock된 블록의 실제 위치 사용
-        // GameState.lastLockedX/Y는 lockTetrominoInternal에서 설정됨
-        int actualRow = newState.getLastLockedY();
-        int actualCol = newState.getLastLockedX();
+        // 🔥 CRITICAL FIX: Hard Drop 후 Lock된 블록의 Pivot 위치 사용 (아이템 효과 중심점)
+        // BOMB/PLUS 등의 아이템은 pivot 중심으로 효과 발동
+        int actualRow = newState.getLastLockedPivotY();
+        int actualCol = newState.getLastLockedPivotX();
         
-        System.out.println("🎯 [BoardController] HARD DROP - Locked position from GameState: (" + 
+        System.out.println("🎯 [BoardController] HARD DROP - Locked pivot position from GameState: (" + 
             actualRow + ", " + actualCol + ")");
         
         // ✨ Phase 4: 난이도별 점수 배율 적용
@@ -292,24 +292,19 @@ public class BoardController {
     }
 
     private GameState lockAndSpawnNext() {
-        // Lock 전에 아이템 타입과 위치 확인
+        // Lock 전에 아이템 타입 기록
         seoultech.se.core.item.ItemType itemType = gameState.getCurrentItemType();
-        
-        // 실제 블록의 위치 계산 (pivot이 아닌 실제 블록 위치)
-        int actualRow = -1;
-        int actualCol = -1;
-        
-        if (itemType != null && gameState.getCurrentTetromino() != null) {
-            // ✅ FIXED: pivot 블록 위치 사용 (요구사항: LINE_CLEAR는 'L' 마커 위치의 줄 삭제)
-            // 첫 번째 블록이 아닌 pivot 블록 기준으로 아이템 효과 적용
-            actualRow = gameState.getCurrentY();
-            actualCol = gameState.getCurrentX();
-            
-            System.out.println("🎯 [BoardController] Item block position (pivot): (" + actualRow + ", " + actualCol + ")");
-        }
         
         System.out.println("🎮 [BoardController] Calling lockTetromino on: " + gameEngine.getClass().getSimpleName());
         GameState newState = gameEngine.lockTetromino(gameState);
+        
+        // 🔥 CRITICAL FIX: Hard Drop과 동일하게 Lock 후 Pivot 위치 사용 (아이템 효과 중심점)
+        // BOMB/PLUS 등의 아이템은 pivot 중심으로 효과 발동
+        int actualRow = newState.getLastLockedPivotY();
+        int actualCol = newState.getLastLockedPivotX();
+        
+        System.out.println("🎯 [BoardController] Locked pivot position from GameState: (" + 
+            actualRow + ", " + actualCol + ")");
         
         // ✨ Phase 4: 난이도별 점수 배율 적용
         // GameEngine에서 계산된 점수에 난이도 배율을 곱함

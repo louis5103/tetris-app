@@ -89,8 +89,10 @@ public class GameState {
     
     // Phase 2: Lock 관련 메타데이터 (EventMapper가 이벤트 생성 시 사용)
     private Tetromino lastLockedTetromino;  // 마지막으로 고정된 블록
-    private int lastLockedX;  // 마지막으로 고정된 블록의 X 위치
-    private int lastLockedY;  // 마지막으로 고정된 블록의 Y 위치
+    private int lastLockedX;  // 마지막으로 고정된 블록의 X 위치 (첫 번째 블록)
+    private int lastLockedY;  // 마지막으로 고정된 블록의 Y 위치 (첫 번째 블록)
+    private int lastLockedPivotX;  // 마지막으로 고정된 블록의 Pivot X 위치
+    private int lastLockedPivotY;  // 마지막으로 고정된 블록의 Pivot Y 위치
     private int lastLinesCleared;  // 마지막 액션에서 지워진 라인 수
     private int[] lastClearedRows;  // 마지막 액션에서 지워진 라인들의 행 번호
     private long lastScoreEarned;  // 마지막 액션에서 획득한 점수

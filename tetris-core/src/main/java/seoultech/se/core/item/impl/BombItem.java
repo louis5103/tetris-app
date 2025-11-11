@@ -94,6 +94,45 @@ public class BombItem extends AbstractItem {
         
         System.out.println("✅ [BombItem] " + message);
         
+        // 블록 제거 후 중력 적용
+        if (blocksCleared > 0) {
+            applyGravity(gameState);
+            System.out.println("   - Gravity applied after explosion");
+        }
+        
         return ItemEffect.success(ItemType.BOMB, blocksCleared, bonusScore, message);
+    }
+    
+    /**
+     * 중력 적용: 빈 공간 위의 블록을 아래로 떨어뜨림
+     * 
+     * @param gameState 게임 상태
+     */
+    private void applyGravity(GameState gameState) {
+        Cell[][] grid = gameState.getGrid();
+        int boardHeight = gameState.getBoardHeight();
+        int boardWidth = gameState.getBoardWidth();
+        
+        // 각 열에 대해 아래에서 위로 스캔하여 블록을 아래로 이동
+        for (int col = 0; col < boardWidth; col++) {
+            int writeRow = boardHeight - 1;  // 쓰기 위치 (아래에서 시작)
+            
+            // 아래에서 위로 스캔
+            for (int readRow = boardHeight - 1; readRow >= 0; readRow--) {
+                if (grid[readRow][col] != null && grid[readRow][col].isOccupied()) {
+                    // 블록을 발견하면 쓰기 위치로 이동
+                    if (readRow != writeRow) {
+                        // 블록 복사
+                        grid[writeRow][col].setColor(grid[readRow][col].getColor());
+                        grid[writeRow][col].setOccupied(true);
+                        grid[writeRow][col].setItemMarker(grid[readRow][col].getItemMarker());
+                        
+                        // 원래 위치 비우기
+                        grid[readRow][col].clear();
+                    }
+                    writeRow--;  // 다음 쓰기 위치는 한 칸 위로
+                }
+            }
+        }
     }
 }
