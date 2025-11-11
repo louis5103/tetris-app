@@ -41,6 +41,18 @@ public class GameState {
     // Hold 기능 관련 정보
     private boolean holdUsedThisTurn;
     private TetrominoType heldPiece;
+    
+    /**
+     * Hold된 블록의 아이템 타입 (Phase 5)
+     * Hold와 함께 아이템 타입도 보존됨
+     */
+    private ItemType heldItemType;
+    
+    /**
+     * Hold된 무게추의 잠김 상태 (Phase 5)
+     * Hold 시 무게추의 isWeightBombLocked 상태도 보존
+     */
+    private boolean heldWeightBombLocked;
 
     // Next Queue (7-bag 시스템)
     private TetrominoType[] nextQueue;
@@ -118,6 +130,8 @@ public class GameState {
         // Hold 초기화
         this.heldPiece = null;
         this.holdUsedThisTurn = false;
+        this.heldItemType = null;
+        this.heldWeightBombLocked = false;
         
         // 아이템 시스템 초기화
         this.currentItemType = null;
@@ -172,6 +186,8 @@ public class GameState {
         // Hold 기능 관련 정보 복사
         copy.holdUsedThisTurn = this.holdUsedThisTurn;
         copy.heldPiece = this.heldPiece;
+        copy.heldItemType = this.heldItemType;
+        copy.heldWeightBombLocked = this.heldWeightBombLocked;
 
         // Next Queue 복사
         if(this.nextQueue != null) {

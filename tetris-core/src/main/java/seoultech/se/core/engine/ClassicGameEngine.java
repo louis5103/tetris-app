@@ -274,6 +274,8 @@ public class ClassicGameEngine implements GameEngine {
      * 2. Hold가 비어있으면: 현재 블록 보관 + Next에서 새 블록 가져오기
      * 3. Hold에 블록이 있으면: 현재 블록과 Hold 블록 교체
      * 
+     * Phase 5: 아이템 타입 및 무게추 상태 보존
+     * 
      * @param state 현재 게임 상태
      * @return 새로운 게임 상태 (Hold 실패 시 원본 상태 반환)
      */
@@ -294,14 +296,29 @@ public class ClassicGameEngine implements GameEngine {
         TetrominoType currentType = newState.getCurrentTetromino().getType();
         TetrominoType previousHeld = newState.getHeldPiece();
         
+        // Phase 5: 현재 블록의 아이템 정보 저장
+        seoultech.se.core.item.ItemType currentItemType = newState.getCurrentItemType();
+        boolean currentWeightBombLocked = newState.isWeightBombLocked();
+        
+        // Phase 5: Hold된 블록의 아이템 정보 가져오기
+        seoultech.se.core.item.ItemType previousItemType = newState.getHeldItemType();
+        boolean previousWeightBombLocked = newState.isHeldWeightBombLocked();
+        
         if (previousHeld == null) {
             // Hold가 비어있음: 현재 블록을 보관하고 Next에서 새 블록 가져오기
             newState.setHeldPiece(currentType);
+            newState.setHeldItemType(currentItemType);  // Phase 5
+            newState.setHeldWeightBombLocked(currentWeightBombLocked);  // Phase 5
             
             // Next Queue 첫 번째 요소 검증
             if (newState.getNextQueue()[0] == null) {
                 System.err.println("⚠️ [ClassicGameEngine] tryHold() failed: Next Queue[0] is null!");
                 return state;
+            }
+            
+            // Phase 5: 무게추는 Next Queue에서 가져오지 않음
+            if (currentType == TetrominoType.WEIGHT_BOMB) {
+                System.out.println("⚓ [ClassicGameEngine] WEIGHT_BOMB held - will spawn from Next Queue");
             }
             
             // Next Queue에서 새 블록 가져오기
@@ -324,12 +341,26 @@ public class ClassicGameEngine implements GameEngine {
             newState.setCurrentX(spawnX);
             newState.setCurrentY(spawnY);
             
+            // Phase 5: 새 블록은 일반 블록 (아이템 없음)
+            newState.setCurrentItemType(null);
+            newState.setWeightBombLocked(false);
+            
         } else {
             // Hold에 블록이 있음: 현재 블록과 교체
             newState.setHeldPiece(currentType);
+            newState.setHeldItemType(currentItemType);  // Phase 5
+            newState.setHeldWeightBombLocked(currentWeightBombLocked);  // Phase 5
             
             // Hold된 블록을 꺼내서 현재 블록으로 설정
-            Tetromino heldTetromino = new Tetromino(previousHeld);
+            Tetromino heldTetromino;
+            
+            // Phase 5: 무게추인 경우 특수 처리
+            if (previousHeld == TetrominoType.WEIGHT_BOMB) {
+                heldTetromino = new Tetromino(TetrominoType.WEIGHT_BOMB);
+                System.out.println("⚓ [ClassicGameEngine] Swapping WEIGHT_BOMB from Hold");
+            } else {
+                heldTetromino = new Tetromino(previousHeld);
+            }
             
             // 스폰 위치 설정
             int spawnX = newState.getBoardWidth() / 2 - 1;
@@ -346,6 +377,17 @@ public class ClassicGameEngine implements GameEngine {
             newState.setCurrentTetromino(heldTetromino);
             newState.setCurrentX(spawnX);
             newState.setCurrentY(spawnY);
+            
+            // Phase 5: Hold된 블록의 아이템 정보 복원
+            newState.setCurrentItemType(previousItemType);
+            newState.setWeightBombLocked(previousWeightBombLocked);
+            
+            if (previousItemType != null) {
+                System.out.println("📦 [ClassicGameEngine] Restored item type from Hold: " + previousItemType);
+            }
+            if (previousWeightBombLocked) {
+                System.out.println("⚓ [ClassicGameEngine] Restored WEIGHT_BOMB locked state from Hold");
+            }
         }
         
         // Hold 사용 플래그 설정
