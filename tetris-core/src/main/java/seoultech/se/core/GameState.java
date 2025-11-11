@@ -30,6 +30,13 @@ public class GameState {
      * null이면 일반 블록, ItemType이 설정되어 있으면 다음 블록에 아이템 포함
      */
     private ItemType nextBlockItemType;
+    
+    /**
+     * 무게추 상태 (Phase 4)
+     * false: 좌우 이동 가능 (초기 상태)
+     * true: 좌우 이동 불가, 아래로만 이동 (바닥/블록 접촉 후)
+     */
+    private boolean isWeightBombLocked = false;
 
     // Hold 기능 관련 정보
     private boolean holdUsedThisTurn;
@@ -115,6 +122,7 @@ public class GameState {
         // 아이템 시스템 초기화
         this.currentItemType = null;
         this.nextBlockItemType = null;
+        this.isWeightBombLocked = false;
 
         // Lock Delay 초기화
         this.isLockDelayActive = false;
@@ -159,6 +167,7 @@ public class GameState {
         // 아이템 타입 복사
         copy.currentItemType = this.currentItemType;
         copy.nextBlockItemType = this.nextBlockItemType;
+        copy.isWeightBombLocked = this.isWeightBombLocked;
 
         // Hold 기능 관련 정보 복사
         copy.holdUsedThisTurn = this.holdUsedThisTurn;

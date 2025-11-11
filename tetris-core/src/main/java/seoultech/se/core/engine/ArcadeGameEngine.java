@@ -103,23 +103,73 @@ public class ArcadeGameEngine extends ClassicGameEngine {
     // ========== 아이템 시스템 오버라이드 ==========
     
     /**
+     * 아래로 이동 시도 (무게추 블록 제거 지원)
+     * 
+     * Phase 4: 무게추가 떨어질 때마다 아래 블록 제거
+     * 
+     * @param state 현재 게임 상태
+     * @param isSoftDrop 수동 DOWN 입력 여부
+     * @return 새로운 게임 상태
+     */
+    @Override
+    public GameState tryMoveDown(GameState state, boolean isSoftDrop) {
+        // Phase 4: 무게추 낙하 중 블록 제거
+        if (state.getCurrentTetromino().getType() == seoultech.se.core.model.enumType.TetrominoType.WEIGHT_BOMB) {
+            // 이동 전에 아래 블록 제거
+            int blocksCleared = seoultech.se.core.item.impl.WeightBombItem.processWeightBombFall(state);
+            
+            if (blocksCleared > 0) {
+                // 점수 추가 (블록당 10점)
+                state.addScore(blocksCleared * 10);
+            }
+        }
+        
+        // 기본 이동 처리
+        return super.tryMoveDown(state, isSoftDrop);
+    }
+    
+    /**
      * 테트로미노를 보드에 고정하고 라인 클리어 처리 (아이템 지원)
      * 
      * ClassicGameEngine의 lockTetromino를 오버라이드하여 아이템 로직 추가:
-     * 1. 기본 고정 처리 (ClassicGameEngine)
-     * 2. 'L' 마커 줄 삭제 (Phase 3)
-     * 3. 라인 클리어 시 아이템 드롭 체크 (10줄마다)
-     * 4. 무게추 처리 (향후 구현)
+     * 1. 무게추 최종 처리 (Phase 4)
+     * 2. 기본 고정 처리 (ClassicGameEngine)
+     * 3. 'L' 마커 줄 삭제 (Phase 3)
+     * 4. 라인 클리어 시 아이템 드롭 체크 (10줄마다)
      * 
      * @param state 현재 게임 상태
      * @return 고정이 완료된 새로운 게임 상태
      */
     @Override
     public GameState lockTetromino(GameState state) {
-        // 1. 기본 고정 처리 (부모 클래스)
+        // 1. Phase 4: 무게추 최종 처리 (고정 전)
+        int weightBombScore = 0;
+        if (state.getCurrentTetromino().getType() == seoultech.se.core.model.enumType.TetrominoType.WEIGHT_BOMB) {
+            // 무게추 위치 계산
+            int[] weightBombX = seoultech.se.core.item.impl.WeightBombItem.getWeightBombXPositions(state);
+            int weightBombY = state.getCurrentY();
+            
+            // 수직 경로의 모든 블록 제거
+            int blocksCleared = seoultech.se.core.item.impl.WeightBombItem.clearVerticalPath(
+                state, weightBombX, weightBombY
+            );
+            
+            // 점수 계산 (블록당 10점)
+            weightBombScore = blocksCleared * 10;
+            
+            System.out.println("⚓ [ArcadeGameEngine] WEIGHT_BOMB final clear: " + 
+                blocksCleared + " blocks, " + weightBombScore + " points");
+        }
+        
+        // 2. 기본 고정 처리 (부모 클래스)
         GameState newState = super.lockTetromino(state);
         
-        // 2. 'L' 마커 줄 삭제 처리 (Phase 3)
+        // Phase 4: 무게추 점수 추가
+        if (weightBombScore > 0) {
+            newState.addScore(weightBombScore);
+        }
+        
+        // 3. 'L' 마커 줄 삭제 처리 (Phase 3)
         if (itemManager != null) {
             java.util.List<Integer> markedLines = 
                 seoultech.se.core.item.impl.LineClearItem.findAndClearMarkedLines(newState);
@@ -144,7 +194,7 @@ public class ArcadeGameEngine extends ClassicGameEngine {
             }
         }
         
-        // 3. 아이템 드롭 체크 (10줄마다)
+        // 4. 아이템 드롭 체크 (10줄마다)
         // 주의: 기본 라인 클리어 + 'L' 마커 라인 클리어 모두 포함
         if (itemManager != null && newState.getLastLinesCleared() > 0) {
             ItemType droppedItem = itemManager.checkAndGenerateItem(newState.getLastLinesCleared());
@@ -156,49 +206,9 @@ public class ArcadeGameEngine extends ClassicGameEngine {
             }
         }
         
-        // 4. 무게추 처리 (Phase 4에서 구현)
-        // TODO: Implement WEIGHT_BOMB item logic
+        // Phase 4: 무게추 상태 초기화
+        newState.setWeightBombLocked(false);
         
         return newState;
     }
-    
-    // ========== 향후 구현 예정 ==========
-    
-    /**
-     * 'L' 마커가 있는 줄 찾기
-     * 
-     * Phase 3에서 구현 예정
-     * 
-     * @param state 게임 상태
-     * @return 'L' 마커가 있는 줄 번호 리스트
-     */
-    // private List<Integer> findLineClearMarkers(GameState state) {
-    //     // TODO: Phase 3에서 구현
-    //     return new ArrayList<>();
-    // }
-    
-    /**
-     * 'L' 마커 줄 삭제
-     * 
-     * Phase 3에서 구현 예정
-     * 
-     * @param state 게임 상태
-     * @param rows 삭제할 줄 번호 리스트
-     */
-    // private void clearMarkedLines(GameState state, List<Integer> rows) {
-    //     // TODO: Phase 3에서 구현
-    // }
-    
-    /**
-     * 무게추 블록 처리
-     * 
-     * Phase 4에서 구현 예정
-     * 
-     * @param state 게임 상태
-     * @return 새로운 게임 상태
-     */
-    // private GameState handleWeightBomb(GameState state) {
-    //     // TODO: Phase 4에서 구현
-    //     return state;
-    // }
 }

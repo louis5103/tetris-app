@@ -71,6 +71,12 @@ public class ClassicGameEngine implements GameEngine {
     
     @Override
     public GameState tryMoveLeft(GameState state) {
+        // Phase 4: 무게추가 잠긴 상태면 좌우 이동 불가
+        if (state.isWeightBombLocked() && 
+            state.getCurrentTetromino().getType() == TetrominoType.WEIGHT_BOMB) {
+            return state;  // 이동 불가
+        }
+        
         int newX = state.getCurrentX() - 1;
 
         if(isValidPosition(state, state.getCurrentTetromino(), newX, state.getCurrentY())) {
@@ -84,6 +90,12 @@ public class ClassicGameEngine implements GameEngine {
     
     @Override
     public GameState tryMoveRight(GameState state) {
+        // Phase 4: 무게추가 잠긴 상태면 좌우 이동 불가
+        if (state.isWeightBombLocked() && 
+            state.getCurrentTetromino().getType() == TetrominoType.WEIGHT_BOMB) {
+            return state;  // 이동 불가
+        }
+        
         int newX = state.getCurrentX() + 1;
 
         if(isValidPosition(state, state.getCurrentTetromino(), newX, state.getCurrentY())) {
@@ -106,6 +118,10 @@ public class ClassicGameEngine implements GameEngine {
      * isSoftDrop이 true이면 수동 DOWN 입력으로 간주하여 1점을 부여합니다.
      * isSoftDrop이 false이면 자동 낙하로 간주하여 점수를 주지 않습니다.
      * 
+     * Phase 4: 무게추 로직
+     * - 아래로 이동 시도 시 바닥/블록에 닿으면 isWeightBombLocked = true
+     * - 잠긴 후에는 좌우 이동 불가
+     * 
      * @param state 현재 게임 상태
      * @param isSoftDrop 수동 DOWN 입력 여부
      * @return 새로운 게임 상태 (이동 실패 시 원본 상태 반환)
@@ -125,8 +141,18 @@ public class ClassicGameEngine implements GameEngine {
             }
             
             return newState;
+        } else {
+            // Phase 4: 무게추가 바닥/블록에 닿으면 잠김
+            if (state.getCurrentTetromino().getType() == TetrominoType.WEIGHT_BOMB && 
+                !state.isWeightBombLocked()) {
+                GameState newState = state.deepCopy();
+                newState.setWeightBombLocked(true);
+                System.out.println("⚓ [ClassicGameEngine] WEIGHT_BOMB locked - horizontal movement disabled");
+                return newState;  // 상태만 변경, 위치는 그대로
+            }
+            
+            return state;  // 실패 시 원본 상태 반환 (고정 필요 신호)
         }
-        return state;  // 실패 시 원본 상태 반환 (고정 필요 신호)
     }
     
     // ========== 회전 관련 메서드 ==========
@@ -140,6 +166,8 @@ public class ClassicGameEngine implements GameEngine {
      * 
      * 5가지 위치를 순서대로 시도하며, 하나라도 성공하면 회전이 완료됩니다.
      * 
+     * Phase 4: 무게추는 회전 불가 (O 블록처럼)
+     * 
      * @param state 현재 게임 상태
      * @param direction 회전 방향 (시계/반시계)
      * @param srsEnabled SRS 활성화 여부 (true: Wall Kick 사용, false: 기본 회전만)
@@ -147,8 +175,13 @@ public class ClassicGameEngine implements GameEngine {
      */
     @Override
     public GameState tryRotate(GameState state, RotationDirection direction, boolean srsEnabled) {
-        // O 블록 : 회전해도 모양이 같음 - 원본 상태 반환
+        // O 블록: 회전해도 모양이 같음 - 원본 상태 반환
         if(state.getCurrentTetromino().getType() == TetrominoType.O) {
+            return state;
+        }
+        
+        // Phase 4: 무게추는 회전 불가
+        if(state.getCurrentTetromino().getType() == TetrominoType.WEIGHT_BOMB) {
             return state;
         }
 

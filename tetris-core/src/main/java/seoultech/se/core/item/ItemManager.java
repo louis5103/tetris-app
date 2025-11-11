@@ -87,14 +87,16 @@ public class ItemManager {
     
     /**
      * 프로토타입 등록
-     * Phase 3: LINE_CLEAR 아이템 추가
+     * Phase 4: WEIGHT_BOMB 아이템 추가
      */
     private void registerPrototypes() {
         // Phase 3: LINE_CLEAR 아이템 등록
         registerItem(new seoultech.se.core.item.impl.LineClearItem());
         
-        // Phase 4에서 WEIGHT_BOMB 아이템 추가 예정
-        System.out.println("📦 ItemManager: LINE_CLEAR item registered");
+        // Phase 4: WEIGHT_BOMB 아이템 등록
+        registerItem(new seoultech.se.core.item.impl.WeightBombItem());
+        
+        System.out.println("📦 ItemManager: LINE_CLEAR, WEIGHT_BOMB items registered");
     }
     
     /**
