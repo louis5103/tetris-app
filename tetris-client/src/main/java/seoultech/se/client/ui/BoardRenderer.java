@@ -145,19 +145,22 @@ public class BoardRenderer {
                         
                         Rectangle rect = cellRectangles[absoluteY][absoluteX];
                         
-                        String colorClass = ColorMapper.toCssClass(color, currentColorBlindMode);
-                        rect.getStyleClass().removeAll(UIConstants.ALL_TETROMINO_COLOR_CLASSES);
-                        if (colorClass != null) {
-                            rect.getStyleClass().add(colorClass);
-                        }
-                        // 아이템 블록인 경우 특별한 스타일 적용
-                        if (isItemBlock) {
+                        // 아이템이 있는 경우 pivot 블록에만 아이템 마커 표시
+                        // ✅ WEIGHT_BOMB는 테트로미노 전체가 아이템이므로 마커 표시 제외
+                        boolean isPivotBlock = (row == pivotY && col == pivotX);
+                        boolean isWeightBomb = (tetromino.getType() == TetrominoType.WEIGHT_BOMB);
+                        boolean shouldShowItemMarker = isItemBlock && isPivotBlock && !isWeightBomb;
+                        
+                        if (shouldShowItemMarker) {
+                            // pivot 블록에만 아이템 마커 적용 (LINE_CLEAR='L', BOMB=폭탄 이미지 등)
                             applyItemBlockStyle(rect, itemType);
                         } else {
-                            // 일반 블록
+                            // 일반 블록 - 기본 색상 적용
                             rect.setFill(ColorMapper.toJavaFXColor(color));
                             rect.getStyleClass().removeAll(UIConstants.ALL_TETROMINO_COLOR_CLASSES);
                             rect.getStyleClass().removeAll("range-bomb-block", "cross-bomb-block", "line-clear-block", "selectable-block");
+                            
+                            String colorClass = ColorMapper.toCssClass(color, currentColorBlindMode);
                             if (colorClass != null) {
                                 rect.getStyleClass().add(colorClass);
                             }
@@ -185,6 +188,7 @@ public class BoardRenderer {
             
             switch (itemType) {
                 case WEIGHT_BOMB:
+                case BOMB:
                     imagePath = "/image/bomb.png";
                     break;
                 case PLUS:
@@ -214,6 +218,7 @@ public class BoardRenderer {
                     // 폴백: CSS 클래스 사용
                     switch (itemType) {
                         case WEIGHT_BOMB:
+                        case BOMB:
                             rect.getStyleClass().add("range-bomb-block");
                             break;
                         case PLUS:

@@ -63,10 +63,15 @@ public enum TetrominoType {
      * - 초기: 좌우 이동 가능
      * - 바닥/블록에 닿으면: 좌우 이동 불가, 아래로만 이동
      * - 떨어지면서 아래에 있는 모든 블록 제거
+     * 
+     * 형태:
+     *   OO
+     *   OOOO
      */
     WEIGHT_BOMB(new int[][]{
-            {1, 1, 1, 1}  // 4칸 가로 형태
-    }, Color.GRAY, 1, 0);  // pivotX=1 (중앙 근처), pivotY=0
+            {0, 1, 1, 0},
+            {1, 1, 1, 1}
+    }, Color.GRAY, 1, 0);  // pivotX=1, pivotY=0
 
     public final int [][] shape;
     public final Color color;

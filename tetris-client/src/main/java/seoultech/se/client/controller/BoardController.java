@@ -164,7 +164,7 @@ public class BoardController {
                     System.out.println("⬇️ [BoardController] DOWN failed - calling lockAndSpawnNext()");
                     newState = lockAndSpawnNext();
                 } else {
-                    System.out.println("⬇️ [BoardController] DOWN succeeded - block moved");
+                    // System.out.println("⬇️ [BoardController] DOWN succeeded - block moved");
                 }
                 break;
             default:
@@ -194,26 +194,12 @@ public class BoardController {
         int actualCol = -1;
         
         if (itemType != null && gameState.getCurrentTetromino() != null) {
-            seoultech.se.core.model.Tetromino tetromino = gameState.getCurrentTetromino();
-            int[][] shape = tetromino.getCurrentShape();
-            int pivotX = tetromino.getPivotX();
-            int pivotY = tetromino.getPivotY();
-            int currentX = gameState.getCurrentX();
-            int currentY = gameState.getCurrentY();
+            // ✅ FIXED: pivot 블록 위치 사용 (요구사항: LINE_CLEAR는 'L' 마커 위치의 줄 삭제)
+            // 첫 번째 블록이 아닌 pivot 블록 기준으로 아이템 효과 적용
+            actualRow = gameState.getCurrentY();
+            actualCol = gameState.getCurrentX();
             
-            // 첫 번째 블록의 실제 위치 찾기
-            boolean found = false;
-            for (int r = 0; r < shape.length && !found; r++) {
-                for (int c = 0; c < shape[0].length && !found; c++) {
-                    if (shape[r][c] == 1) {
-                        actualRow = currentY + (r - pivotY);
-                        actualCol = currentX + (c - pivotX);
-                        found = true;
-                        System.out.println("🎯 [BoardController] HARD DROP - Item block actual position: (" + actualRow + ", " + actualCol + ")");
-                        System.out.println("   - Pivot position was: (" + currentY + ", " + currentX + ")");
-                    }
-                }
-            }
+            System.out.println("🎯 [BoardController] HARD DROP - Item block position (pivot): (" + actualRow + ", " + actualCol + ")");
         }
         
         GameState newState = gameEngine.hardDrop(gameState);
@@ -306,26 +292,12 @@ public class BoardController {
         int actualCol = -1;
         
         if (itemType != null && gameState.getCurrentTetromino() != null) {
-            seoultech.se.core.model.Tetromino tetromino = gameState.getCurrentTetromino();
-            int[][] shape = tetromino.getCurrentShape();
-            int pivotX = tetromino.getPivotX();
-            int pivotY = tetromino.getPivotY();
-            int currentX = gameState.getCurrentX();
-            int currentY = gameState.getCurrentY();
+            // ✅ FIXED: pivot 블록 위치 사용 (요구사항: LINE_CLEAR는 'L' 마커 위치의 줄 삭제)
+            // 첫 번째 블록이 아닌 pivot 블록 기준으로 아이템 효과 적용
+            actualRow = gameState.getCurrentY();
+            actualCol = gameState.getCurrentX();
             
-            // 첫 번째 블록의 실제 위치 찾기
-            boolean found = false;
-            for (int r = 0; r < shape.length && !found; r++) {
-                for (int c = 0; c < shape[0].length && !found; c++) {
-                    if (shape[r][c] == 1) {
-                        actualRow = currentY + (r - pivotY);
-                        actualCol = currentX + (c - pivotX);
-                        found = true;
-                        System.out.println("🎯 [BoardController] Item block actual position: (" + actualRow + ", " + actualCol + ")");
-                        System.out.println("   - Pivot position was: (" + currentY + ", " + currentX + ")");
-                    }
-                }
-            }
+            System.out.println("🎯 [BoardController] Item block position (pivot): (" + actualRow + ", " + actualCol + ")");
         }
         
         System.out.println("🎮 [BoardController] Calling lockTetromino on: " + gameEngine.getClass().getSimpleName());
@@ -382,11 +354,43 @@ public class BoardController {
     }
 
     private void spawnNewTetromino(GameState state) {
-        TetrominoType nextType = getNextTetrominoType();
+        TetrominoType nextType;
+        seoultech.se.core.item.ItemType nextItemType = state.getNextBlockItemType();
+        
+        // 🎁 아이템이 예약되어 있으면 아이템 테트로미노 생성
+        if (nextItemType != null) {
+            System.out.println("🎁 [BoardController] Spawning item tetromino: " + nextItemType);
+            
+            if (nextItemType == seoultech.se.core.item.ItemType.WEIGHT_BOMB) {
+                // 무게추는 특수 테트로미노 형태 (OO / OOOO)
+                // ✅ FIXED: Lock 시 아이템 효과 적용을 위해 currentItemType 유지
+                nextType = TetrominoType.WEIGHT_BOMB;
+                state.setCurrentItemType(nextItemType); // 아이템 타입 유지하여 효과 적용 가능하도록
+            } else if (nextItemType == seoultech.se.core.item.ItemType.LINE_CLEAR) {
+                // LINE_CLEAR 아이템은 일반 테트로미노지만 pivot 블록에 'L' 마커
+                nextType = getNextTetrominoType();
+                state.setCurrentItemType(nextItemType);
+            } else {
+                // 기타 아이템 (BOMB, PLUS 등) - 일반 테트로미노에 아이템 효과
+                nextType = getNextTetrominoType();
+                state.setCurrentItemType(nextItemType);
+            }
+            
+            // 아이템 사용 완료, 초기화
+            state.setNextBlockItemType(null);
+        } else {
+            // 일반 테트로미노 생성 - currentItemType 초기화 필수!
+            nextType = getNextTetrominoType();
+            state.setCurrentItemType(null);
+        }
+        
         Tetromino newTetromino = new Tetromino(nextType);
         state.setCurrentTetromino(newTetromino);
         state.setCurrentX(state.getBoardWidth() / 2 - 1);
         state.setCurrentY(0);
+        
+        System.out.println("🎮 [BoardController] Spawned tetromino: " + nextType + 
+            (state.getCurrentItemType() != null ? " with item: " + state.getCurrentItemType() : ""));
     }
 
     private TetrominoType getNextTetrominoType() {
