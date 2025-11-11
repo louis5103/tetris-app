@@ -103,6 +103,172 @@ public class ArcadeGameEngine extends ClassicGameEngine {
     // ========== 아이템 시스템 오버라이드 ==========
     
     /**
+     * Hold 기능 (아이템 지원)
+     * 
+     * ClassicGameEngine의 tryHold를 오버라이드하여 아이템 로직 추가:
+     * 1. 현재 블록의 아이템 타입 저장
+     * 2. 무게추 잠김 상태 저장
+     * 3. Hold에서 꺼낼 때 아이템 정보 복원
+     * 
+     * @param state 현재 게임 상태
+     * @return 새로운 게임 상태
+     */
+    @Override
+    public GameState tryHold(GameState state) {
+        // 이미 이번 턴에 Hold를 사용했는지 확인
+        if (state.isHoldUsedThisTurn()) {
+            return state;
+        }
+        
+        // Next Queue 검증
+        if (state.getNextQueue() == null || state.getNextQueue().length == 0) {
+            System.err.println("⚠️ [ArcadeGameEngine] tryHold() failed: Next Queue is not initialized!");
+            return state;
+        }
+        
+        GameState newState = state.deepCopy();
+        TetrominoType currentType = newState.getCurrentTetromino().getType();
+        TetrominoType previousHeld = newState.getHeldPiece();
+        
+        // Phase 5: 현재 블록의 아이템 정보 저장
+        seoultech.se.core.item.ItemType currentItemType = newState.getCurrentItemType();
+        boolean currentWeightBombLocked = newState.isWeightBombLocked();
+        
+        // Phase 5: Hold된 블록의 아이템 정보 가져오기
+        seoultech.se.core.item.ItemType previousItemType = newState.getHeldItemType();
+        boolean previousWeightBombLocked = newState.isHeldWeightBombLocked();
+        
+        if (previousHeld == null) {
+            // Hold가 비어있음: 현재 블록을 보관하고 Next에서 새 블록 가져오기
+            newState.setHeldPiece(currentType);
+            newState.setHeldItemType(currentItemType);
+            newState.setHeldWeightBombLocked(currentWeightBombLocked);
+            
+            // Next Queue 첫 번째 요소 검증
+            if (newState.getNextQueue()[0] == null) {
+                System.err.println("⚠️ [ArcadeGameEngine] tryHold() failed: Next Queue[0] is null!");
+                return state;
+            }
+            
+            // 무게추는 Next Queue에서 가져오지 않음
+            if (currentType == seoultech.se.core.model.enumType.TetrominoType.WEIGHT_BOMB) {
+                System.out.println("⚓ [ArcadeGameEngine] WEIGHT_BOMB held - will spawn from Next Queue");
+            }
+            
+            // Next Queue에서 새 블록 가져오기
+            TetrominoType nextType = newState.getNextQueue()[0];
+            seoultech.se.core.model.Tetromino newTetromino = 
+                new seoultech.se.core.model.Tetromino(nextType);
+            
+            // 새 블록 스폰 위치 설정
+            int spawnX = newState.getBoardWidth() / 2 - 1;
+            int spawnY = 0;
+            
+            // 스폰 위치 충돌 검사
+            if (!isValidPosition(newState, newTetromino, spawnX, spawnY)) {
+                newState.setGameOver(true);
+                newState.setGameOverReason("Cannot spawn new tetromino after hold: spawn position blocked");
+                return newState;
+            }
+            
+            // 스폰 성공
+            newState.setCurrentTetromino(newTetromino);
+            newState.setCurrentX(spawnX);
+            newState.setCurrentY(spawnY);
+            
+            // 새 블록은 일반 블록 (아이템 없음)
+            newState.setCurrentItemType(null);
+            newState.setWeightBombLocked(false);
+            
+        } else {
+            // Hold에 블록이 있음: 현재 블록과 교체
+            newState.setHeldPiece(currentType);
+            newState.setHeldItemType(currentItemType);
+            newState.setHeldWeightBombLocked(currentWeightBombLocked);
+            
+            // Hold된 블록을 꺼내서 현재 블록으로 설정
+            seoultech.se.core.model.Tetromino heldTetromino;
+            
+            // 무게추인 경우 특수 처리
+            if (previousHeld == seoultech.se.core.model.enumType.TetrominoType.WEIGHT_BOMB) {
+                heldTetromino = new seoultech.se.core.model.Tetromino(
+                    seoultech.se.core.model.enumType.TetrominoType.WEIGHT_BOMB
+                );
+                System.out.println("⚓ [ArcadeGameEngine] Swapping WEIGHT_BOMB from Hold");
+            } else {
+                heldTetromino = new seoultech.se.core.model.Tetromino(previousHeld);
+            }
+            
+            // 스폰 위치 설정
+            int spawnX = newState.getBoardWidth() / 2 - 1;
+            int spawnY = 0;
+            
+            // 스폰 위치 충돌 검사
+            if (!isValidPosition(newState, heldTetromino, spawnX, spawnY)) {
+                newState.setGameOver(true);
+                newState.setGameOverReason("Cannot swap held tetromino: spawn position blocked");
+                return newState;
+            }
+            
+            // 스폰 성공
+            newState.setCurrentTetromino(heldTetromino);
+            newState.setCurrentX(spawnX);
+            newState.setCurrentY(spawnY);
+            
+            // Hold된 블록의 아이템 정보 복원
+            newState.setCurrentItemType(previousItemType);
+            newState.setWeightBombLocked(previousWeightBombLocked);
+            
+            if (previousItemType != null) {
+                System.out.println("📦 [ArcadeGameEngine] Restored item type from Hold: " + previousItemType);
+            }
+            if (previousWeightBombLocked) {
+                System.out.println("⚓ [ArcadeGameEngine] Restored WEIGHT_BOMB locked state from Hold");
+            }
+        }
+        
+        // Hold 사용 플래그 설정
+        newState.setHoldUsedThisTurn(true);
+        
+        // 회전 플래그 리셋
+        newState.setLastActionWasRotation(false);
+        
+        return newState;
+    }
+    
+    /**
+     * 위치 검증 헬퍼 메서드 (ClassicGameEngine과 동일)
+     */
+    private boolean isValidPosition(GameState state, seoultech.se.core.model.Tetromino tetromino, int x, int y) {
+        int[][] shape = tetromino.getCurrentShape();
+        
+        if (shape == null || shape.length == 0) {
+            return false;
+        }
+
+        for(int row = 0; row < shape.length; row++){
+            if (shape[row] == null || shape[row].length == 0) {
+                continue;
+            }
+            
+            for(int col = 0; col < shape[row].length; col++){
+                if(shape[row][col] == 1) {
+                    int absX = x + (col - tetromino.getPivotX());
+                    int absY = y + (row - tetromino.getPivotY());
+
+                    if(absX < 0 || absX >= state.getBoardWidth() || absY >= state.getBoardHeight()) {
+                        return false;
+                    }
+                    if(absY >= 0 && state.getGrid()[absY][absX].isOccupied()) {
+                        return false;
+                    }
+                }
+            }
+        }
+        return true;
+    }
+    
+    /**
      * 아래로 이동 시도 (무게추 블록 제거 지원)
      * 
      * Phase 4: 무게추가 떨어질 때마다 아래 블록 제거
