@@ -38,6 +38,7 @@ import seoultech.se.core.command.Direction;
 import seoultech.se.core.command.MoveCommand;
 import seoultech.se.core.config.GameModeConfig;
 import seoultech.se.core.item.Item;
+import seoultech.se.core.item.ItemType;
 import seoultech.se.core.model.enumType.TetrominoType;
 
 /**
@@ -578,14 +579,45 @@ public class GameController {
                 notificationManager.showBackToBack("⚡ B2B x" + newB2B);
             }
             
-            // 8. 레벨 업 감지
+            // 8. 아이템 드롭 감지 (라인 클리어 시)
+            ItemType droppedItemType = newState.getNextBlockItemType();
+            if (droppedItemType != null && itemInventoryPanel != null) {
+                // 아이템이 드롭되었음 - 인벤토리에 추가
+                seoultech.se.core.item.Item droppedItem = null;
+                
+                if (boardController.getGameEngine() instanceof seoultech.se.core.engine.ArcadeGameEngine) {
+                    seoultech.se.core.engine.ArcadeGameEngine arcadeEngine = 
+                        (seoultech.se.core.engine.ArcadeGameEngine) boardController.getGameEngine();
+                    droppedItem = arcadeEngine.getItemManager().getItem(droppedItemType);
+                }
+                
+                if (droppedItem != null) {
+                    boolean added = itemInventoryPanel.addItem(droppedItem);
+                    
+                    if (added) {
+                        // 아이템 획득 알림
+                        String message = String.format("🎁 Got item: %s", droppedItem.getName());
+                        notificationManager.showLineClearType(message);
+                        System.out.println("✅ [GameController] Item dropped and added to inventory: " + droppedItem.getName());
+                    } else {
+                        // 인벤토리 가득 참
+                        notificationManager.showLineClearType("⚠️ Inventory full!");
+                        System.out.println("⚠️ [GameController] Item inventory full, item lost: " + droppedItem.getName());
+                    }
+                    
+                    // 아이템을 사용했으므로 GameState에서 제거
+                    newState.setNextBlockItemType(null);
+                }
+            }
+            
+            // 9. 레벨 업 감지
             int oldLevel = oldState.getLevel();
             int newLevel = newState.getLevel();
             if (newLevel > oldLevel) {
                 notificationManager.showLineClearType("📈 LEVEL UP! - Level " + newLevel);
             }
             
-            // 9. 일시정지 감지
+            // 10. 일시정지 감지
             boolean wasPaused = oldState.isPaused();
             boolean isPaused = newState.isPaused();
             if (!wasPaused && isPaused) {
@@ -633,26 +665,46 @@ public class GameController {
             return;
         }
         
-        // GameEngine을 통해 아이템 사용 - 테트로미노를 아이템 블록으로 변환
-        boolean success = boardController.getGameEngine().useItem(item, currentState);
-        
-        if (success) {
-            // 아이템 사용 성공 - 인벤토리에서 제거
-            itemInventoryPanel.removeItem(slotIndex);
-            
-            // 효과 적용 알림 (Lock 시 실제 효과 발생)
-            String message = String.format("✨ %s activated! Will trigger on lock", item.getName());
-            notificationManager.showLineClearType(message);
-            
-            // UI 업데이트 - BoardRenderer를 통해 보드 다시 그리기 (아이템 블록 표시)
-            boardRenderer.drawBoard(currentState);
-            
-            System.out.println("✅ [GameController] Item activated: " + item.getName());
-        } else {
-            // 아이템 사용 실패
-            notificationManager.showLineClearType("❌ Cannot use item now");
-            System.out.println("⚠️ [GameController] Item use failed");
+        // ArcadeGameEngine에서만 아이템 사용 가능
+        if (!(boardController.getGameEngine() instanceof seoultech.se.core.engine.ArcadeGameEngine)) {
+            System.out.println("⚠️ [GameController] Item system not available in this mode");
+            notificationManager.showLineClearType("❌ Items not available in this mode");
+            return;
         }
+        
+        // 현재 블록이 있는지 확인
+        if (currentState.getCurrentTetromino() == null) {
+            System.out.println("⚠️ [GameController] No current tetromino");
+            notificationManager.showLineClearType("❌ No block to apply item");
+            return;
+        }
+        
+        // 이미 아이템이 적용된 블록인지 확인
+        if (currentState.getCurrentItemType() != null) {
+            System.out.println("⚠️ [GameController] Current block already has an item");
+            notificationManager.showLineClearType("❌ Block already has an item");
+            return;
+        }
+        
+        // 아이템을 현재 블록에 적용
+        currentState.setCurrentItemType(item.getType());
+        
+        System.out.println("🎨 [GameController] Before item application:");
+        System.out.println("   - Current tetromino type: " + currentState.getCurrentTetromino().getType());
+        System.out.println("   - Current item type: " + currentState.getCurrentItemType());
+        
+        // 인벤토리에서 아이템 제거
+        itemInventoryPanel.removeItem(slotIndex);
+        
+        // 알림 표시
+        String message = String.format("✨ %s applied! (Activates on lock)", item.getName());
+        notificationManager.showLineClearType(message);
+        System.out.println("✅ [GameController] Item applied to current block: " + item.getName());
+        
+        // 보드 업데이트 (아이템 블록 표시)
+        Platform.runLater(() -> {
+            boardRenderer.drawBoard(currentState);
+        });
     }
     
     /**
@@ -664,8 +716,15 @@ public class GameController {
             return;
         }
         
-        // GameEngine을 통해 아이템 드롭 시도
-        Item droppedItem = boardController.getGameEngine().tryDropItem();
+        // ArcadeGameEngine에서만 아이템 드롭 가능
+        if (!(boardController.getGameEngine() instanceof seoultech.se.core.engine.ArcadeGameEngine)) {
+            return;
+        }
+        
+        // TODO: tryDropItem 메서드 구현 필요
+        // 현재는 기능 비활성화
+        /*
+        Item droppedItem = ((seoultech.se.core.engine.ArcadeGameEngine)boardController.getGameEngine()).tryDropItem();
         
         if (droppedItem != null) {
             boolean added = itemInventoryPanel.addItem(droppedItem);
@@ -681,6 +740,7 @@ public class GameController {
                 System.out.println("⚠️ [GameController] Item inventory full, item lost: " + droppedItem.getName());
             }
         }
+        */
     }
     
     // ========== 게임 제어 ==========

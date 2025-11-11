@@ -309,6 +309,8 @@ public class ArcadeGameEngine extends ClassicGameEngine {
      */
     @Override
     public GameState lockTetromino(GameState state) {
+        System.out.println("🚀 [ArcadeGameEngine] lockTetromino() CALLED - Class: " + this.getClass().getSimpleName());
+        
         // 1. Phase 4: 무게추 최종 처리 (고정 전)
         int weightBombScore = 0;
         if (state.getCurrentTetromino().getType() == seoultech.se.core.model.enumType.TetrominoType.WEIGHT_BOMB) {
@@ -331,17 +333,26 @@ public class ArcadeGameEngine extends ClassicGameEngine {
         // 2. 기본 고정 처리 (부모 클래스)
         GameState newState = super.lockTetromino(state);
         
+        // 게임 오버 시 early return
+        if (newState.isGameOver()) {
+            System.out.println("❌ [ArcadeGameEngine] Game Over detected, skipping item logic");
+            return newState;
+        }
+        
         // Phase 4: 무게추 점수 추가
         if (weightBombScore > 0) {
             newState.addScore(weightBombScore);
         }
         
         // 3. 'L' 마커 줄 삭제 처리 (Phase 3)
+        int lineClearMarkerLines = 0;
         if (itemManager != null) {
             java.util.List<Integer> markedLines = 
                 seoultech.se.core.item.impl.LineClearItem.findAndClearMarkedLines(newState);
             
             if (!markedLines.isEmpty()) {
+                lineClearMarkerLines = markedLines.size();
+                
                 // 'L' 마커 줄 삭제
                 int blocksCleared = 
                     seoultech.se.core.item.impl.LineClearItem.clearLines(newState, markedLines);
@@ -363,8 +374,16 @@ public class ArcadeGameEngine extends ClassicGameEngine {
         
         // 4. 아이템 드롭 체크 (10줄마다)
         // 주의: 기본 라인 클리어 + 'L' 마커 라인 클리어 모두 포함
-        if (itemManager != null && newState.getLastLinesCleared() > 0) {
-            ItemType droppedItem = itemManager.checkAndGenerateItem(newState.getLastLinesCleared());
+        int totalLinesCleared = newState.getLastLinesCleared() + lineClearMarkerLines;
+        
+        System.out.println("🔍 [ArcadeGameEngine] lockTetromino - itemManager: " + 
+            (itemManager != null ? "initialized" : "NULL") + 
+            ", lastLinesCleared: " + newState.getLastLinesCleared() +
+            ", lineClearMarkerLines: " + lineClearMarkerLines +
+            ", totalLinesCleared: " + totalLinesCleared);
+        
+        if (itemManager != null && totalLinesCleared > 0) {
+            ItemType droppedItem = itemManager.checkAndGenerateItem(totalLinesCleared);
             
             if (droppedItem != null) {
                 // 다음 블록에 아이템 타입 설정
@@ -377,5 +396,36 @@ public class ArcadeGameEngine extends ClassicGameEngine {
         newState.setWeightBombLocked(false);
         
         return newState;
+    }
+    
+    /**
+     * Hard Drop 오버라이드 - lockTetromino()를 호출하도록 수정
+     * 
+     * 기본 구현은 lockTetrominoInternal()을 직접 호출하여 
+     * ArcadeGameEngine의 아이템 로직을 건너뛰므로,
+     * lockTetromino()를 통해 호출하도록 변경
+     */
+    @Override
+    public GameState hardDrop(GameState state) {
+        System.out.println("🚀 [ArcadeGameEngine] hardDrop() CALLED");
+        
+        // 1. 바닥까지 이동 거리 계산 (원본 state는 수정하지 않음)
+        int dropDistance = 0;
+        int finalY = state.getCurrentY();
+
+        while(isValidPosition(state, state.getCurrentTetromino(), 
+                              state.getCurrentX(), finalY + 1)
+        ) {
+            finalY++;
+            dropDistance++;
+        }
+
+        // 2. deepCopy 후 최종 위치 설정 및 점수 추가
+        GameState droppedState = state.deepCopy();
+        droppedState.setCurrentY(finalY);
+        droppedState.addScore(dropDistance * 2);
+
+        // 3. lockTetromino() 호출 (오버라이드된 메서드 사용)
+        return lockTetromino(droppedState);
     }
 }

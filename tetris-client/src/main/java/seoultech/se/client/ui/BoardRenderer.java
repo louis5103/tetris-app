@@ -130,6 +130,10 @@ public class BoardRenderer {
         boolean isItemBlock = gameState.getCurrentItemType() != null;
         seoultech.se.core.item.ItemType itemType = gameState.getCurrentItemType();
         
+        if (isItemBlock) {
+            System.out.println("🎨 [BoardRenderer] Drawing ITEM block: " + itemType + ", tetromino: " + tetromino.getType());
+        }
+        
         for (int row = 0; row < shape.length; row++) {
             for (int col = 0; col < shape[0].length; col++) {
                 if (shape[row][col] == 1) {
@@ -180,11 +184,14 @@ public class BoardRenderer {
             String imagePath = null;
             
             switch (itemType) {
-                case BOMB:
+                case WEIGHT_BOMB:
                     imagePath = "/image/bomb.png";
                     break;
                 case PLUS:
                     imagePath = "/image/cross.png";
+                    break;
+                case LINE_CLEAR:
+                    imagePath = "/image/L.png";
                     break;
                 case SPEED_RESET:
                 case BONUS_SCORE:
@@ -206,11 +213,14 @@ public class BoardRenderer {
                     System.err.println("⚠️ Failed to load item image: " + imagePath);
                     // 폴백: CSS 클래스 사용
                     switch (itemType) {
-                        case BOMB:
+                        case WEIGHT_BOMB:
                             rect.getStyleClass().add("range-bomb-block");
                             break;
                         case PLUS:
                             rect.getStyleClass().add("cross-bomb-block");
+                            break;
+                        case LINE_CLEAR:
+                            rect.getStyleClass().add("line-clear-block");
                             break;
                         default:
                             rect.getStyleClass().add("selectable-block");

@@ -8,12 +8,12 @@ import org.springframework.stereotype.Component;
 
 import lombok.Getter;
 import seoultech.se.client.mode.SingleMode;
-import seoultech.se.core.GameEngine;
 import seoultech.se.core.GameState;
 import seoultech.se.core.command.GameCommand;
 import seoultech.se.core.command.MoveCommand;
 import seoultech.se.core.command.RotateCommand;
 import seoultech.se.core.config.GameModeConfig;
+import seoultech.se.core.engine.GameEngine;
 import seoultech.se.core.mode.GameMode;
 import seoultech.se.core.model.Tetromino;
 import seoultech.se.core.model.enumType.Difficulty;
@@ -70,8 +70,9 @@ public class BoardController {
         this.randomGenerator = new RandomGenerator();
         this.tetrominoGenerator = new TetrominoGenerator(randomGenerator, difficulty);
         
-        // GameEngine 생성 및 초기화
-        this.gameEngine = new GameEngine();
+        // ✨ Phase 5: GameEngineFactory를 사용하여 적절한 GameEngine 생성
+        seoultech.se.core.factory.GameEngineFactory factory = new seoultech.se.core.factory.GameEngineFactory();
+        this.gameEngine = factory.createGameEngine(config);
         this.gameEngine.initialize(config);
         
         // GameModeConfig에 따라 SingleMode 생성
@@ -81,7 +82,7 @@ public class BoardController {
         initializeNextQueue();
         
         System.out.println("📦 BoardController created with config: " + 
-            (config.getGameplayType() != null ? config.getGameplayType() : "CLASSIC") +
+            (config.getGameplayType() != null ? config.getGameplayType().getDisplayName() : "CLASSIC") +
             ", SRS: " + config.isSrsEnabled() +
             ", Difficulty: " + difficulty);
     }
@@ -152,15 +153,18 @@ public class BoardController {
         GameState newState;
         switch (command.getDirection()) {
             case LEFT:
-                newState = GameEngine.tryMoveLeft(gameState);
+                newState = gameEngine.tryMoveLeft(gameState);
                 break;
             case RIGHT:
-                newState = GameEngine.tryMoveRight(gameState);
+                newState = gameEngine.tryMoveRight(gameState);
                 break;
             case DOWN:
-                newState = GameEngine.tryMoveDown(gameState, command.isSoftDrop());
+                newState = gameEngine.tryMoveDown(gameState, command.isSoftDrop());
                 if (newState == gameState) {
+                    System.out.println("⬇️ [BoardController] DOWN failed - calling lockAndSpawnNext()");
                     newState = lockAndSpawnNext();
+                } else {
+                    System.out.println("⬇️ [BoardController] DOWN succeeded - block moved");
                 }
                 break;
             default:
@@ -174,14 +178,89 @@ public class BoardController {
         boolean srsEnabled = getConfig().isSrsEnabled();
         
         // GameEngine에 SRS 설정 전달
-        return GameEngine.tryRotate(gameState, command.getDirection(), srsEnabled);
+        return gameEngine.tryRotate(gameState, command.getDirection(), srsEnabled);
     }
 
     private GameState handleHardDropCommand() {
         if (!getConfig().isHardDropEnabled()) {
             return gameState;
         }
-        GameState newState = GameEngine.hardDrop(gameState);
+        
+        // Lock 전에 아이템 타입과 위치 확인
+        seoultech.se.core.item.ItemType itemType = gameState.getCurrentItemType();
+        
+        // 실제 블록의 위치 계산 (pivot이 아닌 실제 블록 위치)
+        int actualRow = -1;
+        int actualCol = -1;
+        
+        if (itemType != null && gameState.getCurrentTetromino() != null) {
+            seoultech.se.core.model.Tetromino tetromino = gameState.getCurrentTetromino();
+            int[][] shape = tetromino.getCurrentShape();
+            int pivotX = tetromino.getPivotX();
+            int pivotY = tetromino.getPivotY();
+            int currentX = gameState.getCurrentX();
+            int currentY = gameState.getCurrentY();
+            
+            // 첫 번째 블록의 실제 위치 찾기
+            boolean found = false;
+            for (int r = 0; r < shape.length && !found; r++) {
+                for (int c = 0; c < shape[0].length && !found; c++) {
+                    if (shape[r][c] == 1) {
+                        actualRow = currentY + (r - pivotY);
+                        actualCol = currentX + (c - pivotX);
+                        found = true;
+                        System.out.println("🎯 [BoardController] HARD DROP - Item block actual position: (" + actualRow + ", " + actualCol + ")");
+                        System.out.println("   - Pivot position was: (" + currentY + ", " + currentX + ")");
+                    }
+                }
+            }
+        }
+        
+        GameState newState = gameEngine.hardDrop(gameState);
+        
+        // ✨ Phase 4: 난이도별 점수 배율 적용
+        // GameEngine에서 계산된 점수에 난이도 배율을 곱함
+        long originalScore = gameState.getScore();
+        long newScore = newState.getScore();
+        long scoreGained = newScore - originalScore;
+        
+        if (scoreGained > 0) {
+            double scoreMultiplier = difficulty.getScoreMultiplier();
+            long adjustedScoreGained = (long) (scoreGained * scoreMultiplier);
+            newState.setScore(originalScore + adjustedScoreGained);
+            
+            System.out.println("💰 [BoardController] HARD DROP - Score adjustment: " + 
+                scoreGained + " × " + scoreMultiplier + " = " + adjustedScoreGained);
+        }
+        
+        // Lock 후 아이템 효과 적용
+        if (itemType != null && gameEngine != null && actualRow >= 0 && actualCol >= 0) {
+            // 저장한 위치 사용
+            seoultech.se.core.item.Item item = (gameEngine instanceof seoultech.se.core.engine.ArcadeGameEngine) 
+                ? ((seoultech.se.core.engine.ArcadeGameEngine)gameEngine).getItemManager().getItem(itemType) 
+                : null;
+            
+            if (item != null) {
+                System.out.println("🔥 [BoardController] HARD DROP - Applying item effect: " + itemType + 
+                    " at position (" + actualRow + ", " + actualCol + ")");
+                seoultech.se.core.item.ItemEffect effect = item.apply(newState, actualRow, actualCol);
+                
+                if (effect.isSuccess()) {
+                    // ✨ Phase 4: 아이템 점수에도 난이도 배율 적용
+                    long itemScore = effect.getBonusScore();
+                    long adjustedItemScore = (long) (itemScore * difficulty.getScoreMultiplier());
+                    newState.setScore(newState.getScore() + adjustedItemScore);
+                    
+                    System.out.println("🎯 [BoardController] HARD DROP - Item effect applied: " + itemType + 
+                        " - Blocks cleared: " + effect.getBlocksCleared() + 
+                        ", Bonus: " + itemScore + " × " + difficulty.getScoreMultiplier() + 
+                        " = " + adjustedItemScore);
+                } else {
+                    System.out.println("⚠️ [BoardController] HARD DROP - Item effect failed: " + itemType);
+                }
+            }
+        }
+        
         if (!newState.isGameOver()) {
             spawnNewTetromino(newState);
             updateNextQueue(newState);
@@ -193,7 +272,7 @@ public class BoardController {
         if (!getConfig().isHoldEnabled()) {
             return gameState;
         }
-        GameState newState = GameEngine.tryHold(gameState);
+        GameState newState = gameEngine.tryHold(gameState);
         if (newState != gameState) {
             updateNextQueue(newState);
         }
@@ -249,7 +328,8 @@ public class BoardController {
             }
         }
         
-        GameState newState = GameEngine.lockTetromino(gameState);
+        System.out.println("🎮 [BoardController] Calling lockTetromino on: " + gameEngine.getClass().getSimpleName());
+        GameState newState = gameEngine.lockTetromino(gameState);
         
         // ✨ Phase 4: 난이도별 점수 배율 적용
         // GameEngine에서 계산된 점수에 난이도 배율을 곱함
@@ -269,8 +349,8 @@ public class BoardController {
         // Lock 후 아이템 효과 적용
         if (itemType != null && gameEngine != null && actualRow >= 0 && actualCol >= 0) {
             // 저장한 위치 사용
-            seoultech.se.core.item.Item item = gameEngine.getItemManager() != null 
-                ? gameEngine.getItemManager().getItem(itemType) 
+            seoultech.se.core.item.Item item = (gameEngine instanceof seoultech.se.core.engine.ArcadeGameEngine) 
+                ? ((seoultech.se.core.engine.ArcadeGameEngine)gameEngine).getItemManager().getItem(itemType) 
                 : null;
             
             if (item != null) {

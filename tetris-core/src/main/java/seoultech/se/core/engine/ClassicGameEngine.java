@@ -142,6 +142,8 @@ public class ClassicGameEngine implements GameEngine {
             
             return newState;
         } else {
+            System.out.println("❌ [ClassicGameEngine] tryMoveDown FAILED - Y=" + state.getCurrentY() + 
+                ", newY=" + newY + ", type=" + state.getCurrentTetromino().getType());
             // Phase 4: 무게추가 바닥/블록에 닿으면 잠김
             if (state.getCurrentTetromino().getType() == TetrominoType.WEIGHT_BOMB && 
                 !state.isWeightBombLocked()) {
@@ -367,6 +369,7 @@ public class ClassicGameEngine implements GameEngine {
      */
     @Override
     public GameState lockTetromino(GameState state) {
+        System.out.println("📦 [ClassicGameEngine] lockTetromino() CALLED - Class: " + this.getClass().getSimpleName());
         return lockTetrominoInternal(state, true);
     }
     
@@ -476,6 +479,9 @@ public class ClassicGameEngine implements GameEngine {
 
         // 3. 라인 클리어 체크 및 실행
         checkAndClearLines(newState, isTSpin, isTSpinMini);
+        
+        System.out.println("🎯 [ClassicGameEngine] After checkAndClearLines: lastLinesCleared = " + 
+            newState.getLastLinesCleared());
 
         // 4. 점수 및 통계 업데이트
         boolean leveledUp = false;
@@ -661,16 +667,22 @@ public class ClassicGameEngine implements GameEngine {
         // 라인 체크
         for (int row = state.getBoardHeight() - 1; row >= 0; row--) {
             boolean isFullLine = true;
+            int occupiedCount = 0;
 
             for(int col = 0; col < state.getBoardWidth(); col++) {
                 if(!state.getGrid()[row][col].isOccupied()) {
                     isFullLine = false;
-                    break;
+                } else {
+                    occupiedCount++;
                 }
             }
 
             if (isFullLine) {
                 clearedRowsList.add(row);
+                System.out.println("✨ [ClassicGameEngine] Full line detected at row " + row);
+            } else if (occupiedCount > 0) {
+                // 디버그: 부분적으로 채워진 줄 정보
+                System.out.println("📊 [ClassicGameEngine] Row " + row + ": " + occupiedCount + "/" + state.getBoardWidth() + " cells occupied");
             }
         }
 
