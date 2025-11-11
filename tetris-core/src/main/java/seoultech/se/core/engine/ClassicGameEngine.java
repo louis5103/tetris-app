@@ -402,6 +402,9 @@ public class ClassicGameEngine implements GameEngine {
         }
 
         // 2. Grid에 테트로미노 고정
+        // Phase 3: 아이템 블록인 경우 'L' 마커 추가
+        java.util.List<int[]> blockPositions = new java.util.ArrayList<>();
+        
         for(int row = 0; row < shape.length; row++) {
             for(int col = 0; col < shape[row].length; col++) {
                 if (shape[row][col] == 1) {
@@ -413,9 +416,29 @@ public class ClassicGameEngine implements GameEngine {
                     ) {
                         newState.getGrid()[absY][absX].setColor(state.getCurrentTetromino().getColor());
                         newState.getGrid()[absY][absX].setOccupied(true);
+                        
+                        // 블록 위치 저장 (아이템 마커 추가용)
+                        blockPositions.add(new int[]{absY, absX});
                     }
                 }
             }
+        }
+        
+        // Phase 3: 'L' 마커 추가 (아이템 블록인 경우)
+        if (state.getCurrentItemType() != null && 
+            state.getCurrentItemType() == seoultech.se.core.item.ItemType.LINE_CLEAR &&
+            !blockPositions.isEmpty()) {
+            // 무작위로 하나의 블록에 'L' 마커 추가
+            java.util.Random random = new java.util.Random();
+            int randomIndex = random.nextInt(blockPositions.size());
+            int[] markerPos = blockPositions.get(randomIndex);
+            
+            newState.getGrid()[markerPos[0]][markerPos[1]].setItemMarker(
+                seoultech.se.core.item.ItemType.LINE_CLEAR
+            );
+            
+            System.out.println("Ⓛ [ClassicGameEngine] LINE_CLEAR marker added at (" + 
+                markerPos[0] + ", " + markerPos[1] + ")");
         }
 
         // 3. 라인 클리어 체크 및 실행

@@ -106,9 +106,10 @@ public class ArcadeGameEngine extends ClassicGameEngine {
      * 테트로미노를 보드에 고정하고 라인 클리어 처리 (아이템 지원)
      * 
      * ClassicGameEngine의 lockTetromino를 오버라이드하여 아이템 로직 추가:
-     * 1. 라인 클리어 시 아이템 드롭 체크 (10줄마다)
-     * 2. 'L' 마커가 있는 줄 삭제
-     * 3. 무게추 처리 (향후 구현)
+     * 1. 기본 고정 처리 (ClassicGameEngine)
+     * 2. 'L' 마커 줄 삭제 (Phase 3)
+     * 3. 라인 클리어 시 아이템 드롭 체크 (10줄마다)
+     * 4. 무게추 처리 (향후 구현)
      * 
      * @param state 현재 게임 상태
      * @return 고정이 완료된 새로운 게임 상태
@@ -118,7 +119,33 @@ public class ArcadeGameEngine extends ClassicGameEngine {
         // 1. 기본 고정 처리 (부모 클래스)
         GameState newState = super.lockTetromino(state);
         
-        // 2. 아이템 드롭 체크 (10줄마다)
+        // 2. 'L' 마커 줄 삭제 처리 (Phase 3)
+        if (itemManager != null) {
+            java.util.List<Integer> markedLines = 
+                seoultech.se.core.item.impl.LineClearItem.findAndClearMarkedLines(newState);
+            
+            if (!markedLines.isEmpty()) {
+                // 'L' 마커 줄 삭제
+                int blocksCleared = 
+                    seoultech.se.core.item.impl.LineClearItem.clearLines(newState, markedLines);
+                
+                // 점수 추가 (줄당 100점 기본 + 블록당 10점)
+                long lineBonus = markedLines.size() * 100 * newState.getLevel();
+                long blockBonus = blocksCleared * 10;
+                newState.addScore(lineBonus + blockBonus);
+                
+                // 라인 카운트 추가 (레벨업 진행을 위해)
+                newState.addLinesCleared(markedLines.size());
+                
+                System.out.println("Ⓛ [ArcadeGameEngine] LINE_CLEAR effect: " + 
+                    markedLines.size() + " line(s), " + blocksCleared + " blocks");
+                System.out.println("   - Line bonus: " + lineBonus);
+                System.out.println("   - Block bonus: " + blockBonus);
+            }
+        }
+        
+        // 3. 아이템 드롭 체크 (10줄마다)
+        // 주의: 기본 라인 클리어 + 'L' 마커 라인 클리어 모두 포함
         if (itemManager != null && newState.getLastLinesCleared() > 0) {
             ItemType droppedItem = itemManager.checkAndGenerateItem(newState.getLastLinesCleared());
             
@@ -129,8 +156,8 @@ public class ArcadeGameEngine extends ClassicGameEngine {
             }
         }
         
-        // 3. 'L' 마커 줄 삭제 처리 (Phase 3에서 구현)
-        // TODO: Implement LINE_CLEAR item logic
+        // 4. 무게추 처리 (Phase 4에서 구현)
+        // TODO: Implement WEIGHT_BOMB item logic
         
         return newState;
     }
