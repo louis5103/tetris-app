@@ -178,15 +178,23 @@ public class BoardRenderer {
      * @param itemType 아이템 타입
      */
     private void applyItemBlockStyle(Rectangle rect, seoultech.se.core.item.ItemType itemType) {
+        // ✅ FIXED: null 방어 코드 추가
+        if (itemType == null) {
+            System.err.println("⚠️ [BoardRenderer] applyItemBlockStyle called with null itemType");
+            // 기본 스타일 적용하여 블록이 보이지 않는 문제 방지
+            rect.setFill(Color.LIGHTGRAY);
+            rect.getStyleClass().add("selectable-block");
+            return;
+        }
+        
         // 모든 기존 스타일 제거
         rect.getStyleClass().removeAll(UIConstants.ALL_TETROMINO_COLOR_CLASSES);
         rect.getStyleClass().removeAll("range-bomb-block", "cross-bomb-block", "line-clear-block", "selectable-block");
         
         // 아이템 타입에 따라 다른 이미지 표시
-        if (itemType != null) {
-            String imagePath = null;
-            
-            switch (itemType) {
+        String imagePath = null;
+        
+        switch (itemType) {
                 case WEIGHT_BOMB:
                 case BOMB:
                     imagePath = "/image/bomb.png";
@@ -202,7 +210,10 @@ public class BoardRenderer {
                     imagePath = "/image/L.png";
                     break;
                 default:
+                    // ✅ FIXED: 새 아이템 타입 추가 시 누락 방지를 위한 경고 로그
+                    System.err.println("⚠️ [BoardRenderer] Unknown item type: " + itemType + ", using default GOLD style");
                     rect.setFill(Color.GOLD);
+                    rect.getStyleClass().add("selectable-block");
                     return;
             }
             
@@ -233,7 +244,6 @@ public class BoardRenderer {
                     }
                 }
             }
-        }
     }
     
     /**
