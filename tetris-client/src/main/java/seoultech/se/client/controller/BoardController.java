@@ -189,6 +189,8 @@ public class BoardController {
         // Lock 전에 아이템 타입 기록
         seoultech.se.core.item.ItemType itemType = gameState.getCurrentItemType();
         
+        System.out.println("🎯 [BoardController] HARD DROP - Item type BEFORE hardDrop(): " + itemType);
+        
         // Hard Drop 실행
         GameState newState = gameEngine.hardDrop(gameState);
         
@@ -197,6 +199,8 @@ public class BoardController {
         int actualRow = newState.getLastLockedPivotY();
         int actualCol = newState.getLastLockedPivotX();
         
+        System.out.println("🎯 [BoardController] HARD DROP - Item type AFTER hardDrop(): " + 
+            newState.getCurrentItemType());
         System.out.println("🎯 [BoardController] HARD DROP - Locked pivot position from GameState: (" + 
             actualRow + ", " + actualCol + ")");
         

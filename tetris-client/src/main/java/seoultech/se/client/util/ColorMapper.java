@@ -55,6 +55,7 @@ public final class ColorMapper {
             case CYAN    -> UIConstants.TETROMINO_CYAN_CLASS;
             case MAGENTA -> UIConstants.TETROMINO_MAGENTA_CLASS;
             case ORANGE  -> UIConstants.TETROMINO_ORANGE_CLASS;
+            case GRAY    -> UIConstants.TETROMINO_GRAY_CLASS; // 🔥 FIX: WEIGHT_BOMB 전용
             default      -> null;
         };
     }

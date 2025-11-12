@@ -208,13 +208,14 @@ public class BoardRenderer {
         
         javafx.scene.layout.StackPane parentPane = (javafx.scene.layout.StackPane) rect.getParent();
         
-        // 🔥 FIX: 이미 동일한 아이템 타입의 ImageView가 있으면 스킵
-        if (rect.getUserData() instanceof javafx.scene.image.ImageView) {
-            javafx.scene.image.ImageView existingView = (javafx.scene.image.ImageView) rect.getUserData();
-            // userData에 itemType도 저장하기 위해 ImageView의 id를 사용
-            if (existingView.getId() != null && existingView.getId().equals(itemType.name())) {
-                // 이미 동일한 아이템 마커가 있으므로 스킵
-                return;
+        // StackPane의 자식 노드 중 ImageView가 있고, 같은 itemType이면 스킵
+        for (javafx.scene.Node node : parentPane.getChildren()) {
+            if (node instanceof javafx.scene.image.ImageView) {
+                javafx.scene.image.ImageView existingView = (javafx.scene.image.ImageView) node;
+                if (existingView.getId() != null && existingView.getId().equals(itemType.name())) {
+                    // 이미 동일한 아이템 마커가 있으므로 스킵 (로그 없음)
+                    return;
+                }
             }
         }
         
@@ -407,10 +408,16 @@ public class BoardRenderer {
         int offsetX = (UIConstants.PREVIEW_GRID_COLS - shape[0].length) / 2;
         int offsetY = (UIConstants.PREVIEW_GRID_ROWS - shape.length) / 2;
         
-        // pivot 위치 계산 (아이템 마커 표시용)
-        int pivotRow = -1;
-        int pivotCol = -1;
         boolean isItemBlock = (itemType != null);
+        
+        // 🔥 CRITICAL FIX: 실제 pivot 위치를 사용 (테트로미노의 중심)
+        // TetrominoType에서 pivotX, pivotY를 가져올 수 없으므로, Tetromino 객체 생성
+        seoultech.se.core.model.Tetromino tempTetromino = new seoultech.se.core.model.Tetromino(type);
+        int pivotInShape = tempTetromino.getPivotX();  // shape 배열 내 pivot 열
+        int pivotRowInShape = tempTetromino.getPivotY();  // shape 배열 내 pivot 행
+        
+        int pivotGridRow = -1;
+        int pivotGridCol = -1;
         
         for (int row = 0; row < shape.length; row++) {
             for (int col = 0; col < shape[row].length; col++) {
@@ -428,10 +435,10 @@ public class BoardRenderer {
                             grid[gridRow][gridCol].getStyleClass().add(colorClass);
                         }
                         
-                        // 🔥 첫 번째 블록을 pivot으로 간주 (아이템 마커 표시용)
-                        if (pivotRow == -1 && isItemBlock) {
-                            pivotRow = gridRow;
-                            pivotCol = gridCol;
+                        // 🔥 pivot 블록인지 확인
+                        if (row == pivotRowInShape && col == pivotInShape) {
+                            pivotGridRow = gridRow;
+                            pivotGridCol = gridCol;
                         }
                     }
                 }
@@ -439,9 +446,9 @@ public class BoardRenderer {
         }
         
         // 🔥 아이템 마커 표시 (pivot 블록에만, WEIGHT_BOMB 제외)
-        if (isItemBlock && pivotRow != -1 && 
+        if (isItemBlock && pivotGridRow != -1 && 
             itemType != seoultech.se.core.item.ItemType.WEIGHT_BOMB) {
-            Rectangle pivotRect = grid[pivotRow][pivotCol];
+            Rectangle pivotRect = grid[pivotGridRow][pivotGridCol];
             applyItemMarkerOverlay(pivotRect, itemType);
         }
     }
