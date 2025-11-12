@@ -506,6 +506,23 @@ public class ClassicGameEngine implements GameEngine {
         
         System.out.println("🎯 [ClassicGameEngine] After checkAndClearLines: lastLinesCleared = " + 
             newState.getLastLinesCleared());
+        
+        // 🔍 디버그: checkAndClearLines 후 'L' 마커 보존 여부 확인
+        if (state.getCurrentItemType() == seoultech.se.core.item.ItemType.LINE_CLEAR) {
+            int markerCount = 0;
+            for (int row = 0; row < newState.getBoardHeight(); row++) {
+                for (int col = 0; col < newState.getBoardWidth(); col++) {
+                    if (newState.getGrid()[row][col].hasItemMarker() && 
+                        newState.getGrid()[row][col].getItemMarker() == seoultech.se.core.item.ItemType.LINE_CLEAR) {
+                        markerCount++;
+                        System.out.println("Ⓛ [ClassicGameEngine] 'L' marker still exists at (" + row + ", " + col + ")");
+                    }
+                }
+            }
+            if (markerCount == 0) {
+                System.out.println("⚠️ [ClassicGameEngine] WARNING: 'L' marker was lost after checkAndClearLines!");
+            }
+        }
 
         // 4. 점수 및 통계 업데이트
         boolean leveledUp = false;

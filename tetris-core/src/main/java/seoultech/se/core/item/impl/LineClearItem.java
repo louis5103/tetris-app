@@ -111,22 +111,29 @@ public class LineClearItem extends AbstractItem {
         // 'L' 마커가 있는 줄 찾기
         for (int row = 0; row < boardHeight; row++) {
             boolean hasMarker = false;
+            int occupiedCount = 0;
             
             for (int col = 0; col < boardWidth; col++) {
+                if (grid[row][col].isOccupied()) {
+                    occupiedCount++;
+                }
                 if (grid[row][col].hasItemMarker() && 
                     grid[row][col].getItemMarker() == ItemType.LINE_CLEAR) {
                     hasMarker = true;
-                    break;
                 }
             }
             
             if (hasMarker) {
                 clearedRows.add(row);
+                System.out.println("Ⓛ [LineClearItem] Found 'L' marker at row " + row + 
+                    " (" + occupiedCount + "/" + boardWidth + " occupied)");
             }
         }
         
         if (!clearedRows.isEmpty()) {
-            System.out.println("Ⓛ [LineClearItem] Found 'L' markers in rows: " + clearedRows);
+            System.out.println("Ⓛ [LineClearItem] Total rows with 'L' markers: " + clearedRows);
+        } else {
+            System.out.println("Ⓛ [LineClearItem] No 'L' markers found in any row");
         }
         
         return clearedRows;
@@ -152,13 +159,17 @@ public class LineClearItem extends AbstractItem {
         // 삭제할 줄들을 Set으로 변환 (O(1) 조회)
         java.util.Set<Integer> rowsSet = new java.util.HashSet<>(rowsToRemove);
         
-        // 블록 수 계산
+        // 블록 수 계산 및 디버그 로그
         for (int row : rowsToRemove) {
+            int rowBlockCount = 0;
             for (int col = 0; col < boardWidth; col++) {
                 if (grid[row][col].isOccupied()) {
                     totalBlocksCleared++;
+                    rowBlockCount++;
                 }
             }
+            System.out.println("Ⓛ [LineClearItem] Row " + row + " has " + rowBlockCount + 
+                " occupied blocks (will clear entire row)");
         }
         
         // 남아있는 줄들만 수집 (아래에서 위로)
