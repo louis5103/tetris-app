@@ -1,8 +1,8 @@
 package seoultech.se.client.util;
 
 import javafx.scene.paint.Color;
-import seoultech.se.client.constants.UIConstants;
 import seoultech.se.client.constants.ColorBlindMode;
+import seoultech.se.client.constants.UIConstants;
 
 /**
  * 색상 변환 유틸리티 클래스

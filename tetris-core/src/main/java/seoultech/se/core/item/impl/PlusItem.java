@@ -91,18 +91,12 @@ public class PlusItem extends AbstractItem {
         
         System.out.println("✅ [PlusItem] " + message);
         
-        // 블록 제거 후 중력 적용
+        // 🎮 GAME UX: 중력 적용 (라인 클리어는 제거)
+        // 십자 영역 삭제 후 위의 블록이 아래로 떨어지도록 하여 자연스러운 게임 경험 제공
+        // 단, 라인 클리어는 하지 않음 (연쇄 효과 방지, 예측 가능성 확보)
         if (blocksCleared > 0) {
             applyGravity(gameState);
-            System.out.println("   - Gravity applied after plus effect");
-            
-            // 🔥 FIX: 중력 적용 후 라인 클리어 체크
-            int linesCleared = checkAndClearLines(gameState);
-            if (linesCleared > 0) {
-                System.out.println("   - Post-gravity line clear: " + linesCleared + " line(s)");
-                // 라인 클리어 점수 추가
-                bonusScore += linesCleared * 100;  // 줄당 100점 보너스
-            }
+            System.out.println("   - Gravity applied (no line clear)");
         }
         
         return ItemEffect.success(ItemType.PLUS, blocksCleared, bonusScore, message);
@@ -111,8 +105,12 @@ public class PlusItem extends AbstractItem {
     /**
      * 중력 적용: 빈 공간 위의 블록을 아래로 떨어뜨림
      * 
+     * ⚠️ 현재 사용하지 않음 (QA 버그 수정으로 제거됨)
+     * 기획 팀 결정 후 복원 가능
+     * 
      * @param gameState 게임 상태
      */
+    @SuppressWarnings("unused")
     private void applyGravity(GameState gameState) {
         Cell[][] grid = gameState.getGrid();
         int boardHeight = gameState.getBoardHeight();
@@ -144,9 +142,13 @@ public class PlusItem extends AbstractItem {
     /**
      * 라인 클리어 체크 및 처리
      * 
+     * ⚠️ 현재 사용하지 않음 (QA 버그 수정으로 제거됨)
+     * 기획 팀 결정 후 복원 가능
+     * 
      * @param gameState 게임 상태
      * @return 제거된 줄 수
      */
+    @SuppressWarnings("unused")
     private int checkAndClearLines(GameState gameState) {
         Cell[][] grid = gameState.getGrid();
         int boardHeight = gameState.getBoardHeight();

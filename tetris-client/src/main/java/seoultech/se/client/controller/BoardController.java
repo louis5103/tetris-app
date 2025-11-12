@@ -219,46 +219,8 @@ public class BoardController {
                 scoreGained + " × " + scoreMultiplier + " = " + adjustedScoreGained);
         }
         
-        // Lock 후 아이템 효과 적용
-        // ✅ FIXED: null 체크 강화 - ItemManager NPE 방지
-        if (itemType != null && actualRow >= 0 && actualCol >= 0 && 
-            gameEngine instanceof seoultech.se.core.engine.ArcadeGameEngine) {
-            
-            seoultech.se.core.engine.ArcadeGameEngine arcadeEngine = 
-                (seoultech.se.core.engine.ArcadeGameEngine) gameEngine;
-            
-            // ItemManager null 체크
-            if (arcadeEngine.getItemManager() != null) {
-                seoultech.se.core.item.Item item = arcadeEngine.getItemManager().getItem(itemType);
-                
-                // 🔥 FIX: LINE_CLEAR는 ArcadeGameEngine에서 자동 처리되므로 여기서 apply() 호출 안 함
-                if (item != null && itemType != seoultech.se.core.item.ItemType.LINE_CLEAR) {
-                    System.out.println("🔥 [BoardController] HARD DROP - Applying item effect: " + itemType + 
-                        " at position (" + actualRow + ", " + actualCol + ")");
-                    seoultech.se.core.item.ItemEffect effect = item.apply(newState, actualRow, actualCol);
-                    
-                    if (effect.isSuccess()) {
-                        // ✨ Phase 4: 아이템 점수에도 난이도 배율 적용
-                        long itemScore = effect.getBonusScore();
-                        long adjustedItemScore = (long) (itemScore * difficulty.getScoreMultiplier());
-                        newState.setScore(newState.getScore() + adjustedItemScore);
-                        
-                        System.out.println("🎯 [BoardController] HARD DROP - Item effect applied: " + itemType + 
-                            " - Blocks cleared: " + effect.getBlocksCleared() + 
-                            ", Bonus: " + itemScore + " × " + difficulty.getScoreMultiplier() + 
-                            " = " + adjustedItemScore);
-                    } else {
-                        System.out.println("⚠️ [BoardController] HARD DROP - Item effect failed: " + itemType);
-                    }
-                } else {
-                    System.err.println("⚠️ [BoardController] HARD DROP - Item not found in ItemManager: " + itemType);
-                }
-            } else {
-                System.err.println("⚠️ [BoardController] HARD DROP - ItemManager is null in ArcadeGameEngine");
-            }
-        } else if (itemType != null && !(gameEngine instanceof seoultech.se.core.engine.ArcadeGameEngine)) {
-            System.out.println("ℹ️ [BoardController] HARD DROP - Item ignored - not in Arcade mode: " + itemType);
-        }
+        // 🔥 CRITICAL: 통합된 아이템 효과 적용 (모든 아이템, 모든 경로)
+        applyItemEffectAfterLock(newState, itemType, "HARD DROP");
         
         if (!newState.isGameOver()) {
             spawnNewTetromino(newState);
@@ -326,46 +288,8 @@ public class BoardController {
                 scoreGained + " × " + scoreMultiplier + " = " + adjustedScoreGained);
         }
         
-        // Lock 후 아이템 효과 적용
-        // ✅ FIXED: null 체크 강화 - ItemManager NPE 방지
-        if (itemType != null && actualRow >= 0 && actualCol >= 0 && 
-            gameEngine instanceof seoultech.se.core.engine.ArcadeGameEngine) {
-            
-            seoultech.se.core.engine.ArcadeGameEngine arcadeEngine = 
-                (seoultech.se.core.engine.ArcadeGameEngine) gameEngine;
-            
-            // ItemManager null 체크
-            if (arcadeEngine.getItemManager() != null) {
-                seoultech.se.core.item.Item item = arcadeEngine.getItemManager().getItem(itemType);
-                
-                // 🔥 FIX: LINE_CLEAR는 ArcadeGameEngine에서 자동 처리되므로 여기서 apply() 호출 안 함
-                if (item != null && itemType != seoultech.se.core.item.ItemType.LINE_CLEAR) {
-                    System.out.println("🔥 [BoardController] Applying item effect: " + itemType + 
-                        " at position (" + actualRow + ", " + actualCol + ")");
-                    seoultech.se.core.item.ItemEffect effect = item.apply(newState, actualRow, actualCol);
-                    
-                    if (effect.isSuccess()) {
-                        // ✨ Phase 4: 아이템 점수에도 난이도 배율 적용
-                        long itemScore = effect.getBonusScore();
-                        long adjustedItemScore = (long) (itemScore * difficulty.getScoreMultiplier());
-                        newState.setScore(newState.getScore() + adjustedItemScore);
-                        
-                        System.out.println("🎯 [BoardController] Item effect applied: " + itemType + 
-                            " - Blocks cleared: " + effect.getBlocksCleared() + 
-                            ", Bonus: " + itemScore + " × " + difficulty.getScoreMultiplier() + 
-                            " = " + adjustedItemScore);
-                    } else {
-                        System.out.println("⚠️ [BoardController] Item effect failed: " + itemType);
-                    }
-                } else {
-                    System.err.println("⚠️ [BoardController] Item not found in ItemManager: " + itemType);
-                }
-            } else {
-                System.err.println("⚠️ [BoardController] ItemManager is null in ArcadeGameEngine");
-            }
-        } else if (itemType != null && !(gameEngine instanceof seoultech.se.core.engine.ArcadeGameEngine)) {
-            System.out.println("ℹ️ [BoardController] Item ignored - not in Arcade mode: " + itemType);
-        }
+        // 🔥 CRITICAL: 통합된 아이템 효과 적용 (모든 아이템, 모든 경로)
+        applyItemEffectAfterLock(newState, itemType, "AUTO LOCK");
         
         if (!newState.isGameOver()) {
             spawnNewTetromino(newState);
@@ -464,6 +388,85 @@ public class BoardController {
     public void cleanup() {
         if (gameMode != null) {
             gameMode.cleanup();
+        }
+    }
+    
+    /**
+     * 🔥 CRITICAL: Lock 후 아이템 효과를 적용하는 공통 메서드
+     * 
+     * 모든 Lock 경로 (Hard Drop, Soft Drop, Auto Lock)에서 호출됩니다.
+     * 모든 아이템 타입에 대해 동일한 로직을 적용합니다.
+     * 
+     * @param newState Lock 후의 GameState
+     * @param itemType Lock 전에 기록한 아이템 타입
+     * @param lockSource Lock 발생 지점 (디버깅용)
+     */
+    private void applyItemEffectAfterLock(GameState newState, seoultech.se.core.item.ItemType itemType, String lockSource) {
+        // 아이템이 없으면 스킵
+        if (itemType == null) {
+            return;
+        }
+        
+        // Arcade 모드가 아니면 스킵
+        if (!(gameEngine instanceof seoultech.se.core.engine.ArcadeGameEngine)) {
+            System.out.println("ℹ️ [BoardController] " + lockSource + " - Item ignored - not in Arcade mode: " + itemType);
+            return;
+        }
+        
+        seoultech.se.core.engine.ArcadeGameEngine arcadeEngine = 
+            (seoultech.se.core.engine.ArcadeGameEngine) gameEngine;
+        
+        // ItemManager null 체크
+        if (arcadeEngine.getItemManager() == null) {
+            System.err.println("⚠️ [BoardController] " + lockSource + " - ItemManager is null in ArcadeGameEngine");
+            return;
+        }
+        
+        // 🔥 CRITICAL: Lock된 pivot 위치 사용 (아이템 효과 중심점)
+        int actualRow = newState.getLastLockedPivotY();
+        int actualCol = newState.getLastLockedPivotX();
+        
+        System.out.println("🎯 [BoardController] " + lockSource + " - Locked pivot position: (" + 
+            actualRow + ", " + actualCol + "), Item: " + itemType);
+        
+        // 위치 유효성 검사
+        if (actualRow < 0 || actualCol < 0) {
+            System.err.println("⚠️ [BoardController] " + lockSource + " - Invalid pivot position: (" + 
+                actualRow + ", " + actualCol + ")");
+            return;
+        }
+        
+        seoultech.se.core.item.Item item = arcadeEngine.getItemManager().getItem(itemType);
+        
+        if (item == null) {
+            System.err.println("⚠️ [BoardController] " + lockSource + " - Item not found in ItemManager: " + itemType);
+            return;
+        }
+        
+        // 🔥 LINE_CLEAR는 ArcadeGameEngine에서 자동 처리되므로 여기서 apply() 호출 안 함
+        if (itemType == seoultech.se.core.item.ItemType.LINE_CLEAR) {
+            System.out.println("ℹ️ [BoardController] " + lockSource + " - LINE_CLEAR handled by ArcadeGameEngine");
+            return;
+        }
+        
+        // 아이템 효과 적용
+        System.out.println("🔥 [BoardController] " + lockSource + " - Applying item effect: " + itemType + 
+            " at position (" + actualRow + ", " + actualCol + ")");
+        
+        seoultech.se.core.item.ItemEffect effect = item.apply(newState, actualRow, actualCol);
+        
+        if (effect.isSuccess()) {
+            // ✨ Phase 4: 아이템 점수에도 난이도 배율 적용
+            long itemScore = effect.getBonusScore();
+            long adjustedItemScore = (long) (itemScore * difficulty.getScoreMultiplier());
+            newState.setScore(newState.getScore() + adjustedItemScore);
+            
+            System.out.println("✅ [BoardController] " + lockSource + " - Item effect applied: " + itemType + 
+                " - Blocks cleared: " + effect.getBlocksCleared() + 
+                ", Bonus: " + itemScore + " × " + difficulty.getScoreMultiplier() + 
+                " = " + adjustedItemScore);
+        } else {
+            System.out.println("⚠️ [BoardController] " + lockSource + " - Item effect failed: " + itemType);
         }
     }
 }

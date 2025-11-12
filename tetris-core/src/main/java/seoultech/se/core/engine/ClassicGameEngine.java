@@ -399,8 +399,18 @@ public class ClassicGameEngine implements GameEngine {
         Tetromino lockedTetromino = state.getCurrentTetromino();
         int lockedX = state.getCurrentX();
         int lockedY = state.getCurrentY();
-        int lockedPivotX = state.getCurrentX();  // Pivot 위치 저장 (아이템 효과 중심점)
-        int lockedPivotY = state.getCurrentY();  // Pivot 위치 저장
+        
+        // 🔥 CRITICAL FIX: 실제 pivot 블록의 절대 좌표 계산 (아이템 효과 중심점)
+        // Tetromino의 pivot은 shape 배열의 (pivotY, pivotX) 위치
+        // 절대 좌표 계산: currentX + (col - pivotX), currentY + (row - pivotY)
+        // pivot 자체는 col=pivotX, row=pivotY이므로:
+        // pivotAbsX = currentX + (pivotX - pivotX) = currentX
+        // pivotAbsY = currentY + (pivotY - pivotY) = currentY
+        int lockedPivotX = state.getCurrentX();
+        int lockedPivotY = state.getCurrentY();
+        
+        System.out.println("🎯 [ClassicGameEngine] Locking tetromino - Pivot absolute position: (" + 
+            lockedPivotY + ", " + lockedPivotX + ")");
 
         // T-Spin 감지 (블록이 고정되기 전에 체크)
         boolean isTSpin = detectTSpin(state);
@@ -448,11 +458,6 @@ public class ClassicGameEngine implements GameEngine {
         // Phase 3: 아이템 블록인 경우 'L' 마커 추가
         java.util.List<int[]> blockPositions = new java.util.ArrayList<>();
         
-        // 🔥 CRITICAL FIX: 실제로 Lock된 첫 번째 블록의 위치 저장
-        // pivot이 보드 밖에 있을 수 있으므로, 실제 블록 위치를 추적
-        int firstBlockX = -1;
-        int firstBlockY = -1;
-        
         for(int row = 0; row < shape.length; row++) {
             for(int col = 0; col < shape[row].length; col++) {
                 if (shape[row][col] == 1) {
@@ -467,21 +472,9 @@ public class ClassicGameEngine implements GameEngine {
                         
                         // 블록 위치 저장 (아이템 마커 추가용)
                         blockPositions.add(new int[]{absY, absX});
-                        
-                        // 🔥 첫 번째 블록 위치 기록 (아이템 효과 적용 위치)
-                        if (firstBlockX == -1) {
-                            firstBlockX = absX;
-                            firstBlockY = absY;
-                        }
                     }
                 }
             }
-        }
-        
-        // 🔥 실제 블록 위치를 lastLocked 변수에 업데이트
-        if (firstBlockX != -1) {
-            lockedX = firstBlockX;
-            lockedY = firstBlockY;
         }
         
         // Phase 3: 'L' 마커 추가 (아이템 블록인 경우)

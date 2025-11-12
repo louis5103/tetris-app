@@ -222,8 +222,9 @@ public class BoardRenderer {
         // 기존 마커 제거 (다른 타입의 마커인 경우)
         removeItemMarkerOverlay(rect);
         
-        // 아이템 타입에 따라 이미지 선택
+        // 아이템 타입에 따라 이미지 또는 텍스트 선택
         String imagePath = null;
+        String textOverlay = null;
         
         switch (itemType) {
             case WEIGHT_BOMB:
@@ -237,21 +238,19 @@ public class BoardRenderer {
                 imagePath = "/image/L.png";
                 break;
             case SPEED_RESET:
-                // 🔥 FIX: SPEED_RESET은 임시로 cross.png 사용
-                // TODO: 나중에 전용 아이콘 (시계 또는 화살표) 추가 권장
-                imagePath = "/image/cross.png";
+                // ⚡ SPEED_RESET은 텍스트로 표시 (전용 아이콘 없음)
+                textOverlay = "⚡";
                 break;
             case BONUS_SCORE:
-                // 🔥 FIX: BONUS_SCORE는 임시로 bomb.png 사용
-                // TODO: 나중에 전용 아이콘 (별 또는 코인) 추가 권장
-                imagePath = "/image/bomb.png";
+                // ⭐ BONUS_SCORE는 텍스트로 표시 (전용 아이콘 없음)
+                textOverlay = "⭐";
                 break;
             default:
                 System.err.println("⚠️ [BoardRenderer] Unknown item type: " + itemType);
                 return;
         }
         
-        // ImageView 생성 및 추가
+        // ImageView 또는 Text 생성 및 추가
         if (imagePath != null) {
             try {
                 String imageUrl = getClass().getResource(imagePath).toExternalForm();
@@ -285,6 +284,28 @@ public class BoardRenderer {
             } catch (Exception e) {
                 System.err.println("⚠️ [BoardRenderer] Failed to load item image: " + imagePath + " - " + e.getMessage());
             }
+        } else if (textOverlay != null) {
+            // 텍스트 오버레이 생성 (SPEED_RESET, BONUS_SCORE)
+            javafx.scene.text.Text text = new javafx.scene.text.Text(textOverlay);
+            text.setStyle("-fx-font-size: " + (rect.getWidth() * 0.7) + "px; " +
+                         "-fx-font-weight: bold; " +
+                         "-fx-fill: white; " +
+                         "-fx-stroke: black; " +
+                         "-fx-stroke-width: 2;");
+            
+            // 마우스 이벤트 무시
+            text.setMouseTransparent(true);
+            
+            // ID 설정 (중복 체크용)
+            text.setId(itemType.name());
+            
+            // userData에 저장
+            rect.setUserData(text);
+            
+            // StackPane에 추가
+            parentPane.getChildren().add(text);
+            
+            System.out.println("🎨 [BoardRenderer] Item marker text overlay added: " + itemType + " (" + textOverlay + ")");
         }
     }
     
@@ -297,10 +318,10 @@ public class BoardRenderer {
         if (rect.getParent() instanceof javafx.scene.layout.StackPane) {
             javafx.scene.layout.StackPane parentPane = (javafx.scene.layout.StackPane) rect.getParent();
             
-            // 🔥 FIX: StackPane에서 Rectangle을 제외한 모든 노드(ImageView) 제거
-            // userData 기반 제거는 불안정할 수 있으므로, StackPane의 모든 ImageView 제거
+            // 🔥 FIX: StackPane에서 Rectangle을 제외한 모든 노드(ImageView, Text) 제거
             parentPane.getChildren().removeIf(node -> 
-                node instanceof javafx.scene.image.ImageView
+                node instanceof javafx.scene.image.ImageView || 
+                node instanceof javafx.scene.text.Text
             );
             
             rect.setUserData(null);
