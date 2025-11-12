@@ -95,6 +95,14 @@ public class PlusItem extends AbstractItem {
         if (blocksCleared > 0) {
             applyGravity(gameState);
             System.out.println("   - Gravity applied after plus effect");
+            
+            // 🔥 FIX: 중력 적용 후 라인 클리어 체크
+            int linesCleared = checkAndClearLines(gameState);
+            if (linesCleared > 0) {
+                System.out.println("   - Post-gravity line clear: " + linesCleared + " line(s)");
+                // 라인 클리어 점수 추가
+                bonusScore += linesCleared * 100;  // 줄당 100점 보너스
+            }
         }
         
         return ItemEffect.success(ItemType.PLUS, blocksCleared, bonusScore, message);
@@ -131,5 +139,61 @@ public class PlusItem extends AbstractItem {
                 }
             }
         }
+    }
+    
+    /**
+     * 라인 클리어 체크 및 처리
+     * 
+     * @param gameState 게임 상태
+     * @return 제거된 줄 수
+     */
+    private int checkAndClearLines(GameState gameState) {
+        Cell[][] grid = gameState.getGrid();
+        int boardHeight = gameState.getBoardHeight();
+        int boardWidth = gameState.getBoardWidth();
+        
+        java.util.List<Integer> linesToClear = new java.util.ArrayList<>();
+        
+        // 꽉 찬 줄 찾기
+        for (int row = 0; row < boardHeight; row++) {
+            boolean isFullLine = true;
+            
+            for (int col = 0; col < boardWidth; col++) {
+                if (grid[row][col] == null || !grid[row][col].isOccupied()) {
+                    isFullLine = false;
+                    break;
+                }
+            }
+            
+            if (isFullLine) {
+                linesToClear.add(row);
+            }
+        }
+        
+        // 줄 제거 및 위의 블록 내리기
+        if (!linesToClear.isEmpty()) {
+            // 아래에서 위로 줄 제거
+            for (int lineIndex = linesToClear.size() - 1; lineIndex >= 0; lineIndex--) {
+                int rowToRemove = linesToClear.get(lineIndex);
+                
+                // 해당 줄 위의 모든 줄을 한 칸씩 내림
+                for (int row = rowToRemove; row > 0; row--) {
+                    for (int col = 0; col < boardWidth; col++) {
+                        if (grid[row - 1][col] != null) {
+                            grid[row][col].setColor(grid[row - 1][col].getColor());
+                            grid[row][col].setOccupied(grid[row - 1][col].isOccupied());
+                            grid[row][col].setItemMarker(grid[row - 1][col].getItemMarker());
+                        }
+                    }
+                }
+                
+                // 최상단 줄 초기화
+                for (int col = 0; col < boardWidth; col++) {
+                    grid[0][col].clear();
+                }
+            }
+        }
+        
+        return linesToClear.size();
     }
 }

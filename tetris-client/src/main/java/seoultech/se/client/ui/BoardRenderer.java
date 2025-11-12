@@ -208,7 +208,17 @@ public class BoardRenderer {
         
         javafx.scene.layout.StackPane parentPane = (javafx.scene.layout.StackPane) rect.getParent();
         
-        // 기존 마커 제거
+        // 🔥 FIX: 이미 동일한 아이템 타입의 ImageView가 있으면 스킵
+        if (rect.getUserData() instanceof javafx.scene.image.ImageView) {
+            javafx.scene.image.ImageView existingView = (javafx.scene.image.ImageView) rect.getUserData();
+            // userData에 itemType도 저장하기 위해 ImageView의 id를 사용
+            if (existingView.getId() != null && existingView.getId().equals(itemType.name())) {
+                // 이미 동일한 아이템 마커가 있으므로 스킵
+                return;
+            }
+        }
+        
+        // 기존 마커 제거 (다른 타입의 마커인 경우)
         removeItemMarkerOverlay(rect);
         
         // 아이템 타입에 따라 이미지 선택
@@ -254,12 +264,16 @@ public class BoardRenderer {
                 // 마우스 이벤트 무시 (Rectangle이 클릭 받도록)
                 imageView.setMouseTransparent(true);
                 
+                // 🔥 FIX: ImageView에 itemType ID 설정 (중복 체크용)
+                imageView.setId(itemType.name());
+                
                 // userData에 저장하여 나중에 제거 가능하도록
                 rect.setUserData(imageView);
                 
                 // StackPane에 추가 (StackPane의 alignment가 CENTER이므로 자동 중앙 정렬)
                 parentPane.getChildren().add(imageView);
                 
+                // 🔥 FIX: 로그를 실제 추가 시에만 출력 (중복 방지)
                 System.out.println("🎨 [BoardRenderer] Item marker overlay added: " + itemType);
             } catch (Exception e) {
                 System.err.println("⚠️ [BoardRenderer] Failed to load item image: " + imagePath + " - " + e.getMessage());
