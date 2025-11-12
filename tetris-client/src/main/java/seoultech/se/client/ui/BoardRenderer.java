@@ -328,12 +328,22 @@ public class BoardRenderer {
      * @param type 테트로미노 타입 (null이면 비움)
      */
     public void drawHoldPiece(TetrominoType type) {
+        drawHoldPiece(type, null);
+    }
+    
+    /**
+     * Hold 영역에 테트로미노를 그립니다 (아이템 정보 포함)
+     * 
+     * @param type 테트로미노 타입 (null이면 비움)
+     * @param itemType 아이템 타입 (null이면 일반 블록)
+     */
+    public void drawHoldPiece(TetrominoType type, seoultech.se.core.item.ItemType itemType) {
         Platform.runLater(() -> {
             // 모든 셀 초기화
             clearPreviewGrid(holdCellRectangles);
             
             if (type != null) {
-                drawPreviewPiece(holdCellRectangles, type);
+                drawPreviewPiece(holdCellRectangles, type, itemType);
             }
         });
     }
@@ -374,11 +384,27 @@ public class BoardRenderer {
      * @param type 테트로미노 타입
      */
     private void drawPreviewPiece(Rectangle[][] grid, TetrominoType type) {
+        drawPreviewPiece(grid, type, null);
+    }
+    
+    /**
+     * 미리보기 그리드에 테트로미노를 그립니다 (아이템 정보 포함)
+     * 
+     * @param grid 그릴 Rectangle 배열
+     * @param type 테트로미노 타입
+     * @param itemType 아이템 타입 (null이면 일반 블록)
+     */
+    private void drawPreviewPiece(Rectangle[][] grid, TetrominoType type, seoultech.se.core.item.ItemType itemType) {
         int[][] shape = type.shape;
         Color color = ColorMapper.toJavaFXColor(type.color);
         
         int offsetX = (UIConstants.PREVIEW_GRID_COLS - shape[0].length) / 2;
         int offsetY = (UIConstants.PREVIEW_GRID_ROWS - shape.length) / 2;
+        
+        // pivot 위치 계산 (아이템 마커 표시용)
+        int pivotRow = -1;
+        int pivotCol = -1;
+        boolean isItemBlock = (itemType != null);
         
         for (int row = 0; row < shape.length; row++) {
             for (int col = 0; col < shape[row].length; col++) {
@@ -395,9 +421,22 @@ public class BoardRenderer {
                         if (colorClass != null) {
                             grid[gridRow][gridCol].getStyleClass().add(colorClass);
                         }
+                        
+                        // 🔥 첫 번째 블록을 pivot으로 간주 (아이템 마커 표시용)
+                        if (pivotRow == -1 && isItemBlock) {
+                            pivotRow = gridRow;
+                            pivotCol = gridCol;
+                        }
                     }
                 }
             }
+        }
+        
+        // 🔥 아이템 마커 표시 (pivot 블록에만, WEIGHT_BOMB 제외)
+        if (isItemBlock && pivotRow != -1 && 
+            itemType != seoultech.se.core.item.ItemType.WEIGHT_BOMB) {
+            Rectangle pivotRect = grid[pivotRow][pivotCol];
+            applyItemMarkerOverlay(pivotRect, itemType);
         }
     }
     

@@ -521,9 +521,11 @@ public class GameController {
                 boardRenderer.drawNextPiece(nextQueue[0]);
             }
             
-            // 3. Hold 업데이트
-            if (oldState.getHeldPiece() != newState.getHeldPiece()) {
-                boardRenderer.drawHoldPiece(newState.getHeldPiece());
+            // 3. Hold 업데이트 (테트로미노 타입 또는 아이템 타입이 변경된 경우)
+            if (oldState.getHeldPiece() != newState.getHeldPiece() ||
+                oldState.getHeldItemType() != newState.getHeldItemType()) {
+                // 🔥 FIX: Hold된 아이템 정보도 함께 전달
+                boardRenderer.drawHoldPiece(newState.getHeldPiece(), newState.getHeldItemType());
             }
             
             // 4. 점수/레벨/라인 업데이트
