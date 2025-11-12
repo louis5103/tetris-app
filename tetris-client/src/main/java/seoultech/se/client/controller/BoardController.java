@@ -227,7 +227,8 @@ public class BoardController {
             if (arcadeEngine.getItemManager() != null) {
                 seoultech.se.core.item.Item item = arcadeEngine.getItemManager().getItem(itemType);
                 
-                if (item != null) {
+                // 🔥 FIX: LINE_CLEAR는 ArcadeGameEngine에서 자동 처리되므로 여기서 apply() 호출 안 함
+                if (item != null && itemType != seoultech.se.core.item.ItemType.LINE_CLEAR) {
                     System.out.println("🔥 [BoardController] HARD DROP - Applying item effect: " + itemType + 
                         " at position (" + actualRow + ", " + actualCol + ")");
                     seoultech.se.core.item.ItemEffect effect = item.apply(newState, actualRow, actualCol);
@@ -333,7 +334,8 @@ public class BoardController {
             if (arcadeEngine.getItemManager() != null) {
                 seoultech.se.core.item.Item item = arcadeEngine.getItemManager().getItem(itemType);
                 
-                if (item != null) {
+                // 🔥 FIX: LINE_CLEAR는 ArcadeGameEngine에서 자동 처리되므로 여기서 apply() 호출 안 함
+                if (item != null && itemType != seoultech.se.core.item.ItemType.LINE_CLEAR) {
                     System.out.println("🔥 [BoardController] Applying item effect: " + itemType + 
                         " at position (" + actualRow + ", " + actualCol + ")");
                     seoultech.se.core.item.ItemEffect effect = item.apply(newState, actualRow, actualCol);
