@@ -236,8 +236,14 @@ public class BoardRenderer {
                 imagePath = "/image/L.png";
                 break;
             case SPEED_RESET:
+                // 🔥 FIX: SPEED_RESET은 임시로 cross.png 사용
+                // TODO: 나중에 전용 아이콘 (시계 또는 화살표) 추가 권장
+                imagePath = "/image/cross.png";
+                break;
             case BONUS_SCORE:
-                imagePath = "/image/L.png";
+                // 🔥 FIX: BONUS_SCORE는 임시로 bomb.png 사용
+                // TODO: 나중에 전용 아이콘 (별 또는 코인) 추가 권장
+                imagePath = "/image/bomb.png";
                 break;
             default:
                 System.err.println("⚠️ [BoardRenderer] Unknown item type: " + itemType);
