@@ -162,7 +162,8 @@ class ItemSystemTest {
         // Then: 모든 아이템 활성화, 10% 드롭률
         assertTrue(config.isEnabled());
         assertEquals(0.1, config.getDropRate());
-        assertEquals(4, config.getEnabledItems().size());
+        // BOMB, PLUS, LINE_CLEAR, WEIGHT_BOMB, SPEED_RESET, BONUS_SCORE = 6개
+        assertEquals(6, config.getEnabledItems().size());
         assertEquals(3, config.getMaxInventorySize());
         assertFalse(config.isAutoUse());
     }

@@ -34,7 +34,7 @@ public class ItemManager {
      * 아이템 생성 간격 (줄 수)
      * Req2 명세: 10줄마다 아이템 생성
      */
-    private static final int LINES_PER_ITEM = 2;
+    private static final int LINES_PER_ITEM = 10;
     
     /**
      * 아이템 팩토리 맵

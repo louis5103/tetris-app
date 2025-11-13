@@ -79,6 +79,19 @@ public class GameState {
     // 게임 상태
     private boolean isPaused;
     
+    // 🎮 소프트 드롭 속도 관리 (SPEED_RESET 아이템 지원)
+    /**
+     * 소프트 드롭 속도 배율 (1.0 = 정상 속도, 2.0 = 2배 속도)
+     * SPEED_RESET 아이템으로 1.0으로 초기화 가능
+     */
+    private double softDropSpeedMultiplier = 1.0;
+    
+    /**
+     * SPEED_RESET 아이템 효과 플래그
+     * true일 때 BoardController/GameLoop가 속도를 초기화해야 함
+     */
+    private boolean speedResetRequested = false;
+    
     // T-Spin 감지를 위한 정보
     private boolean lastActionWasRotation;  // 마지막 액션이 회전이었는지
     private int lastRotationKickIndex;  // 회전 시 사용한 Wall Kick 인덱스 (0-4)
@@ -146,6 +159,10 @@ public class GameState {
         
         // 게임 상태 초기화
         this.isPaused = false;
+        
+        // 🎮 소프트 드롭 속도 초기화
+        this.softDropSpeedMultiplier = 1.0;
+        this.speedResetRequested = false;
         
         // T-Spin 감지 초기화
         this.lastActionWasRotation = false;
@@ -217,6 +234,10 @@ public class GameState {
         
         // 게임 상태 복사
         copy.isPaused = this.isPaused;
+        
+        // 🎮 소프트 드롭 속도 복사
+        copy.softDropSpeedMultiplier = this.softDropSpeedMultiplier;
+        copy.speedResetRequested = this.speedResetRequested;
         
         // T-Spin 관련 복사
         copy.lastActionWasRotation = this.lastActionWasRotation;
