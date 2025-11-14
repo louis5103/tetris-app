@@ -65,3 +65,13 @@
     -fx-background-color: #4CAF50 !important;
     -fx-cursor: hand;
 }
+
+/* 서브메뉴가 열렸을 때 배경을 어둡게 하는 오버레이 */
+.overlay-pane {
+    -fx-background-color: rgba(0, 0, 0, 0.5);
+}
+
+/* 서브메뉴 컨테이너는 오버레이 위에 표시 */
+.mode-button-container {
+    -fx-view-order: -1;
+}
