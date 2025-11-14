@@ -38,11 +38,26 @@ public class OverPopController extends BaseController {
 
     @FXML
     private Label scoreLabel;
+
+    /* 사용자 이름 입력 박스로 입력이 완료되면 사라지게 설정해주세요
+     * visible 속성으로 제어하면 됩니다.
+     * managed 속성도 false로 설정해야 레이아웃에서 공간을 차지하지 않습니다.
+     * 다른 방법이 있다면 그렇게 해주세요~ 위의 설명은 참고용입니다.
+     */
     @FXML
     private HBox nameInputBox;
 
+    /* 사용자 이름 입력 필드
+     * 해당 input을 입력받으면 내용 저장 및 이후 처리를 진행하면 됩니다
+     */
     @FXML
     private TextField usernameInput;
+    
+    /* usernameInput에서 입력이 발생하면 처리하는 핸들러매서드 */
+    @FXML
+    private void handleUsernameInput(ActionEvent event) {
+        /* 구현 필요 */
+        }
 
     @FXML
     private TableView<Map<String, Object>> scoreBoardTable;
