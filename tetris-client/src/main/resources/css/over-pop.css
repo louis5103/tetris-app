@@ -34,7 +34,7 @@
 
 .score-highlight {
     -fx-background-color: rgba(255, 215, 0, 0.3);
-    -fx-text-fill: rgb(255, 0, 0);
+    -fx-text-fill: gold;
     -fx-font-weight: bold;
     -fx-effect: dropshadow(gaussian, rgba(255, 215, 0, 0.8), 8, 0.5, 0, 0);
 }

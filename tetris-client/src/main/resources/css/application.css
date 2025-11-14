@@ -40,12 +40,16 @@
     -fx-pref-width: 20em;
     -fx-pref-height: 4.5em;
     -fx-background-color: #333333;
+    -fx-background-radius: 0.833em;
+
+    /* 내부 폰트설정 */
     -fx-text-fill: white;
     -fx-font-size: 2em;
     -fx-font-family: "Arial Black";
+
+    /* 테두리 설정 */
     -fx-border-color: #555555;
     -fx-border-width: 0.167em;
-    -fx-background-radius: 0.833em;
     -fx-border-radius: 0.833em;
 }
 
