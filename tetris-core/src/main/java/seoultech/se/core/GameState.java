@@ -24,10 +24,35 @@ public class GameState {
      * null이면 일반 블록, ItemType이 설정되어 있으면 아이템 블록
      */
     private ItemType currentItemType;
+    
+    /**
+     * 다음 블록에 포함될 아이템 타입 (Phase 2)
+     * null이면 일반 블록, ItemType이 설정되어 있으면 다음 블록에 아이템 포함
+     */
+    private ItemType nextBlockItemType;
+    
+    /**
+     * 무게추 상태 (Phase 4)
+     * false: 좌우 이동 가능 (초기 상태)
+     * true: 좌우 이동 불가, 아래로만 이동 (바닥/블록 접촉 후)
+     */
+    private boolean isWeightBombLocked = false;
 
     // Hold 기능 관련 정보
     private boolean holdUsedThisTurn;
     private TetrominoType heldPiece;
+    
+    /**
+     * Hold된 블록의 아이템 타입 (Phase 5)
+     * Hold와 함께 아이템 타입도 보존됨
+     */
+    private ItemType heldItemType;
+    
+    /**
+     * Hold된 무게추의 잠김 상태 (Phase 5)
+     * Hold 시 무게추의 isWeightBombLocked 상태도 보존
+     */
+    private boolean heldWeightBombLocked;
 
     // Next Queue (7-bag 시스템)
     private TetrominoType[] nextQueue;
@@ -54,6 +79,19 @@ public class GameState {
     // 게임 상태
     private boolean isPaused;
     
+    // 🎮 소프트 드롭 속도 관리 (SPEED_RESET 아이템 지원)
+    /**
+     * 소프트 드롭 속도 배율 (1.0 = 정상 속도, 2.0 = 2배 속도)
+     * SPEED_RESET 아이템으로 1.0으로 초기화 가능
+     */
+    private double softDropSpeedMultiplier = 1.0;
+    
+    /**
+     * SPEED_RESET 아이템 효과 플래그
+     * true일 때 BoardController/GameLoop가 속도를 초기화해야 함
+     */
+    private boolean speedResetRequested = false;
+    
     // T-Spin 감지를 위한 정보
     private boolean lastActionWasRotation;  // 마지막 액션이 회전이었는지
     private int lastRotationKickIndex;  // 회전 시 사용한 Wall Kick 인덱스 (0-4)
@@ -64,8 +102,10 @@ public class GameState {
     
     // Phase 2: Lock 관련 메타데이터 (EventMapper가 이벤트 생성 시 사용)
     private Tetromino lastLockedTetromino;  // 마지막으로 고정된 블록
-    private int lastLockedX;  // 마지막으로 고정된 블록의 X 위치
-    private int lastLockedY;  // 마지막으로 고정된 블록의 Y 위치
+    private int lastLockedX;  // 마지막으로 고정된 블록의 X 위치 (첫 번째 블록)
+    private int lastLockedY;  // 마지막으로 고정된 블록의 Y 위치 (첫 번째 블록)
+    private int lastLockedPivotX;  // 마지막으로 고정된 블록의 Pivot X 위치
+    private int lastLockedPivotY;  // 마지막으로 고정된 블록의 Pivot Y 위치
     private int lastLinesCleared;  // 마지막 액션에서 지워진 라인 수
     private int[] lastClearedRows;  // 마지막 액션에서 지워진 라인들의 행 번호
     private long lastScoreEarned;  // 마지막 액션에서 획득한 점수
@@ -105,9 +145,13 @@ public class GameState {
         // Hold 초기화
         this.heldPiece = null;
         this.holdUsedThisTurn = false;
+        this.heldItemType = null;
+        this.heldWeightBombLocked = false;
         
         // 아이템 시스템 초기화
         this.currentItemType = null;
+        this.nextBlockItemType = null;
+        this.isWeightBombLocked = false;
 
         // Lock Delay 초기화
         this.isLockDelayActive = false;
@@ -115,6 +159,10 @@ public class GameState {
         
         // 게임 상태 초기화
         this.isPaused = false;
+        
+        // 🎮 소프트 드롭 속도 초기화
+        this.softDropSpeedMultiplier = 1.0;
+        this.speedResetRequested = false;
         
         // T-Spin 감지 초기화
         this.lastActionWasRotation = false;
@@ -151,10 +199,14 @@ public class GameState {
         
         // 아이템 타입 복사
         copy.currentItemType = this.currentItemType;
+        copy.nextBlockItemType = this.nextBlockItemType;
+        copy.isWeightBombLocked = this.isWeightBombLocked;
 
         // Hold 기능 관련 정보 복사
         copy.holdUsedThisTurn = this.holdUsedThisTurn;
         copy.heldPiece = this.heldPiece;
+        copy.heldItemType = this.heldItemType;
+        copy.heldWeightBombLocked = this.heldWeightBombLocked;
 
         // Next Queue 복사
         if(this.nextQueue != null) {
@@ -182,6 +234,10 @@ public class GameState {
         
         // 게임 상태 복사
         copy.isPaused = this.isPaused;
+        
+        // 🎮 소프트 드롭 속도 복사
+        copy.softDropSpeedMultiplier = this.softDropSpeedMultiplier;
+        copy.speedResetRequested = this.speedResetRequested;
         
         // T-Spin 관련 복사
         copy.lastActionWasRotation = this.lastActionWasRotation;

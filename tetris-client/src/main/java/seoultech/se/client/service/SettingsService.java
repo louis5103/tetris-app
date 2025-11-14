@@ -178,6 +178,19 @@ public class SettingsService {
             props.setProperty("game.mode.srsEnabled", String.valueOf(gameModeProperties.isSrsEnabled()));
         }
         
+        // 파일로 저장
+        try {
+            File settingsFile = new File(SETTINGS_FILE);
+            settingsFile.getParentFile().mkdirs(); // 디렉토리 생성
+            try (java.io.FileOutputStream out = new java.io.FileOutputStream(settingsFile)) {
+                props.store(out, "Tetris Game Settings");
+                System.out.println("✅ Settings saved successfully to file: " + SETTINGS_FILE);
+            }
+        } catch (Exception e) {
+            System.err.println("❗ Failed to save settings to file: " + e.getMessage());
+        }
+        
+        // Preferences에도 저장
         preferences.putDouble("soundVolume", soundVolume.get());
         preferences.put("colorMode", colorMode.get());
         preferences.put("difficulty", difficulty.get());

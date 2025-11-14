@@ -17,6 +17,13 @@ package seoultech.se.core.mode;
  */
 public enum GameModeType {
     /**
+     * Classic 모드 (기본 테트리스)
+     * - 아이템 없는 순수 테트리스
+     * - 기본 규칙만 적용
+     */
+    CLASSIC("클래식", "아이템 없는 순수 테트리스"),
+    
+    /**
      * 싱글플레이어 모드
      * - 혼자서 즐기는 기본 모드
      * - 네트워크 연결 불필요

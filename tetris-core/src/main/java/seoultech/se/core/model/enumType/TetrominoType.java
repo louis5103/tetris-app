@@ -53,7 +53,25 @@ public enum TetrominoType {
      */
     ITEM(new int[][]{
             {1}
-    }, Color.NONE, 0, 0);
+    }, Color.NONE, 0, 0),
+    
+    /**
+     * 무게추 아이템 (Phase 4)
+     * 
+     * Req2 명세:
+     * - 총 4칸 너비의 특수 블록
+     * - 초기: 좌우 이동 가능
+     * - 바닥/블록에 닿으면: 좌우 이동 불가, 아래로만 이동
+     * - 떨어지면서 아래에 있는 모든 블록 제거
+     * 
+     * 형태:
+     *   OO
+     *   OOOO
+     */
+    WEIGHT_BOMB(new int[][]{
+            {0, 1, 1, 0},
+            {1, 1, 1, 1}
+    }, Color.GRAY, 1, 0);  // pivotX=1, pivotY=0
 
     public final int [][] shape;
     public final Color color;
@@ -62,7 +80,7 @@ public enum TetrominoType {
 
 
     public static TetrominoType getRandomTetrominoType() {
-        // ITEM 타입은 랜덤 생성에서 제외
+        // ITEM, WEIGHT_BOMB 타입은 랜덤 생성에서 제외
         TetrominoType[] types = {I, J, L, O, S, T, Z};
         int randomIndex = (int) (Math.random() * types.length);
         return types[randomIndex];

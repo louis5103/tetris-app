@@ -65,6 +65,11 @@ dependencies {
     // 🧪 Testing Dependencies
     testImplementation(libs.client.spring.boot.starter.test)
     testImplementation(libs.bundles.common.testing)
+    
+    // 🧪 JavaFX Testing Dependencies (TestFX)
+    testImplementation(libs.client.testfx.core)
+    testImplementation(libs.client.testfx.junit5)
+    testImplementation(libs.client.monocle)
 }
 
 // 🚀 실행 설정 (JavaFX + Java 21 최적화 - 단순화됨)
@@ -110,6 +115,18 @@ tasks.test {
     // JavaFX 테스트를 위한 최소 필수 설정만 추가
     jvmArgs(
         "--add-opens", "javafx.graphics/com.sun.javafx.application=ALL-UNNAMED"
+    )
+    
+    // Spring Boot 테스트 환경 설정 + TestFX Headless 설정
+    systemProperties(
+        "spring.profiles.active" to "test",
+        // TestFX Headless 모드 설정 (CI/CD 환경 지원)
+        "testfx.robot" to "glass",
+        "testfx.headless" to "true",
+        "prism.order" to "sw",
+        "prism.text" to "t2k",
+        "glass.platform" to "Monocle",
+        "monocle.platform" to "Headless"
     )
 }
 

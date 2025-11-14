@@ -45,6 +45,7 @@ spring:
 # JavaFX 설정
 # =============================================================================
 javafx:
+  enabled: true  # 기본값: JavaFX 활성화 (테스트에서는 false로 오버라이드)
   preloader:
     enabled: false
   stage:
@@ -66,8 +67,8 @@ tetris:
       i-block-multiplier: 1.2
       # 레벨업 시 속도 증가율 배율 (0.8 = 20% 감소)
       speed-increase-multiplier: 0.8
-      # 점수 배율 (1.2 = 20% 증가)
-      score-multiplier: 1.2
+      # 점수 배율 (SRS 표준: 낮은 난이도 = 낮은 배율)
+      score-multiplier: 0.5
       # 락 딜레이 배율 (1.2 = 20% 증가)
       lock-delay-multiplier: 1.2
       
@@ -86,8 +87,8 @@ tetris:
       i-block-multiplier: 0.8
       # 레벨업 시 속도 증가율 배율 (1.2 = 20% 증가)
       speed-increase-multiplier: 1.2
-      # 점수 배율 (0.8 = 20% 감소)
-      score-multiplier: 0.8
+      # 점수 배율 (SRS 표준: 높은 난이도 = 높은 배율)
+      score-multiplier: 1.5
       # 락 딜레이 배율 (0.8 = 20% 감소)
       lock-delay-multiplier: 0.8
   

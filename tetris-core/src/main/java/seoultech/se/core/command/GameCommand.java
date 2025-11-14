@@ -29,6 +29,15 @@ public interface GameCommand {
     CommandType getType();
     
     /**
+     * getType()의 별칭 (backward compatibility)
+     * 
+     * @return Command의 타입
+     */
+    default CommandType getCommandType() {
+        return getType();
+    }
+    
+    /**
      * Command에 대한 설명을 반환합니다 (디버깅용)
      * 
      * 이 메서드는 주로 로깅이나 디버깅에 사용됩니다.
@@ -37,6 +46,6 @@ public interface GameCommand {
      * @return Command의 설명 문자열
      */
     default String getDescription() {
-        return getType().toString();
+        return getCommandType().toString();
     }
 }

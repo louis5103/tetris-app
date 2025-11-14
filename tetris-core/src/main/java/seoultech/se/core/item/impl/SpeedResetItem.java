@@ -39,6 +39,11 @@ public class SpeedResetItem extends AbstractItem {
     /**
      * 속도 초기화 효과 적용
      * 
+     * 🎮 구현 방식:
+     * 1. softDropSpeedMultiplier를 1.0으로 리셋
+     * 2. speedResetRequested 플래그를 true로 설정
+     * 3. BoardController/GameLoop가 이 플래그를 감지하고 타이머 속도 조정
+     * 
      * @param gameState 게임 상태
      * @param row 사용하지 않음
      * @param col 사용하지 않음
@@ -50,27 +55,45 @@ public class SpeedResetItem extends AbstractItem {
             return ItemEffect.none();
         }
         
-        // GameState에 softDropSpeed 필드가 있다고 가정
-        // 실제 구현에서는 GameEngine을 통해 처리하거나
-        // GameState에 속도 관련 필드를 추가해야 합니다
+        System.out.println("⚡ [SpeedResetItem] Applying SPEED_RESET effect");
+        System.out.println("   - Previous speed multiplier: " + gameState.getSoftDropSpeedMultiplier());
         
-        // 메타데이터에 속도 초기화 플래그 설정
-        // 이 플래그는 GameEngine에서 읽어서 처리합니다
-        gameState.setLastActionWasRotation(false); // 임시로 플래그 활용
+        // 🎮 GAME UX: 소프트 드롭 속도를 초기값(1.0)으로 리셋
+        gameState.setSoftDropSpeedMultiplier(1.0);
         
-        String message = "⚡ Soft drop speed reset to initial value!";
+        // 🎮 플래그 설정: BoardController/GameLoop가 이 플래그를 감지하고 타이머 조정
+        gameState.setSpeedResetRequested(true);
         
-        System.out.println(message);
+        String message = "⚡ Speed Reset! 속도가 초기값으로 돌아갑니다.";
+        
+        System.out.println("   - New speed multiplier: " + gameState.getSoftDropSpeedMultiplier());
+        System.out.println("   - Speed reset requested: " + gameState.isSpeedResetRequested());
+        System.out.println("✅ [SpeedResetItem] " + message);
         
         return ItemEffect.success(ItemType.SPEED_RESET, 0, BONUS_SCORE, message);
     }
     
     /**
-     * 이 아이템은 게임 엔진에서 추가 처리가 필요합니다.
-     * GameEngine에 다음과 같은 메서드 추가 권장:
+     * 🎮 BoardController/GameLoop 연동 가이드:
      * 
-     * public void resetSoftDropSpeed() {
-     *     this.currentSoftDropSpeed = config.getSoftDropSpeed();
+     * BoardController 또는 GameLoop에서 다음과 같이 처리:
+     * 
+     * <pre>
+     * // 매 프레임 또는 타이머 업데이트 시
+     * if (gameState.isSpeedResetRequested()) {
+     *     // 타이머 속도를 초기값으로 리셋
+     *     double newInterval = baseDropInterval / gameState.getSoftDropSpeedMultiplier();
+     *     updateTimerInterval(newInterval);
+     *     
+     *     // 플래그 리셋
+     *     gameState.setSpeedResetRequested(false);
      * }
+     * </pre>
+     * 
+     * 또는 소프트 드롭 속도 계산 시:
+     * 
+     * <pre>
+     * double currentSpeed = baseSpeed * gameState.getSoftDropSpeedMultiplier();
+     * </pre>
      */
 }

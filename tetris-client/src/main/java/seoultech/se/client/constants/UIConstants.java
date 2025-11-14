@@ -96,6 +96,7 @@ public final class UIConstants {
     public static final String TETROMINO_CYAN_CLASS = "tetromino-cyan";
     public static final String TETROMINO_MAGENTA_CLASS = "tetromino-magenta";
     public static final String TETROMINO_ORANGE_CLASS = "tetromino-orange";
+    public static final String TETROMINO_GRAY_CLASS = "tetromino-gray"; // 🔥 FIX: WEIGHT_BOMB 전용
     
     // 적록색맹 모드 CSS 클래스
     public static final String TETROMINO_RGBLIND_RED_CLASS = "tetromino-rgblind-red";
@@ -128,6 +129,7 @@ public final class UIConstants {
         TETROMINO_CYAN_CLASS,
         TETROMINO_MAGENTA_CLASS,
         TETROMINO_ORANGE_CLASS,
+        TETROMINO_GRAY_CLASS, // 🔥 FIX: WEIGHT_BOMB 전용
         // 적록색맹 모드
         TETROMINO_RGBLIND_RED_CLASS,
         TETROMINO_RGBLIND_GREEN_CLASS,

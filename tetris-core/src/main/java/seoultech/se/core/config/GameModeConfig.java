@@ -133,6 +133,18 @@ public class GameModeConfig {
     private final double softDropSpeed = 20.0;
     
     /**
+     * 게임 모드 타입 (기본: SINGLE)
+     */
+    @Builder.Default
+    private final seoultech.se.core.mode.GameModeType gameModeType = seoultech.se.core.mode.GameModeType.SINGLE;
+    
+    /**
+     * 난이도 (기본: NORMAL)
+     */
+    @Builder.Default
+    private final seoultech.se.core.model.enumType.Difficulty difficulty = seoultech.se.core.model.enumType.Difficulty.NORMAL;
+    
+    /**
      * 게임플레이 타입 (기본: CLASSIC)
      * CLASSIC: 전통적인 테트리스
      * ARCADE: 빠르고 박진감 넘치는 모드

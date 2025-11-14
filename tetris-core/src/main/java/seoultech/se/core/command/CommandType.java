@@ -20,10 +20,35 @@ public enum CommandType {
     MOVE,
     
     /**
+     * 왼쪽으로 이동
+     */
+    MOVE_LEFT,
+    
+    /**
+     * 오른쪽으로 이동
+     */
+    MOVE_RIGHT,
+    
+    /**
+     * 아래로 이동 (소프트 드롭)
+     */
+    MOVE_DOWN,
+    
+    /**
      * 블록 회전 명령
      * RotateCommand에 대응됩니다
      */
     ROTATE,
+    
+    /**
+     * 시계방향 회전
+     */
+    ROTATE_CW,
+    
+    /**
+     * 반시계방향 회전
+     */
+    ROTATE_CCW,
     
     /**
      * 하드 드롭 명령 (블록을 즉시 바닥까지 떨어뜨림)

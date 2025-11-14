@@ -94,9 +94,9 @@ class ItemSystemTest {
         ItemEffect effect = bonusScore.apply(gameState, 0, 0);
         
         // Then: 500 + (5 × 50) = 750점 추가
+        // Note: apply()는 ItemEffect만 반환하고 gameState를 수정하지 않음 (BoardController에서 처리)
         assertTrue(effect.isSuccess());
         assertEquals(750, effect.getBonusScore());
-        assertEquals(initialScore + 750, gameState.getScore());
     }
     
     @Test
@@ -162,7 +162,8 @@ class ItemSystemTest {
         // Then: 모든 아이템 활성화, 10% 드롭률
         assertTrue(config.isEnabled());
         assertEquals(0.1, config.getDropRate());
-        assertEquals(4, config.getEnabledItems().size());
+        // BOMB, PLUS, LINE_CLEAR, WEIGHT_BOMB, SPEED_RESET, BONUS_SCORE = 6개
+        assertEquals(6, config.getEnabledItems().size());
         assertEquals(3, config.getMaxInventorySize());
         assertFalse(config.isAutoUse());
     }

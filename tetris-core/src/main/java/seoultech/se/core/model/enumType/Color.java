@@ -8,5 +8,6 @@ public enum Color {
     CYAN,
     MAGENTA,
     ORANGE,
+    GRAY,
     NONE;
 }

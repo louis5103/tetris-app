@@ -172,6 +172,15 @@
     -fx-smooth: false;
 }
 
+/* 🔥 FIX: WEIGHT_BOMB 전용 GRAY 색상 */
+.tetromino-gray {
+    -fx-fill: linear-gradient(to bottom, #a0a0a0, #707070);
+    -fx-stroke: #c0c0c0;
+    -fx-stroke-width: 0.5;
+    -fx-effect: innershadow(gaussian, rgba(0,0,0,0.5), 0.25em, 0, 0, 0.083em);
+    -fx-smooth: false;
+}
+
 /* ========== 적록 색맹 모드 (Red-Green Blind Mode) ========== */
 /* Red/Green, Blue/Magenta, Red/Orange 혼동 방지 */
 
