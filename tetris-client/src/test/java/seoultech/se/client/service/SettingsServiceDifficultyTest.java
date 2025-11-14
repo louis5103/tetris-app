@@ -1,6 +1,7 @@
 package seoultech.se.client.service;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -9,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.TestPropertySource;
 
+import seoultech.se.client.config.TestConfig;
 import seoultech.se.core.model.enumType.Difficulty;
 
 /**
@@ -26,7 +28,10 @@ import seoultech.se.core.model.enumType.Difficulty;
  * @since Phase 5
  */
 @SpringBootTest
-@TestPropertySource(locations = "classpath:application.yml")
+@TestPropertySource(properties = {
+    "spring.main.allow-bean-definition-overriding=true",
+    "javafx.enabled=false"
+})
 @DisplayName("Phase 5: UI 난이도 선택 기능 통합 테스트")
 class SettingsServiceDifficultyTest {
     
@@ -134,7 +139,7 @@ class SettingsServiceDifficultyTest {
         assertEquals(Difficulty.EASY, difficulty);
         assertEquals("쉬움", difficulty.getDisplayName());
         assertEquals(1.2, difficulty.getIBlockMultiplier(), 0.001);
-        assertEquals(1.2, difficulty.getScoreMultiplier(), 0.001);
+        assertEquals(0.5, difficulty.getScoreMultiplier(), 0.001);  // SRS 표준: 낮은 난이도 = 낮은 배율
         
         System.out.println("✅ Easy 변환: " + difficulty.getDisplayName());
     }
@@ -166,7 +171,7 @@ class SettingsServiceDifficultyTest {
         assertEquals(Difficulty.HARD, difficulty);
         assertEquals("어려움", difficulty.getDisplayName());
         assertEquals(0.8, difficulty.getIBlockMultiplier(), 0.001);
-        assertEquals(0.8, difficulty.getScoreMultiplier(), 0.001);
+        assertEquals(1.5, difficulty.getScoreMultiplier(), 0.001);  // SRS 표준: 높은 난이도 = 높은 배율
         
         System.out.println("✅ Hard 변환: " + difficulty.getDisplayName());
     }

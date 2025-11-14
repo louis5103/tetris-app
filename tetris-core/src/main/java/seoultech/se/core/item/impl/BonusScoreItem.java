@@ -55,8 +55,8 @@ public class BonusScoreItem extends AbstractItem {
         int currentLevel = gameState.getLevel();
         int bonusScore = BASE_BONUS + (currentLevel * LEVEL_MULTIPLIER);
         
-        // 점수 즉시 추가
-        gameState.setScore(gameState.getScore() + bonusScore);
+        // 🔥 FIX: 점수는 ItemEffect로 반환하여 BoardController에서 난이도 배율 적용 후 추가
+        // 여기서 직접 추가하면 중복 적용됨!
         
         String message = String.format("⭐ Bonus score! +%d points (Level %d)", 
             bonusScore, currentLevel);

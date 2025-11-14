@@ -704,7 +704,6 @@ public class ClassicGameEngine implements GameEngine {
         for (int row = state.getBoardHeight() - 1; row >= 0; row--) {
             boolean isFullLine = true;
             int occupiedCount = 0;
-            boolean hasLineMarker = false;  // 'L' 마커 체크
 
             for(int col = 0; col < state.getBoardWidth(); col++) {
                 Cell cell = state.getGrid()[row][col];
@@ -713,20 +712,11 @@ public class ClassicGameEngine implements GameEngine {
                 } else {
                     occupiedCount++;
                 }
-                
-                // 🔥 FIX: 'L' 마커가 있는지 확인
-                if (cell.hasItemMarker() && 
-                    cell.getItemMarker() == seoultech.se.core.item.ItemType.LINE_CLEAR) {
-                    hasLineMarker = true;
-                }
             }
 
-            // 🔥 FIX: 'L' 마커가 있는 줄은 일반 라인 클리어에서 제외 (ArcadeGameEngine에서 처리)
-            if (isFullLine && !hasLineMarker) {
+            if (isFullLine) {
                 clearedRowsList.add(row);
                 System.out.println("✨ [ClassicGameEngine] Full line detected at row " + row);
-            } else if (isFullLine && hasLineMarker) {
-                System.out.println("Ⓛ [ClassicGameEngine] Full line with 'L' marker at row " + row + " - skipping (will be handled by ArcadeGameEngine)");
             } else if (occupiedCount > 0) {
                 // 디버그: 부분적으로 채워진 줄 정보
                 System.out.println("📊 [ClassicGameEngine] Row " + row + ": " + occupiedCount + "/" + state.getBoardWidth() + " cells occupied");

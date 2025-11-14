@@ -532,6 +532,14 @@ public class GameController {
             gameInfoManager.updateAll(newState);
             gameLoopManager.updateDropSpeed(newState);
             
+            // 4.5. 🔥 FIX: SPEED_RESET 아이템 플래그 처리
+            if (newState.isSpeedResetRequested()) {
+                // GameLoopManager의 dropInterval을 초기값으로 리셋
+                gameLoopManager.updateDropSpeed(newState);
+                newState.setSpeedResetRequested(false);
+                System.out.println("⚡ [GameController] Speed reset processed");
+            }
+            
             // 5. 라인 클리어 감지
             int oldLines = oldState.getLinesCleared();
             int newLines = newState.getLinesCleared();

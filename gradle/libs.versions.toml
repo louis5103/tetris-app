@@ -18,10 +18,12 @@ javafx-plugin = "0.1.0"
 lombok = "1.18.30"
 
 # 🧪 Testing Framework (모든 모듈 공통)
-junit-jupiter = "5.11.4"
-junit-platform = "1.11.4"
+junit-jupiter = "5.12.2"
+junit-platform = "1.12.2"
 assertj = "3.27.6"
 mockito = "5.14.2"
+testfx = "4.0.18"
+monocle = "21.0.2"
 
 # 📊 Utilities
 commons-lang3 = "3.19.0"
@@ -88,6 +90,11 @@ client-spring-boot-configuration-processor = { module = "org.springframework.boo
 # 🎨 Client JavaFX Dependencies
 client-javafx-controls = { module = "org.openjfx:javafx-controls", version.ref = "javafx" }
 client-javafx-fxml = { module = "org.openjfx:javafx-fxml", version.ref = "javafx" }
+
+# 🧪 Client Testing Dependencies (JavaFX)
+client-testfx-core = { module = "org.testfx:testfx-core", version.ref = "testfx" }
+client-testfx-junit5 = { module = "org.testfx:testfx-junit5", version.ref = "testfx" }
+client-monocle = { module = "org.openjfx:javafx-swing", version.ref = "monocle" }
 
 [bundles]
 # ============================================================================

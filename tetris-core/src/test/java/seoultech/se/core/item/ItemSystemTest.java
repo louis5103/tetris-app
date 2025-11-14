@@ -94,9 +94,9 @@ class ItemSystemTest {
         ItemEffect effect = bonusScore.apply(gameState, 0, 0);
         
         // Then: 500 + (5 × 50) = 750점 추가
+        // Note: apply()는 ItemEffect만 반환하고 gameState를 수정하지 않음 (BoardController에서 처리)
         assertTrue(effect.isSuccess());
         assertEquals(750, effect.getBonusScore());
-        assertEquals(initialScore + 750, gameState.getScore());
     }
     
     @Test

@@ -1,9 +1,13 @@
 package seoultech.se.core.config;
 
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.DisplayName;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 
 /**
  * DifficultySettings 단위 테스트
@@ -23,7 +27,7 @@ class DifficultySettingsTest {
         assertEquals("쉬움", easy.getDisplayName());
         assertEquals(1.2, easy.getIBlockMultiplier(), 0.001);
         assertEquals(0.8, easy.getSpeedIncreaseMultiplier(), 0.001);
-        assertEquals(1.2, easy.getScoreMultiplier(), 0.001);
+        assertEquals(0.5, easy.getScoreMultiplier(), 0.001);  // SRS 표준: 낮은 난이도 = 낮은 배율
         assertEquals(1.2, easy.getLockDelayMultiplier(), 0.001);
     }
     
@@ -49,7 +53,7 @@ class DifficultySettingsTest {
         assertEquals("어려움", hard.getDisplayName());
         assertEquals(0.8, hard.getIBlockMultiplier(), 0.001);
         assertEquals(1.2, hard.getSpeedIncreaseMultiplier(), 0.001);
-        assertEquals(0.8, hard.getScoreMultiplier(), 0.001);
+        assertEquals(1.5, hard.getScoreMultiplier(), 0.001);  // SRS 표준: 높은 난이도 = 높은 배율
         assertEquals(0.8, hard.getLockDelayMultiplier(), 0.001);
     }
     

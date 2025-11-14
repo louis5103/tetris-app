@@ -108,12 +108,11 @@ public class BombItem extends AbstractItem {
     /**
      * 중력 적용: 빈 공간 위의 블록을 아래로 떨어뜨림
      * 
-     * ⚠️ 현재 사용하지 않음 (QA 버그 수정으로 제거됨)
-     * 기획 팀 결정 후 복원 가능
+     * 블록 제거 아이템(BOMB, PLUS) 사용 시 위의 블록이 아래로 떨어지도록 함
+     * 자연스러운 게임 경험 제공
      * 
      * @param gameState 게임 상태
      */
-    @SuppressWarnings("unused")
     private void applyGravity(GameState gameState) {
         Cell[][] grid = gameState.getGrid();
         int boardHeight = gameState.getBoardHeight();

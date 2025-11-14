@@ -1,6 +1,9 @@
 package seoultech.se.client.config;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -27,7 +30,10 @@ import seoultech.se.core.model.enumType.Difficulty;
  * @since Phase 3
  */
 @SpringBootTest
-@TestPropertySource(locations = "classpath:application.yml")
+@TestPropertySource(properties = {
+    "spring.main.allow-bean-definition-overriding=true",
+    "javafx.enabled=false"
+})
 @DisplayName("Difficulty Config 통합 테스트")
 class DifficultyConfigTest {
     
@@ -86,7 +92,7 @@ class DifficultyConfigTest {
         assertEquals("쉬움", easyLevel.getDisplayName(), "Easy displayName이 일치하지 않음");
         assertEquals(1.2, easyLevel.getIBlockMultiplier(), 0.001, "Easy iBlockMultiplier가 일치하지 않음");
         assertEquals(0.8, easyLevel.getSpeedIncreaseMultiplier(), 0.001, "Easy speedIncreaseMultiplier가 일치하지 않음");
-        assertEquals(1.2, easyLevel.getScoreMultiplier(), 0.001, "Easy scoreMultiplier가 일치하지 않음");
+        assertEquals(0.5, easyLevel.getScoreMultiplier(), 0.001, "Easy scoreMultiplier가 일치하지 않음 (SRS 표준: 낮은 난이도 = 낮은 배율)");
         assertEquals(1.2, easyLevel.getLockDelayMultiplier(), 0.001, "Easy lockDelayMultiplier가 일치하지 않음");
         
         System.out.println("✅ Easy 모드 바인딩 성공: " + easyLevel);
@@ -122,7 +128,7 @@ class DifficultyConfigTest {
         assertEquals("어려움", hardLevel.getDisplayName());
         assertEquals(0.8, hardLevel.getIBlockMultiplier(), 0.001);
         assertEquals(1.2, hardLevel.getSpeedIncreaseMultiplier(), 0.001);
-        assertEquals(0.8, hardLevel.getScoreMultiplier(), 0.001);
+        assertEquals(1.5, hardLevel.getScoreMultiplier(), 0.001, "Hard scoreMultiplier가 일치하지 않음 (SRS 표준: 높은 난이도 = 높은 배율)");
         assertEquals(0.8, hardLevel.getLockDelayMultiplier(), 0.001);
         
         System.out.println("✅ Hard 모드 바인딩 성공: " + hardLevel);
@@ -222,7 +228,7 @@ class DifficultyConfigTest {
         // Then: Easy 모드 검증
         assertEquals(1.2, Difficulty.EASY.getIBlockMultiplier(), 0.001);
         assertEquals(0.8, Difficulty.EASY.getSpeedIncreaseMultiplier(), 0.001);
-        assertEquals(1.2, Difficulty.EASY.getScoreMultiplier(), 0.001);
+        assertEquals(0.5, Difficulty.EASY.getScoreMultiplier(), 0.001);  // SRS 표준: 낮은 난이도 = 낮은 배율
         assertEquals(1.2, Difficulty.EASY.getLockDelayMultiplier(), 0.001);
         
         // And: Normal 모드 검증
@@ -234,7 +240,7 @@ class DifficultyConfigTest {
         // And: Hard 모드 검증
         assertEquals(0.8, Difficulty.HARD.getIBlockMultiplier(), 0.001);
         assertEquals(1.2, Difficulty.HARD.getSpeedIncreaseMultiplier(), 0.001);
-        assertEquals(0.8, Difficulty.HARD.getScoreMultiplier(), 0.001);
+        assertEquals(1.5, Difficulty.HARD.getScoreMultiplier(), 0.001);  // SRS 표준: 높은 난이도 = 높은 배율
         assertEquals(0.8, Difficulty.HARD.getLockDelayMultiplier(), 0.001);
         
         System.out.println("✅ Difficulty enum 모든 설정값 검증 성공");

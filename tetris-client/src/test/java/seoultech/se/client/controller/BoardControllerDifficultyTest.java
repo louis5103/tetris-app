@@ -1,6 +1,9 @@
 package seoultech.se.client.controller;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -114,8 +117,9 @@ class BoardControllerDifficultyTest {
         
         // When: 블록을 많이 생성하여 분포 확인 (700개 = 7-bag 100개)
         Map<TetrominoType, Integer> distribution = new HashMap<>();
+        // Classic 모드에서는 기본 7가지 블록만 사용 (ITEM, WEIGHT_BOMB 제외)
         for (TetrominoType type : TetrominoType.values()) {
-            if (type != TetrominoType.ITEM) {
+            if (type != TetrominoType.ITEM && type != TetrominoType.WEIGHT_BOMB) {
                 distribution.put(type, 0);
             }
         }
@@ -210,16 +214,16 @@ class BoardControllerDifficultyTest {
     // =========================================================================
     
     @Test
-    @DisplayName("3-1. Easy 모드는 점수가 20% 증가해야 함")
+    @DisplayName("3-1. Easy 모드는 점수가 50% 감소해야 함 (SRS 표준)")
     void testEasyModeScoreMultiplier() {
         // Given: Easy 난이도 설정 확인
         double easyScoreMultiplier = Difficulty.EASY.getScoreMultiplier();
         
-        // Then: Easy 모드의 점수 배율이 1.2여야 함
-        assertEquals(1.2, easyScoreMultiplier, 0.001, 
-            "Easy 모드의 점수 배율이 1.2가 아님");
+        // Then: Easy 모드의 점수 배율이 0.5여야 함 (SRS 표준: 낮은 난이도 = 낮은 배율)
+        assertEquals(0.5, easyScoreMultiplier, 0.001, 
+            "Easy 모드의 점수 배율이 0.5가 아님");
         
-        System.out.println("✅ Easy 모드 점수 배율: " + easyScoreMultiplier + "x");
+        System.out.println("✅ Easy 모드 점수 배율: " + easyScoreMultiplier + "x (SRS 표준)");
     }
     
     @Test
@@ -235,15 +239,15 @@ class BoardControllerDifficultyTest {
     }
     
     @Test
-    @DisplayName("3-3. Hard 모드는 점수가 20% 감소해야 함")
+    @DisplayName("3-3. Hard 모드는 점수가 50% 증가해야 함 (SRS 표준)")
     void testHardModeScoreMultiplier() {
         // Given: Hard 난이도 설정 확인
         double hardScoreMultiplier = Difficulty.HARD.getScoreMultiplier();
         
-        // Then: Hard 모드의 점수 배율이 0.8이어야 함
-        assertEquals(0.8, hardScoreMultiplier, 0.001);
+        // Then: Hard 모드의 점수 배율이 1.5여야 함 (SRS 표준: 높은 난이도 = 높은 배율)
+        assertEquals(1.5, hardScoreMultiplier, 0.001);
         
-        System.out.println("✅ Hard 모드 점수 배율: " + hardScoreMultiplier + "x");
+        System.out.println("✅ Hard 모드 점수 배율: " + hardScoreMultiplier + "x (SRS 표준)");
     }
     
     // =========================================================================
@@ -309,9 +313,9 @@ class BoardControllerDifficultyTest {
         System.out.println("1️⃣ Easy 모드:");
         BoardController easyController = new BoardController(GameModeConfig.classic(), Difficulty.EASY);
         assertEquals(Difficulty.EASY, easyController.getDifficulty());
-        assertEquals(1.2, easyController.getDifficulty().getScoreMultiplier(), 0.001);
+        assertEquals(0.5, easyController.getDifficulty().getScoreMultiplier(), 0.001);  // SRS 표준: 낮은 난이도 = 낮은 배율
         assertNotNull(easyController.getTetrominoGenerator());
-        System.out.println("   ✅ 난이도: EASY, 점수 배율: 1.2x, Generator: OK\n");
+        System.out.println("   ✅ 난이도: EASY, 점수 배율: 0.5x, Generator: OK\n");
         
         // 2. Normal 모드 검증
         System.out.println("2️⃣ Normal 모드:");
@@ -325,9 +329,9 @@ class BoardControllerDifficultyTest {
         System.out.println("3️⃣ Hard 모드:");
         BoardController hardController = new BoardController(GameModeConfig.classic(), Difficulty.HARD);
         assertEquals(Difficulty.HARD, hardController.getDifficulty());
-        assertEquals(0.8, hardController.getDifficulty().getScoreMultiplier(), 0.001);
+        assertEquals(1.5, hardController.getDifficulty().getScoreMultiplier(), 0.001);  // SRS 표준: 높은 난이도 = 높은 배율
         assertNotNull(hardController.getTetrominoGenerator());
-        System.out.println("   ✅ 난이도: HARD, 점수 배율: 0.8x, Generator: OK\n");
+        System.out.println("   ✅ 난이도: HARD, 점수 배율: 1.5x, Generator: OK\n");
         
         System.out.println("========================================");
         System.out.println("✅ 전체 시스템 통합 성공!");

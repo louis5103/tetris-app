@@ -2,6 +2,7 @@ package seoultech.se.client.model.scoreBoard;
 
 import java.util.List;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import jakarta.annotation.PostConstruct;
@@ -20,6 +21,7 @@ import seoultech.se.backend.score.ScoreService;
 
 @Getter
 @Component
+@ConditionalOnProperty(name = "javafx.enabled", havingValue = "true", matchIfMissing = true)
 @RequiredArgsConstructor
 public class ScoreBoard extends VBox{
     private final TableView<ScoreRankDto> tableView = new TableView<>();
