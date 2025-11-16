@@ -36,6 +36,11 @@ dependencies {
     implementation(libs.backend.spring.boot.starter.validation)
     implementation("org.springframework.boot:spring-boot-starter-security")
 
+    // JWT
+    implementation("io.jsonwebtoken:jjwt-api:0.12.3")
+    runtimeOnly("io.jsonwebtoken:jjwt-impl:0.12.3")
+    runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.12.3")
+
     // --- 기존 H2 ---
     // runtimeOnly(libs.backend.h2.database)
 
