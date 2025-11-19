@@ -31,7 +31,7 @@ import seoultech.se.client.ui.GameLoopManager;
 import seoultech.se.client.ui.InputHandler;
 import seoultech.se.client.ui.ItemInventoryPanel;
 import seoultech.se.client.ui.NotificationManager;
-// import seoultech.se.client.ui.PopupManager; // PopupManager 제거
+import seoultech.se.client.ui.PopupManager;
 import seoultech.se.client.util.ColorMapper;
 import seoultech.se.core.GameState;
 import seoultech.se.core.command.Direction;
