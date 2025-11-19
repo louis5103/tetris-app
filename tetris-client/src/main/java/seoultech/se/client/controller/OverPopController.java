@@ -1,121 +1,90 @@
 package seoultech.se.client.controller;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.function.Consumer;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
-
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.Node;
-import javafx.scene.control.Label;
-import javafx.scene.control.TableRow;
-import javafx.scene.control.TableView;
-import javafx.scene.control.TextField;
+import javafx.scene.control.*;
+import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.stage.Stage;
-import seoultech.se.client.dto.ScoreRequest;
-import seoultech.se.client.dto.ScoreResponse;
-import seoultech.se.client.service.ClientScoreService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
+import seoultech.se.backend.score.GameMode;
+import seoultech.se.backend.score.ScoreRankDto;
+import seoultech.se.backend.score.ScoreRequestDto;
+import seoultech.se.backend.score.ScoreService;
 import seoultech.se.client.service.NavigationService;
 
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
 @Component
+@RequiredArgsConstructor
 public class OverPopController extends BaseController {
 
-    @Autowired
-    private NavigationService navigationService;
-
-    @Autowired
-    private ClientScoreService scoreService;
+    private final NavigationService navigationService;
+    private final ScoreService scoreService;
 
     @FXML
     private Label scoreLabel;
 
-    /* 사용자 이름 입력 박스로 입력이 완료되면 사라지게 설정해주세요
-     * visible 속성으로 제어하면 됩니다.
-     * managed 속성도 false로 설정해야 레이아웃에서 공간을 차지하지 않습니다.
-     * 다른 방법이 있다면 그렇게 해주세요~ 위의 설명은 참고용입니다.
-     */
     @FXML
     private HBox nameInputBox;
 
-    /* 사용자 이름 입력 필드
-     * 해당 input을 입력받으면 내용 저장 및 이후 처리를 진행하면 됩니다
-     */
     @FXML
     private TextField usernameInput;
-    
-    /* usernameInput에서 입력이 발생하면 처리하는 핸들러매서드 */
-    @FXML
-    private void handleUsernameInput(ActionEvent event) {
-        /* 구현 필요 */
-        }
 
     @FXML
     private TableView<Map<String, Object>> scoreBoardTable;
-    
+
     @FXML
-    private javafx.scene.control.Button mainButton;
-    
+    private Button mainButton;
+
     @FXML
-    private javafx.scene.control.Button restartButton;
-    
+    private Button restartButton;
+
     @FXML
-    private javafx.scene.layout.BorderPane rootPane;
+    private BorderPane rootPane;
 
     private long currentScore;
-    private javafx.scene.control.Button[] buttons;
+    private Button[] buttons;
     private int currentButtonIndex = 0;
+    private boolean isItemMode; // Add this to store mode
 
     @FXML
     public void initialize() {
         nameInputBox.setVisible(false);
         nameInputBox.setManaged(false);
-        
-        // 버튼 배열 초기화
-        buttons = new javafx.scene.control.Button[] {
-            mainButton,      // 0
-            restartButton    // 1
-        };
-        
-        // 버튼 이벤트 리스너 설정
+
+        buttons = new Button[]{mainButton, restartButton};
         setupButtonNavigation();
     }
-    
+
     private void setupButtonNavigation() {
-        // 각 버튼에 이벤트 리스너 추가
         for (int i = 0; i < buttons.length; i++) {
             final int index = i;
-            
-            // 포커스 리스너
             buttons[i].focusedProperty().addListener((obs, wasFocused, isNowFocused) -> {
                 if (isNowFocused && currentButtonIndex != index) {
-                    System.out.println("🔄 Focus changed by Tab: " + currentButtonIndex + " → " + index);
                     currentButtonIndex = index;
                     syncButtonHighlight();
                 }
             });
-            
-            // 마우스 호버 이벤트
             buttons[i].setOnMouseEntered(event -> {
                 if (currentButtonIndex != index) {
                     currentButtonIndex = index;
                     buttons[index].requestFocus();
                     syncButtonHighlight();
-                    System.out.println("🖱️  Mouse hover: focus moved to button " + index + " [" + buttons[index].getText() + "]");
                 }
             });
         }
-        
-        // 키보드 이벤트 설정
+
         Platform.runLater(() -> {
             if (rootPane.getScene() != null) {
                 rootPane.getScene().addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED, this::handleKeyPressed);
@@ -127,37 +96,26 @@ public class OverPopController extends BaseController {
                 });
             }
         });
-        
-        // 초기 하이라이트
         updateButtonHighlight();
     }
-    
+
     private void handleKeyPressed(javafx.scene.input.KeyEvent event) {
-        if (event.getCode().isModifierKey()) {
-            return;
-        }
-        
-        System.out.println("🔑 Key pressed: " + event.getCode() + " | Current: " + currentButtonIndex);
-        
+        if (event.getCode().isModifierKey()) return;
+
         switch (event.getCode()) {
             case LEFT:
             case UP:
-                int prevIndex = currentButtonIndex;
                 currentButtonIndex = (currentButtonIndex - 1 + buttons.length) % buttons.length;
                 updateButtonHighlight();
-                System.out.println("⬅️ LEFT/UP: " + prevIndex + " → " + currentButtonIndex + " [" + buttons[currentButtonIndex].getText() + "]");
                 event.consume();
                 break;
             case RIGHT:
             case DOWN:
-                prevIndex = currentButtonIndex;
                 currentButtonIndex = (currentButtonIndex + 1) % buttons.length;
                 updateButtonHighlight();
-                System.out.println("➡️ RIGHT/DOWN: " + prevIndex + " → " + currentButtonIndex + " [" + buttons[currentButtonIndex].getText() + "]");
                 event.consume();
                 break;
             case ENTER:
-                System.out.println("✅ ENTER: Firing button " + currentButtonIndex + " [" + buttons[currentButtonIndex].getText() + "]");
                 buttons[currentButtonIndex].fire();
                 event.consume();
                 break;
@@ -165,21 +123,18 @@ public class OverPopController extends BaseController {
                 break;
         }
     }
-    
+
     private void updateButtonHighlight() {
         syncButtonHighlight();
         if (currentButtonIndex >= 0 && currentButtonIndex < buttons.length) {
             buttons[currentButtonIndex].requestFocus();
-            System.out.println("🎯 Highlighted button " + currentButtonIndex + ": " + buttons[currentButtonIndex].getText());
         }
     }
-    
+
     private void syncButtonHighlight() {
-        // 모든 버튼의 하이라이트 제거
-        for (javafx.scene.control.Button button : buttons) {
+        for (Button button : buttons) {
             button.getStyleClass().remove("highlighted");
         }
-        // 현재 버튼에 하이라이트 추가
         if (currentButtonIndex >= 0 && currentButtonIndex < buttons.length) {
             buttons[currentButtonIndex].getStyleClass().add("highlighted");
         }
@@ -187,66 +142,55 @@ public class OverPopController extends BaseController {
 
     public void setScore(long score) {
         this.currentScore = score;
+        // FIXME: This should be passed from the game screen.
+        this.isItemMode = false;
         scoreLabel.setText(String.valueOf(currentScore));
-        scoreService.getScores().thenAccept(scores -> {
-            loadScores(scores);
 
-            boolean isTopTen = scores.size() < 10 || (scores.size() >= 10 && currentScore > scores.get(9).getScore());
+        List<ScoreRankDto> scores = scoreService.getTopScores(isItemMode, 10);
+        loadScores(scores, isItemMode);
 
-            if (isTopTen) {
-                Platform.runLater(() -> {
-                    nameInputBox.setVisible(true);
-                    nameInputBox.setManaged(true);
-                });
-            }
-        }).exceptionally(e -> {
-            System.err.println("Error fetching scores: " + e.getMessage());
-            return null;
-        });
+        boolean isTopTen = scores.size() < 10 || scores.stream().anyMatch(s -> currentScore > s.getScore());
+        if (isTopTen) {
+            Platform.runLater(() -> {
+                nameInputBox.setVisible(true);
+                nameInputBox.setManaged(true);
+                usernameInput.requestFocus();
+            });
+        }
     }
 
-    private void loadScores(List<ScoreResponse> scores) {
+    private void loadScores(List<ScoreRankDto> scores, boolean isItemMode) {
         Platform.runLater(() -> {
-            List<ScoreResponse> displayScores = new ArrayList<>(scores);
-            ScoreResponse currentPlayerScore = new ScoreResponse();
-            currentPlayerScore.setName("You");
-            currentPlayerScore.setScore((int) currentScore);
-            // FIXME: These should be passed from the game screen.
-            currentPlayerScore.setGameMode("NORMAL");
-            currentPlayerScore.setItemMode(false);
-            displayScores.add(currentPlayerScore);
-            displayScores.sort((s1, s2) -> Integer.compare(s2.getScore(), s1.getScore()));
-
-            ObservableList<Map<String, Object>> scoreData = FXCollections.observableArrayList();
-            List<Map<String, Object>> scoresMaps = IntStream.range(0, displayScores.size())
-                    .mapToObj(i -> {
-                        ScoreResponse scoreResponse = displayScores.get(i);
-                        String difficulty = scoreResponse.getGameMode() + (scoreResponse.isItemMode() ? " (Item)" : "");
-                        return Map.<String, Object>of(
-                                "rank", i + 1,
-                                "player", scoreResponse.getName(),
-                                "score", scoreResponse.getScore(),
-                                "difficulty", difficulty
-                        );
-                    })
+            List<Map<String, Object>> scoreMaps = scores.stream()
+                    .map(score -> Map.<String, Object>of(
+                            "rank", score.getRank(),
+                            "player", score.getName(),
+                            "score", score.getScore(),
+                            "difficulty", score.getGameMode() + (isItemMode ? " (Item)" : "")
+                    ))
                     .collect(Collectors.toList());
-            scoreData.addAll(scoresMaps);
+
+            Map<String, Object> currentPlayerScoreMap = Map.of(
+                    "rank", "-",
+                    "player", "You",
+                    "score", (int) currentScore,
+                    "difficulty", "NORMAL" + (isItemMode ? " (Item)" : "")
+            );
+
+            List<Map<String, Object>> displayList = Stream.concat(scoreMaps.stream(), Stream.of(currentPlayerScoreMap))
+                    .sorted(Comparator.comparingInt((Map<String, Object> m) -> (int) m.get("score")).reversed())
+                    .collect(Collectors.toList());
+
+            ObservableList<Map<String, Object>> scoreData = FXCollections.observableArrayList(displayList);
             scoreBoardTable.setItems(scoreData);
 
             scoreBoardTable.setRowFactory(tv -> new TableRow<>() {
                 @Override
                 protected void updateItem(Map<String, Object> item, boolean empty) {
                     super.updateItem(item, empty);
-                    if (item == null || empty) {
-                        getStyleClass().remove("score-highlight");
-                    } else {
-                        if ("You".equals(item.get("player"))) {
-                            if (!getStyleClass().contains("score-highlight")) {
-                                getStyleClass().add("score-highlight");
-                            }
-                        } else {
-                            getStyleClass().remove("score-highlight");
-                        }
+                    getStyleClass().remove("score-highlight");
+                    if (item != null && !empty && "You".equals(item.get("player"))) {
+                        getStyleClass().add("score-highlight");
                     }
                 }
             });
@@ -254,50 +198,86 @@ public class OverPopController extends BaseController {
     }
 
     @FXML
+    private void handleNameInput(ActionEvent event) {
+        saveScoreAndRefreshUi().thenRun(() -> {
+            Platform.runLater(() -> restartButton.requestFocus());
+        }).exceptionally(ex -> {
+            System.err.println("Failed to save score on name input: " + ex.getMessage());
+            return null;
+        });
+    }
+
+    private CompletableFuture<Void> saveScoreAndRefreshUi() {
+        String username = usernameInput.getText();
+        if (username == null || username.trim().isEmpty()) {
+            System.out.println("Username is required.");
+            return CompletableFuture.failedFuture(new IllegalArgumentException("Username is required."));
+        }
+
+        ScoreRequestDto newScore = new ScoreRequestDto();
+        newScore.setName(username);
+        newScore.setScore((int) currentScore);
+        newScore.setGameMode(GameMode.NORMAL); // FIXME: Assuming normal mode
+        newScore.setItemMode(this.isItemMode);
+
+        return CompletableFuture.runAsync(() -> scoreService.saveScore(newScore))
+            .thenRun(() -> {
+                Platform.runLater(() -> {
+                    nameInputBox.setVisible(false);
+                    nameInputBox.setManaged(false);
+                    List<ScoreRankDto> updatedScores = scoreService.getTopScores(this.isItemMode, 10);
+                    loadScores(updatedScores, this.isItemMode);
+                });
+            });
+    }
+
+    @FXML
     private void handleMainButton(ActionEvent event) {
-        handleNavigation(e -> {
+        Runnable navigate = () -> {
             try {
-                closePopup(e);
+                closePopup(event);
                 navigationService.navigateTo("/view/main-view.fxml");
             } catch (Exception ex) {
                 System.err.println("❌ Failed to navigate to main view: " + ex.getMessage());
                 ex.printStackTrace();
             }
-        }, event);
+        };
+
+        if (nameInputBox.isVisible()) {
+            saveScoreAndRefreshUi().thenRun(() -> {
+                Platform.runLater(navigate);
+            }).exceptionally(ex -> {
+                System.err.println("Failed to save score before navigation: " + ex.getMessage());
+                Platform.runLater(navigate);
+                return null;
+            });
+        } else {
+            navigate.run();
+        }
     }
 
     @FXML
     private void handleRestartButton(ActionEvent event) {
-        handleNavigation(e -> {
+        Runnable navigate = () -> {
             try {
-                closePopup(e);
+                closePopup(event);
                 navigationService.navigateTo("/view/game-view.fxml");
             } catch (Exception ex) {
                 System.err.println("❌ Failed to restart game: " + ex.getMessage());
                 ex.printStackTrace();
             }
-        }, event);
-    }
+        };
 
-    private void handleNavigation(Consumer<ActionEvent> navigationAction, ActionEvent event) {
         if (nameInputBox.isVisible()) {
-            String username = usernameInput.getText();
-            if (username == null || username.trim().isEmpty()) {
-                // Maybe show an alert to the user
-                System.out.println("Username is required to save a new high score.");
-                return; // Block navigation
-            }
-            // Assuming default game mode for now. This should be passed from the game screen.
-            ScoreRequest newScore = new ScoreRequest(username, (int) currentScore, "NORMAL", false);
-            scoreService.saveScore(newScore).thenRun(() -> {
-                Platform.runLater(() -> navigationAction.accept(event));
-            }).exceptionally(e -> {
-                System.err.println("Failed to save score: " + e.getMessage());
-                // Decide if you still want to navigate or show an error
+            saveScoreAndRefreshUi().thenRun(() -> {
+                Platform.runLater(navigate);
+            }).exceptionally(ex -> {
+                System.err.println("Failed to save score before navigation: " + ex.getMessage());
+                Platform.runLater(navigate);
                 return null;
             });
         } else {
-            navigationAction.accept(event);
+            navigate.run();
         }
     }
 
