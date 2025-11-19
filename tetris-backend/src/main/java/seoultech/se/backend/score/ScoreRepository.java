@@ -12,7 +12,7 @@ import org.springframework.stereotype.Repository;
 public interface ScoreRepository extends JpaRepository<ScoreEntity, Long> {
     @Query(
         value = "SELECT " +
-                "    DENSE_RANK() OVER (ORDER BY score DESC) as rank, " +
+                "    DENSE_RANK() OVER (ORDER BY score DESC) as `rank`, " +
                 "    name, " +          
                 "    score, " +
                 "    game_mode as gameMode, " +
