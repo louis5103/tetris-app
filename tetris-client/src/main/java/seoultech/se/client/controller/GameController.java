@@ -1,25 +1,34 @@
 package seoultech.se.client.controller;
 
 import java.io.IOException;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import javafx.application.Platform;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
-import javafx.fxml.FXMLLoader;
-import javafx.scene.Parent;
-import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Label;
+import javafx.scene.control.TableColumn;
+import javafx.scene.control.TableRow;
+import javafx.scene.control.TableView;
+import javafx.scene.control.TextField;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
-import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
-import javafx.stage.Modality;
-import javafx.stage.Stage;
-import javafx.stage.StageStyle;
-import javafx.stage.Window;
+
+import seoultech.se.backend.score.GameMode;
+import seoultech.se.backend.score.ScoreRankDto;
+import seoultech.se.backend.score.ScoreRequestDto;
+import seoultech.se.backend.score.ScoreService;
 import seoultech.se.client.config.ApplicationContextProvider;
 import seoultech.se.client.constants.UIConstants;
 import seoultech.se.client.service.KeyMappingService;
@@ -79,6 +88,15 @@ public class GameController {
     @FXML private javafx.scene.layout.VBox pauseOverlay;
     @FXML private javafx.scene.layout.VBox gameOverOverlay;
     @FXML private Label finalScoreLabel;
+
+    // 게임 오버 팝업 내 FXML 요소
+    @FXML private HBox nameInputBox;
+    @FXML private TextField usernameInput;
+    @FXML private TableView<Map<String, Object>> scoreBoardTable;
+    @FXML private TableColumn<Map<String, Object>, String> rankColumn;
+    @FXML private TableColumn<Map<String, Object>, String> difficultyColumn;
+    @FXML private TableColumn<Map<String, Object>, String> playerColumn;
+    @FXML private TableColumn<Map<String, Object>, String> scoreColumn;
     
     // 아이템 인벤토리 UI
     @FXML private javafx.scene.layout.HBox itemInventoryContainer;
@@ -92,6 +110,9 @@ public class GameController {
     @Autowired
     private SettingsService settingsService;
 
+    @Autowired
+    private ScoreService scoreService;
+
     // 게임 로직 컨트롤러
     private BoardController boardController;
     
@@ -102,7 +123,7 @@ public class GameController {
     private BoardRenderer boardRenderer;
     private NotificationManager notificationManager;
     private GameLoopManager gameLoopManager;
-    // private PopupManager popupManager; // PopupManager 제거
+    private PopupManager popupManager;
     private InputHandler inputHandler;
     private GameInfoManager gameInfoManager;
     private ItemInventoryPanel itemInventoryPanel;
@@ -111,6 +132,9 @@ public class GameController {
     private Rectangle[][] cellRectangles;
     private Rectangle[][] holdCellRectangles;
     private Rectangle[][] nextCellRectangles;
+
+    private long currentScore;
+    private boolean isItemMode;
 
     /**
      * FXML이 로드된 후 자동으로 호출됩니다
@@ -298,7 +322,9 @@ public class GameController {
             return true; // 게임 루프 계속
         });
         
-        // PopupManager 관련 코드 제거
+        // PopupManager 초기화
+        popupManager = new PopupManager(pauseOverlay, gameOverOverlay, finalScoreLabel);
+        popupManager.setCallback(createPopupCallback());
         
         // InputHandler 초기화
         inputHandler = new InputHandler(keyMappingService);
@@ -314,7 +340,7 @@ public class GameController {
             public boolean isGameOver() {
                 return boardController.getGameState().isGameOver();
             }
-            
+
             @Override
             public boolean isPaused() {
                 return boardController.getGameState().isPaused();
@@ -327,6 +353,70 @@ public class GameController {
             levelLabel,
             linesLabel
         );
+    }
+
+    private PopupManager.PopupActionCallback createPopupCallback() {
+        return new PopupManager.PopupActionCallback() {
+            private void navigateSafely(String fxmlPath) {
+                Runnable navigationTask = () -> {
+                    try {
+                        gameLoopManager.stop();
+                        navigationService.navigateTo(fxmlPath);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                        showError("Navigation Error", "Failed to navigate to " + fxmlPath);
+                    }
+                };
+
+                if (nameInputBox.isVisible()) {
+                    saveScoreAndRefreshUi().thenRun(() -> Platform.runLater(navigationTask))
+                        .exceptionally(ex -> {
+                            Platform.runLater(navigationTask);
+                            return null;
+                        });
+                } else {
+                    navigationTask.run();
+                }
+            }
+
+            @Override
+            public void onResumeRequested() {
+                resumeGame();
+            }
+
+            @Override
+            public void onQuitRequested() {
+                navigateSafely("/view/main-view.fxml");
+            }
+
+            @Override
+            public void onMainMenuRequested() {
+                navigateSafely("/view/main-view.fxml");
+            }
+
+            @Override
+            public void onRestartRequested() {
+                 Runnable restartTask = () -> {
+                    try {
+                        gameLoopManager.stop();
+                        restartGame();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        showError("Restart Error", "Failed to restart the game.");
+                    }
+                };
+
+                if (nameInputBox.isVisible()) {
+                    saveScoreAndRefreshUi().thenRun(() -> Platform.runLater(restartTask))
+                        .exceptionally(ex -> {
+                            Platform.runLater(restartTask);
+                            return null;
+                        });
+                } else {
+                    restartTask.run();
+                }
+            }
+        };
     }
 
     /**
@@ -640,21 +730,16 @@ public class GameController {
             boolean isPaused = newState.isPaused();
             if (!wasPaused && isPaused) {
                 pauseGame();
-                showPausePopup(); // 팝업 띄우는 메서드 호출
+                popupManager.showPausePopup();
             } else if (wasPaused && !isPaused) {
-                gameLoopManager.resume();
-                notificationManager.hideAllNotifications();
+                resumeGame();
             }
             
-            // 10. 게임 오버 감지
+            // 11. 게임 오버 감지
             boolean wasGameOver = oldState.isGameOver();
             boolean isGameOver = newState.isGameOver();
             if (!wasGameOver && isGameOver) {
-                gameOverLabel.setVisible(true);
-                System.out.println("💀 GAME OVER");
-                System.out.println("   Final Score: " + newState.getScore());
-                System.out.println("   Lines Cleared: " + newState.getLinesCleared());
-                showGameOverPopup(newState.getScore()); // 팝업 띄우는 메서드 호출
+                processGameOver(newState.getScore());
             }
         });
     }
@@ -764,6 +849,7 @@ public class GameController {
     // ========== 게임 제어 ==========
     public void startGame() {
         gameOverLabel.setVisible(false);
+        popupManager.hideAllPopups();
         gameLoopManager.start();
         boardGridPane.requestFocus();
         System.out.println("🎮 Game Started!");
@@ -775,104 +861,85 @@ public class GameController {
     }
 
     public void resumeGame() {
+        if (popupManager.isPausePopupVisible()) {
+            popupManager.hidePausePopup();
+        }
         gameLoopManager.resume();
         notificationManager.hideAllNotifications();
         // Resume Command 실행하여 게임 상태도 업데이트
         boardController.executeCommand(new seoultech.se.core.command.ResumeCommand());
     }
 
-    // ========== 오버레이 버튼 핸들러 ==========
-    // FXML 핸들러 메서드 제거
-    // @FXML private void handleResumeFromOverlay() { ... }
-    // @FXML private void handleQuitFromOverlay() { ... }
-    // @FXML private void handleMainFromOverlay() { ... }
-    // @FXML private void handleRestartFromOverlay() { ... }
-    
     // ========== 팝업 창 관리 ==========
 
-    /**
-     * 일시정지 팝업을 띄웁니다.
-     */
-    private void showPausePopup() {
-        try {
-            // Scene이 아직 설정되지 않았다면 팝업을 띄우지 않음
-            if (boardGridPane.getScene() == null) {
-                System.out.println("⚠️ Scene not ready yet, skipping pause popup");
-                return;
-            }
-            
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/view/pause-pop.fxml"));
-            
-            // Spring 컨텍스트에서 컨트롤러 인스턴스를 가져오도록 설정
-            loader.setControllerFactory(ApplicationContextProvider.getApplicationContext()::getBean);
-            
-            Parent root = loader.load();
-            
-            PausePopController controller = loader.getController();
-            controller.setResumeCallback(this::resumeGame); // Resume 콜백 설정
+    private void processGameOver(long finalScore) {
+        gameLoopManager.stop();
+        gameOverLabel.setVisible(true);
+        popupManager.showGameOverPopup(finalScore);
+        
+        this.currentScore = finalScore;
+        this.isItemMode = gameModeConfig.getItemConfig() != null && gameModeConfig.getItemConfig().isEnabled();
 
-            Stage popupStage = new Stage();
-            popupStage.initModality(Modality.APPLICATION_MODAL);
-            popupStage.initOwner(boardGridPane.getScene().getWindow());
-            popupStage.initStyle(StageStyle.TRANSPARENT);
+        
+        List<ScoreRankDto> scores = scoreService.getTopScores(isItemMode, 10);
+        loadScores(scores);
 
-            Scene scene = new Scene(root);
-            scene.setFill(Color.TRANSPARENT);
-            popupStage.setScene(scene);
-            
-            // 팝업을 소유자 창의 중앙에 위치시키는 리스너 추가
-            popupStage.setOnShown(e -> {
-                Window owner = popupStage.getOwner();
-                popupStage.setX(owner.getX() + owner.getWidth() / 2 - popupStage.getWidth() / 2);
-                popupStage.setY(owner.getY() + owner.getHeight() / 2 - popupStage.getHeight() / 2);
+        boolean isTopTen = scores.size() < 10 || scores.stream().anyMatch(s -> currentScore > s.getScore());
+        if (isTopTen) {
+            Platform.runLater(() -> {
+                nameInputBox.setVisible(true);
+                nameInputBox.setManaged(true);
+                usernameInput.requestFocus();
             });
-
-            popupStage.showAndWait();
-
-        } catch (IOException e) {
-            e.printStackTrace();
-            showError("팝업 오류", "일시정지 팝업을 불러오는 데 실패했습니다.");
         }
     }
 
-    /**
-     * 게임 오버 팝업을 띄웁니다.
-     * @param score 최종 점수
-     */
-    private void showGameOverPopup(long score) {
-        try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/view/over-pop.fxml"));
+    private void loadScores(List<ScoreRankDto> scores) {
+        Platform.runLater(() -> {
+            List<Map<String, Object>> scoreMaps = scores.stream()
+                    .map(score -> Map.<String, Object>of(
+                            "rank", score.getRank(),
+                            "player", score.getName(),
+                            "score", score.getScore(),
+                            "difficulty", score.getGameMode() + (isItemMode ? " (Item)" : "")
+                    ))
+                    .collect(Collectors.toList());
             
-            // Spring 컨텍스트에서 컨트롤러 인스턴스를 가져오도록 설정
-            loader.setControllerFactory(ApplicationContextProvider.getApplicationContext()::getBean);
+            ObservableList<Map<String, Object>> scoreData = FXCollections.observableArrayList(scoreMaps);
+            scoreBoardTable.setItems(scoreData);
+        });
+    }
 
-            Parent root = loader.load();
+    @FXML
+    private void handleNameInput() {
+        saveScoreAndRefreshUi().thenRun(() -> {
+            Platform.runLater(() -> boardGridPane.requestFocus());
+        });
+    }
 
-            OverPopController controller = loader.getController();
-            controller.setScore(score);
-
-            Stage popupStage = new Stage();
-            popupStage.initModality(Modality.APPLICATION_MODAL);
-            popupStage.initOwner(boardGridPane.getScene().getWindow());
-            popupStage.initStyle(StageStyle.TRANSPARENT);
-            
-            Scene scene = new Scene(root);
-            scene.setFill(Color.TRANSPARENT);
-            popupStage.setScene(scene);
-
-            // 팝업을 소유자 창의 중앙에 위치시키는 리스너 추가
-            popupStage.setOnShown(e -> {
-                Window owner = popupStage.getOwner();
-                popupStage.setX(owner.getX() + owner.getWidth() / 2 - popupStage.getWidth() / 2);
-                popupStage.setY(owner.getY() + owner.getHeight() / 2 - popupStage.getHeight() / 2);
-            });
-
-            popupStage.showAndWait();
-
-        } catch (IOException e) {
-            e.printStackTrace();
-            showError("팝업 오류", "게임 오버 팝업을 불러오는 데 실패했습니다.");
+    private CompletableFuture<Void> saveScoreAndRefreshUi() {
+        String username = usernameInput.getText();
+        if (username == null || username.trim().isEmpty()) {
+            return CompletableFuture.failedFuture(new IllegalArgumentException("Username is required."));
         }
+
+        ScoreRequestDto newScore = new ScoreRequestDto();
+        newScore.setName(username);
+        newScore.setScore((int) currentScore);
+        seoultech.se.core.model.enumType.Difficulty currentDifficulty = settingsService.getCurrentDifficulty();
+        seoultech.se.backend.score.GameMode scoreGameMode = seoultech.se.backend.score.GameMode.valueOf(currentDifficulty.name());
+        newScore.setGameMode(scoreGameMode);
+        newScore.setItemMode(this.isItemMode);
+
+        return CompletableFuture.runAsync(() -> scoreService.saveScore(newScore))
+            .thenRun(() -> {
+                Platform.runLater(() -> {
+                    nameInputBox.setVisible(false);
+                    nameInputBox.setManaged(false);
+                    List<ScoreRankDto> updatedScores = scoreService.getTopScores(this.isItemMode, 10);
+                    loadScores(updatedScores);
+                });
+            });
     }
     
     // ========== UI 알림 메서드 ==========
@@ -892,53 +959,24 @@ public class GameController {
     
     // ========== 오버레이 이벤트 핸들러 ==========
     
-    /**
-     * 일시정지 오버레이에서 Resume 버튼 클릭 시
-     */
     @FXML
     public void handleResumeFromOverlay() {
-        System.out.println("▶️ Resume button clicked from pause overlay");
-        if (pauseOverlay != null) {
-            pauseOverlay.setVisible(false);
-            pauseOverlay.setManaged(false);
-        }
-        // 게임 재개
-        if (gameLoopManager != null) {
-            gameLoopManager.resume();
-        }
+        popupManager.handleResumeAction();
     }
     
-    /**
-     * 일시정지/게임오버 오버레이에서 Quit 버튼 클릭 시
-     */
     @FXML
     public void handleQuitFromOverlay() {
-        System.out.println("🚪 Quit button clicked from overlay");
-        try {
-            // 게임 루프 정지
-            if (gameLoopManager != null) {
-                gameLoopManager.stop();
-            }
-            // 메인 메뉴로 이동
-            navigationService.navigateTo("/view/main-view.fxml");
-        } catch (IOException e) {
-            e.printStackTrace();
-            showError("네비게이션 오류", "메인 메뉴로 돌아가는 데 실패했습니다.");
-        }
+        popupManager.handleQuitAction();
     }
     
-    /**
-     * 게임오버 오버레이에서 Restart 버튼 클릭 시
-     */
+    @FXML
+    public void handleMainFromOverlay() {
+        popupManager.handleMainMenuAction();
+    }
+    
     @FXML
     public void handleRestartFromOverlay() {
-        System.out.println("🔄 Restart button clicked from game over overlay");
-        if (gameOverOverlay != null) {
-            gameOverOverlay.setVisible(false);
-            gameOverOverlay.setManaged(false);
-        }
-        // 게임 재시작
-        restartGame();
+        popupManager.handleRestartAction();
     }
     
     /**
@@ -962,14 +1000,7 @@ public class GameController {
             }
             
             // 3. 오버레이 숨기기
-            if (gameOverOverlay != null) {
-                gameOverOverlay.setVisible(false);
-                gameOverOverlay.setManaged(false);
-            }
-            if (pauseOverlay != null) {
-                pauseOverlay.setVisible(false);
-                pauseOverlay.setManaged(false);
-            }
+            popupManager.hideAllPopups();
             
             // 4. UI 요소 초기화 (gameOverLabel 숨기기)
             if (gameOverLabel != null) {

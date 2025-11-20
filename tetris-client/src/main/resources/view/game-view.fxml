@@ -3,6 +3,10 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.cell.MapValueFactory?>
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.GridPane?>
 <?import javafx.scene.layout.HBox?>
@@ -119,18 +123,41 @@
                     </VBox>
                     
                     <!-- Game Over 팝업 오버레이 (평소에는 숨김) -->
-                    <VBox fx:id="gameOverOverlay" 
-                          alignment="CENTER" 
+                    <VBox fx:id="gameOverOverlay"
+                          alignment="CENTER"
                           styleClass="popup-overlay"
                           visible="false"
                           managed="false"
                           StackPane.alignment="CENTER">
-                        <VBox alignment="CENTER" styleClass="popup-container">
+                        <VBox alignment="CENTER" styleClass="popup-container" prefWidth="400">
                             <Label text="GAME OVER" styleClass="popup-title"/>
                             <Label text="Your Score" styleClass="popup-label"/>
                             <Label fx:id="finalScoreLabel" text="0" styleClass="popup-score"/>
+
+                            <HBox fx:id="nameInputBox" styleClass="notice-box" alignment="CENTER" spacing="10" visible="false" managed="false">
+                                <Label text="Your name:" styleClass="notice-label"/>
+                                <TextField fx:id="usernameInput" onAction="#handleNameInput" promptText="Enter your name" />
+                            </HBox>
+
+                            <TableView fx:id="scoreBoardTable" styleClass="score-table" prefHeight="250">
+                                <columns>
+                                    <TableColumn fx:id="rankColumn" text="RANK" prefWidth="50">
+                                        <cellValueFactory><javafx.scene.control.cell.MapValueFactory key="rank" /></cellValueFactory>
+                                    </TableColumn>
+                                    <TableColumn fx:id="difficultyColumn" text="DIFFICULTY" prefWidth="100">
+                                        <cellValueFactory><javafx.scene.control.cell.MapValueFactory key="difficulty" /></cellValueFactory>
+                                    </TableColumn>
+                                    <TableColumn fx:id="playerColumn" text="PLAYER" prefWidth="100">
+                                        <cellValueFactory><javafx.scene.control.cell.MapValueFactory key="player" /></cellValueFactory>
+                                    </TableColumn>
+                                    <TableColumn fx:id="scoreColumn" text="SCORE" prefWidth="100">
+                                        <cellValueFactory><javafx.scene.control.cell.MapValueFactory key="score" /></cellValueFactory>
+                                    </TableColumn>
+                                </columns>
+                            </TableView>
+
                             <HBox styleClass="gameover-buttons" alignment="CENTER">
-                                <Button text="Main" styleClass="menu-button-small" onAction="#handleQuitFromOverlay"/>
+                                <Button text="Main" styleClass="menu-button-small" onAction="#handleMainFromOverlay"/>
                                 <Button text="Restart" styleClass="menu-button-small" onAction="#handleRestartFromOverlay"/>
                             </HBox>
                         </VBox>
