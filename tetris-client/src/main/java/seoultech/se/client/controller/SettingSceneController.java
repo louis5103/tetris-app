@@ -8,7 +8,6 @@ import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import ch.qos.logback.core.joran.action.Action;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -25,7 +24,7 @@ import javafx.stage.Stage;
 import seoultech.se.client.config.ApplicationContextProvider;
 import seoultech.se.client.model.*;
 import seoultech.se.client.repository.*;
-import seoultech.se.client.service.ClientScoreService;
+import seoultech.se.backend.score.ScoreService;
 import seoultech.se.client.service.KeyMappingService;
 import seoultech.se.client.service.NavigationService;
 
@@ -39,7 +38,7 @@ public class SettingSceneController extends BaseController {
     @Autowired
     private SettingsRepository settingsRepository;
 
-    private ClientScoreService clientScoreService;
+    private ScoreService scoreService;
 
     @FXML
     private Slider soundSlider;
@@ -97,7 +96,7 @@ public class SettingSceneController extends BaseController {
         super.initialize();
 
         this.settingsService = ApplicationContextProvider.getApplicationContext().getBean(seoultech.se.client.service.SettingsService.class);
-        this.clientScoreService = ApplicationContextProvider.getApplicationContext().getBean(ClientScoreService.class);
+        this.scoreService = ApplicationContextProvider.getApplicationContext().getBean(ScoreService.class);
 
         loadSettingsToUI();
 
@@ -261,12 +260,12 @@ public class SettingSceneController extends BaseController {
     @FXML
     public void handleClearScoreBoardButton(ActionEvent event) {
         System.out.println("🧹 Clear Score Board button clicked");
-        clientScoreService.clearScores()
-                .thenRun(() -> System.out.println("✅ Score board cleared successfully."))
-                .exceptionally(e -> {
-                    System.err.println("❌ Failed to clear score board: " + e.getMessage());
-                    return null;
-                });
+        try {
+            scoreService.deleteScoreBoard();
+            System.out.println("✅ Score board cleared successfully.");
+        } catch (Exception e) {
+            System.err.println("❌ Failed to clear score board: " + e.getMessage());
+        }
     }
 
     @FXML
