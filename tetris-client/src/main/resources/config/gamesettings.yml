@@ -1,0 +1,29 @@
+# Client-specific game settings
+
+client:
+  modes:
+    classic:
+      # Settings for classic mode
+      srsEnabled: true
+      hardDropEnabled: true
+      holdEnabled: true
+      dropSpeedMultiplier: 1.0
+      lockDelay: 500 # milliseconds
+
+    arcade:
+      # Settings for arcade mode
+      srsEnabled: true
+      hardDropEnabled: true
+      holdEnabled: true
+      dropSpeedMultiplier: 1.5
+      lockDelay: 300 # milliseconds
+      itemDropRate: 0.1 # 10%
+      maxInventorySize: 3
+      itemAutoUse: false
+      enabledItems:
+        BOMB: true
+        PLUS: true
+        SPEED_RESET: true
+        BONUS_SCORE: true
+        # Add other items here and set to true/false
+        # e.g., LINE_CLEAR: false

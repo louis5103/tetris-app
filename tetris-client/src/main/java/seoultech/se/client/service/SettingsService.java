@@ -15,7 +15,9 @@ import javafx.beans.property.SimpleDoubleProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
 import javafx.stage.Stage;
+import seoultech.se.client.config.ClientSettings;
 import seoultech.se.client.config.GameModeProperties;
+import seoultech.se.client.config.mode.ArcadeModeSettings;
 import seoultech.se.client.constants.ColorBlindMode;
 import seoultech.se.core.config.GameModeConfig;
 import seoultech.se.core.config.GameplayType;
@@ -26,6 +28,9 @@ public class SettingsService {
 
     @Autowired
     private GameModeProperties gameModeProperties;
+
+    @Autowired
+    private ClientSettings clientSettings;
     
     // ========== application.yml 기본값 주입 ==========
     
@@ -348,14 +353,14 @@ public class SettingsService {
             }
             
             GameplayType gameplayType = gameModeProperties.getGameplayType();
-            boolean srsEnabled = gameModeProperties.isSrsEnabled();
             
             // 게임플레이 타입에 따라 프리셋 사용
             if (gameplayType == GameplayType.ARCADE) {
                 // 아케이드 모드는 아이템 설정 포함
-                return buildArcadeConfig(srsEnabled);
+                return buildArcadeConfig();
             } else {
-                return GameModeConfig.classic(srsEnabled);
+                ClassicModeSettings classicSettings = clientSettings.getClassic();
+                return GameModeConfig.classic(classicSettings.isSrsEnabled());
             }
         } catch (Exception e) {
             System.err.println("❗ Failed to build game mode config: " + e.getMessage());
@@ -368,12 +373,12 @@ public class SettingsService {
     /**
      * 아케이드 모드 설정 빌드 (아이템 설정 포함)
      * 
-     * @param srsEnabled SRS 활성화 여부
      * @return 아케이드 모드 설정
      */
-    private GameModeConfig buildArcadeConfig(boolean srsEnabled) {
+    private GameModeConfig buildArcadeConfig() {
         System.out.println("🎮 [SettingsService] Building ARCADE config...");
-        
+        ArcadeModeSettings arcadeSettings = clientSettings.getArcade();
+
         // ItemConfig 생성
         seoultech.se.core.item.ItemConfig itemConfig = buildItemConfig();
         
@@ -382,9 +387,9 @@ public class SettingsService {
         // 아케이드 모드 기본 설정에 아이템 설정 추가
         return GameModeConfig.builder()
             .gameplayType(GameplayType.ARCADE)
-            .dropSpeedMultiplier(1.5)
-            .lockDelay(300)
-            .srsEnabled(srsEnabled)
+            .dropSpeedMultiplier(arcadeSettings.getDropSpeedMultiplier())
+            .lockDelay(arcadeSettings.getLockDelay())
+            .srsEnabled(arcadeSettings.isSrsEnabled())
             .itemConfig(itemConfig)
             .build();
     }

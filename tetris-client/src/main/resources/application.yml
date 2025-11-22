@@ -12,6 +12,9 @@
 # Spring Boot 기본 설정
 # =============================================================================
 spring:
+  config:
+    import: classpath:config/gamesettings.yml
+
   application:
     name: Tetris Desktop Game
   
