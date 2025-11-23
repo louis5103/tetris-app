@@ -419,7 +419,7 @@ public class SettingsService {
         return seoultech.se.core.item.ItemConfig.builder()
             .dropRate(gameModeProperties.getItemDropRate())
             .enabledItems(enabledItems)
-            .maxInventorySize(gameMode_Properties.getMaxInventorySize())
+            .maxInventorySize(gameModeProperties.getMaxInventorySize())
             .autoUse(gameModeProperties.isItemAutoUse())
             .build();
     }
