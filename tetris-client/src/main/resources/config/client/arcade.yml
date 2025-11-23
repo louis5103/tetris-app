@@ -1,0 +1,17 @@
+# Arcade Mode Settings
+client:
+  modes:
+    arcade:
+      srsEnabled: true
+      hardDropEnabled: true
+      holdEnabled: true
+      dropSpeedMultiplier: 1.5
+      lockDelay: 300 # milliseconds
+      itemDropRate: 0.1 # 10%
+      maxInventorySize: 3
+      itemAutoUse: false
+      enabledItems:
+        BOMB: true
+        PLUS: true
+        SPEED_RESET: true
+        BONUS_SCORE: true

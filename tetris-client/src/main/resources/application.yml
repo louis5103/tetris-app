@@ -12,6 +12,12 @@
 # Spring Boot 기본 설정
 # =============================================================================
 spring:
+  config:
+    import: 
+      - classpath:config/client/classic.yml
+      - classpath:config/client/arcade.yml
+      - classpath:config/client/setting.yml
+
   application:
     name: Tetris Desktop Game
   
