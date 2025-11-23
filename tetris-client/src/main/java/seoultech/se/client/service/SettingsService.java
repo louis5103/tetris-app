@@ -7,7 +7,6 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
-
 import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.Yaml;
 
@@ -69,9 +68,9 @@ public class SettingsService {
     private final StringProperty difficulty = new SimpleStringProperty("difficultyNormal"); // easy, normal, hard
     private final StringProperty screenSize = new SimpleStringProperty("screenSizeM"); // XS, S, M, L, XL
 
-    private final String settingsFilePath = "src/main/resources/config/client/setting.yml";
-    private final String classicModeFilePath = "src/main/resources/config/client/classic.yml";
-    private final String arcadeModeFilePath = "src/main/resources/config/client/arcade.yml";
+    private String settingsFilePath = "src/main/resources/config/client/setting.yml";
+    private String classicModeFilePath = "src/main/resources/config/client/classic.yml";
+    private String arcadeModeFilePath = "src/main/resources/config/client/arcade.yml";
 
     private final Yaml yaml;
 
@@ -228,6 +227,13 @@ public class SettingsService {
             return (T) value;
         }
         return defaultValue;
+    }
+    
+    // For testing purposes
+    void setSettingsFilePaths(String settings, String classic, String arcade) {
+        this.settingsFilePath = settings;
+        this.classicModeFilePath = classic;
+        this.arcadeModeFilePath = arcade;
     }
 
 
@@ -669,3 +675,4 @@ public class SettingsService {
         }
     }
 }
+
