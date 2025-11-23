@@ -2,8 +2,14 @@ package seoultech.se.client.service;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.util.Properties;
-import java.util.prefs.Preferences;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+import org.yaml.snakeyaml.DumperOptions;
+import org.yaml.snakeyaml.Yaml;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -63,12 +69,18 @@ public class SettingsService {
     private final StringProperty difficulty = new SimpleStringProperty("difficultyNormal"); // easy, normal, hard
     private final StringProperty screenSize = new SimpleStringProperty("screenSizeM"); // XS, S, M, L, XL
 
-    private static final String PREFS_NODE = "tetris_settings";
-    private static final String SETTINGS_FILE = System.getProperty("user.home") + "/.tetris/tetris_settings.properties";
-    private final Preferences preferences;
+    private final String settingsFilePath = "src/main/resources/config/client/setting.yml";
+    private final String classicModeFilePath = "src/main/resources/config/client/classic.yml";
+    private final String arcadeModeFilePath = "src/main/resources/config/client/arcade.yml";
+
+    private final Yaml yaml;
 
     public SettingsService() {
-        this.preferences = Preferences.userRoot().node(PREFS_NODE);
+        DumperOptions options = new DumperOptions();
+        options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
+        options.setPrettyFlow(true); // Ensures pretty printing for flow style, if used
+        options.setWidth(100); // Set a reasonable width for the output
+        this.yaml = new Yaml(options);
     }
     
     /**
@@ -125,89 +137,58 @@ public class SettingsService {
     }
 
     public void loadSettings() {
-        Properties props = new Properties();
-        try (FileInputStream in = new FileInputStream(new File(SETTINGS_FILE))) {
-            props.load(in);
-            
-            // tetris_settings 파일에서 값을 읽되, 없으면 application.yml의 기본값 사용
-            soundVolume.set(Double.parseDouble(
-                props.getProperty("soundVolume", String.valueOf(defaultSoundVolume))));
-            colorMode.set(props.getProperty("colorMode", defaultColorMode));
-            screenSize.set(props.getProperty("screenSize", defaultScreenSize));
-            
-            // ✨ Phase 5: 난이도 로드
-            difficulty.set(props.getProperty("difficulty", defaultDifficulty));
-            
-            double width = Double.parseDouble(
-                props.getProperty("stageWidth", String.valueOf(defaultStageWidth)));
-            double height = Double.parseDouble(
-                props.getProperty("stageHeight", String.valueOf(defaultStageHeight)));
-            
+        try (FileInputStream in = new FileInputStream(settingsFilePath)) {
+            Map<String, Object> data = yaml.load(in);
+            Map<String, Object> settings = getNestedMap(data, "client.setting");
+
+            soundVolume.set(getSetting(settings, "soundVolume", defaultSoundVolume));
+            colorMode.set(getSetting(settings, "colorMode", defaultColorMode));
+            screenSize.set(getSetting(settings, "screenSize", defaultScreenSize));
+            difficulty.set(getSetting(settings, "difficulty", defaultDifficulty));
+
+            double width = getSetting(settings, "stageWidth", defaultStageWidth);
+            double height = getSetting(settings, "stageHeight", defaultStageHeight);
+
             applyResolution(width, height);
             applyScreenSizeClass();
-            
-            System.out.println("✅ Settings loaded successfully from tetris_settings.");
-            System.out.println("   - Sound Volume: " + soundVolume.get() + " (default: " + defaultSoundVolume + ")");
-            System.out.println("   - Color Mode: " + colorMode.get() + " (default: " + defaultColorMode + ")");
-            System.out.println("   - Screen Size: " + screenSize.get() + " (default: " + defaultScreenSize + ")");
-            System.out.println("   - Difficulty: " + difficulty.get() + " (default: " + defaultDifficulty + ")");
+
+            System.out.println("✅ Settings loaded successfully from " + settingsFilePath);
         } catch (Exception e) {
-            System.out.println("❗ Failed to load settings, using defaults from application.yml.");
+            System.out.println("❗ Failed to load settings from " + settingsFilePath + ", using defaults. " + e.getMessage());
             restoreDefaults();
         }
     }
 
     public void saveSettings() {
-        Properties props = new Properties();
-        
-        // 기존 설정 파일 로드 (custom.* 설정 보존)
-        try (FileInputStream in = new FileInputStream(new File(SETTINGS_FILE))) {
-            props.load(in);
-        } catch (Exception e) {
-            // 파일이 없으면 새로 생성
-        }
-        
-        // 기본 설정 업데이트
-        props.setProperty("soundVolume", String.valueOf(soundVolume.get()));
-        props.setProperty("colorMode", colorMode.get());
-        props.setProperty("screenSize", screenSize.get());
-        props.setProperty("stageWidth", String.valueOf(stageWidth.get()));
-        props.setProperty("stageHeight", String.valueOf(stageHeight.get()));
-        
-        // ✨ Phase 5: 난이도 저장
-        props.setProperty("difficulty", difficulty.get());
-        
-        // 게임 모드 설정 저장 (GameModeProperties를 통해)
-        if (gameModeProperties != null) {
-            props.setProperty("game.mode.playType", gameModeProperties.getPlayType().name());
-            props.setProperty("game.mode.gameplayType", gameModeProperties.getGameplayType().name());
-            props.setProperty("game.mode.srsEnabled", String.valueOf(gameModeProperties.isSrsEnabled()));
-        }
-        
-        // 파일로 저장
         try {
-            File settingsFile = new File(SETTINGS_FILE);
-            settingsFile.getParentFile().mkdirs(); // 디렉토리 생성
-            try (java.io.FileOutputStream out = new java.io.FileOutputStream(settingsFile)) {
-                props.store(out, "Tetris Game Settings");
-                System.out.println("✅ Settings saved successfully to file: " + SETTINGS_FILE);
+            // 파일을 먼저 읽어옴
+            Map<String, Object> data;
+            try (FileInputStream in = new FileInputStream(settingsFilePath)) {
+                data = yaml.load(in);
+            } catch (IOException e) {
+                // 파일이 없거나 읽을 수 없으면 새로운 맵 생성
+                data = new LinkedHashMap<>();
             }
-        } catch (Exception e) {
-            System.err.println("❗ Failed to save settings to file: " + e.getMessage());
-        }
-        
-        // Preferences에도 저장
-        preferences.putDouble("soundVolume", soundVolume.get());
-        preferences.put("colorMode", colorMode.get());
-        preferences.put("difficulty", difficulty.get());
-        preferences.put("screenSize", screenSize.get());
-        preferences.putDouble("stageWidth", stageWidth.get());
-        preferences.putDouble("stageHeight", stageHeight.get());
-        try {
-            preferences.flush(); // Ensure changes are written to persistent store
-            System.out.println("✅ Settings saved successfully to preferences.");
-        } catch (Exception e) {
-            System.err.println("❗ Failed to save settings to preferences: " + e.getMessage());
+
+            // client.setting 경로에 접근 (없으면 생성)
+            Map<String, Object> client = (Map<String, Object>) data.computeIfAbsent("client", k -> new LinkedHashMap<>());
+            Map<String, Object> settings = (Map<String, Object>) client.computeIfAbsent("setting", k -> new LinkedHashMap<>());
+
+            // 현재 설정 값으로 업데이트
+            settings.put("soundVolume", soundVolume.get());
+            settings.put("colorMode", colorMode.get());
+            settings.put("screenSize", screenSize.get());
+            settings.put("stageWidth", stageWidth.get());
+            settings.put("stageHeight", stageHeight.get());
+            settings.put("difficulty", difficulty.get());
+            
+            // 파일에 다시 씀
+            try (FileWriter writer = new FileWriter(settingsFilePath)) {
+                yaml.dump(data, writer);
+                System.out.println("✅ Settings saved successfully to " + settingsFilePath);
+            }
+        } catch (IOException e) {
+            System.err.println("❗ Failed to save settings to " + settingsFilePath + ": " + e.getMessage());
         }
     }
 
@@ -216,20 +197,39 @@ public class SettingsService {
         soundVolume.set(defaultSoundVolume);
         colorMode.set(defaultColorMode);
         screenSize.set(defaultScreenSize);
-        
-        // ✨ Phase 5: 난이도 기본값 복원
         difficulty.set(defaultDifficulty);
         
         applyResolution(defaultStageWidth, defaultStageHeight);
-        saveSettings();
+        saveSettings(); // 기본값을 YAML 파일에 저장
         
-        System.out.println("✅ Settings restored to defaults from application.yml.");
-        System.out.println("   - Sound Volume: " + defaultSoundVolume);
-        System.out.println("   - Color Mode: " + defaultColorMode);
-        System.out.println("   - Screen Size: " + defaultScreenSize);
-        System.out.println("   - Difficulty: " + defaultDifficulty);
-        System.out.println("   - Stage Size: " + defaultStageWidth + "x" + defaultStageHeight);
+        System.out.println("✅ Settings restored to defaults and saved to " + settingsFilePath);
     }
+
+    // Helper method to safely get nested map
+    private Map<String, Object> getNestedMap(Map<String, Object> map, String path) {
+        String[] keys = path.split("\\.");
+        Map<String, Object> current = map;
+        for (String key : keys) {
+            current = (Map<String, Object>) current.get(key);
+            if (current == null) {
+                return new HashMap<>(); // Return empty map if path is invalid
+            }
+        }
+        return current;
+    }
+
+    // Helper method to get a setting with a default value
+    private <T> T getSetting(Map<String, Object> settings, String key, T defaultValue) {
+        Object value = settings.get(key);
+        if (value != null && defaultValue.getClass().isInstance(value)) {
+            if (defaultValue instanceof Double && value instanceof Integer) {
+                return (T) Double.valueOf((Integer) value);
+            }
+            return (T) value;
+        }
+        return defaultValue;
+    }
+
 
     // ========== Property Accessors for JavaFX Binding ========== 
 
@@ -462,43 +462,55 @@ public class SettingsService {
      * @param config 게임 모드 설정
      */
     public void saveCustomGameModeConfig(GameplayType gameplayType, GameModeConfig config) {
+        String filePath = switch (gameplayType) {
+            case CLASSIC -> classicModeFilePath;
+            case ARCADE -> arcadeModeFilePath;
+            default -> null;
+        };
+        if (filePath == null) {
+            System.err.println("❗ Cannot save custom config for unsupported gameplay type: " + gameplayType);
+            return;
+        }
+
         try {
-            Properties props = new Properties();
-            File settingsFile = new File(SETTINGS_FILE);
-            
-            // 기존 설정 파일 로드
-            try (FileInputStream in = new FileInputStream(settingsFile)) {
-                props.load(in);
-                System.out.println("📂 Loaded existing settings from: " + settingsFile.getAbsolutePath());
-            } catch (Exception e) {
-                // 파일이 없으면 새로 생성
-                System.out.println("📂 Creating new settings file: " + settingsFile.getAbsolutePath());
+            Map<String, Object> data;
+            try (FileInputStream in = new FileInputStream(filePath)) {
+                data = yaml.load(in);
+            } catch (IOException e) {
+                data = new LinkedHashMap<>();
             }
-            
-            // 모드별 키 접두사
-            String prefix = "custom." + gameplayType.name().toLowerCase() + ".";
-            
-            // 모든 설정 저장
-            props.setProperty(prefix + "srsEnabled", String.valueOf(config.isSrsEnabled()));
-            props.setProperty(prefix + "rotation180Enabled", String.valueOf(config.isRotation180Enabled()));
-            props.setProperty(prefix + "hardDropEnabled", String.valueOf(config.isHardDropEnabled()));
-            props.setProperty(prefix + "holdEnabled", String.valueOf(config.isHoldEnabled()));
-            props.setProperty(prefix + "ghostPieceEnabled", String.valueOf(config.isGhostPieceEnabled()));
-            props.setProperty(prefix + "dropSpeedMultiplier", String.valueOf(config.getDropSpeedMultiplier()));
-            props.setProperty(prefix + "softDropSpeed", String.valueOf(config.getSoftDropSpeed()));
-            props.setProperty(prefix + "lockDelay", String.valueOf(config.getLockDelay()));
-            
-            // 파일에 저장
-            try (java.io.FileOutputStream out = new java.io.FileOutputStream(settingsFile)) {
-                props.store(out, "Tetris Game Settings");
-                System.out.println("✅ Custom game mode config saved for " + gameplayType.getDisplayName());
-                System.out.println("   File: " + settingsFile.getAbsolutePath());
-                System.out.println("   - hardDropEnabled: " + config.isHardDropEnabled());
-                System.out.println("   - holdEnabled: " + config.isHoldEnabled());
-                System.out.println("   - srsEnabled: " + config.isSrsEnabled());
-                System.out.println("   - dropSpeedMultiplier: " + config.getDropSpeedMultiplier());
+
+            Map<String, Object> client = (Map<String, Object>) data.computeIfAbsent("client", k -> new LinkedHashMap<>());
+            Map<String, Object> modes = (Map<String, Object>) client.computeIfAbsent("modes", k -> new LinkedHashMap<>());
+            Map<String, Object> modeSettings = (Map<String, Object>) modes.computeIfAbsent(gameplayType.name().toLowerCase(), k -> new LinkedHashMap<>());
+
+            modeSettings.put("srsEnabled", config.isSrsEnabled());
+            modeSettings.put("rotation180Enabled", config.isRotation180Enabled());
+            modeSettings.put("hardDropEnabled", config.isHardDropEnabled());
+            modeSettings.put("holdEnabled", config.isHoldEnabled());
+            modeSettings.put("ghostPieceEnabled", config.isGhostPieceEnabled());
+            modeSettings.put("dropSpeedMultiplier", config.getDropSpeedMultiplier());
+            modeSettings.put("softDropSpeed", config.getSoftDropSpeed());
+            modeSettings.put("lockDelay", config.getLockDelay());
+
+            if (gameplayType == GameplayType.ARCADE && config.getItemConfig() != null) {
+                seoultech.se.core.item.ItemConfig itemConfig = config.getItemConfig();
+                modeSettings.put("itemDropRate", itemConfig.getDropRate());
+                modeSettings.put("maxInventorySize", itemConfig.getMaxInventorySize());
+                modeSettings.put("itemAutoUse", itemConfig.isAutoUse());
+                
+                Map<String, Boolean> enabledItems = new LinkedHashMap<>();
+                for (seoultech.se.core.item.ItemType itemType : seoultech.se.core.item.ItemType.values()) {
+                    enabledItems.put(itemType.name(), itemConfig.getEnabledItems().contains(itemType));
+                }
+                modeSettings.put("enabledItems", enabledItems);
             }
-        } catch (Exception e) {
+
+            try (FileWriter writer = new FileWriter(filePath)) {
+                yaml.dump(data, writer);
+                System.out.println("✅ Custom game mode config saved for " + gameplayType.getDisplayName() + " to " + filePath);
+            }
+        } catch (IOException e) {
             System.err.println("❗ Failed to save custom game mode config: " + e.getMessage());
             e.printStackTrace();
         }
@@ -511,59 +523,68 @@ public class SettingsService {
      * @return 저장된 커스텀 설정, 없으면 null
      */
     public GameModeConfig loadCustomGameModeConfig(GameplayType gameplayType) {
-        try {
-            Properties props = new Properties();
-            File settingsFile = new File(SETTINGS_FILE);
-            
-            if (!settingsFile.exists()) {
-                System.out.println("⚠️ Settings file not found: " + settingsFile.getAbsolutePath());
+        String filePath = switch (gameplayType) {
+            case CLASSIC -> classicModeFilePath;
+            case ARCADE -> arcadeModeFilePath;
+            default -> null;
+        };
+        if (filePath == null) return null;
+
+        try (FileInputStream in = new FileInputStream(filePath)) {
+            Map<String, Object> data = yaml.load(in);
+            Map<String, Object> modeSettings = getNestedMap(data, "client.modes." + gameplayType.name().toLowerCase());
+
+            if (modeSettings.isEmpty()) {
+                System.out.println("⚠️ No custom settings found for " + gameplayType.getDisplayName());
                 return null;
             }
-            
-            try (FileInputStream in = new FileInputStream(settingsFile)) {
-                props.load(in);
-            }
-            
-            String prefix = "custom." + gameplayType.name().toLowerCase() + ".";
-            
-            // 저장된 설정이 있는지 확인
-            if (!props.containsKey(prefix + "srsEnabled")) {
-                System.out.println("⚠️ No custom settings found for " + gameplayType.getDisplayName() + " (key: " + prefix + "srsEnabled)");
-                return null; // 저장된 커스텀 설정 없음
-            }
-            
-            // GameModeConfig 빌더 시작
+
             GameModeConfig.GameModeConfigBuilder builder = GameModeConfig.builder()
                 .gameplayType(gameplayType)
-                .srsEnabled(Boolean.parseBoolean(props.getProperty(prefix + "srsEnabled", "true")))
-                .rotation180Enabled(Boolean.parseBoolean(props.getProperty(prefix + "rotation180Enabled", "false")))
-                .hardDropEnabled(Boolean.parseBoolean(props.getProperty(prefix + "hardDropEnabled", "true")))
-                .holdEnabled(Boolean.parseBoolean(props.getProperty(prefix + "holdEnabled", "true")))
-                .ghostPieceEnabled(Boolean.parseBoolean(props.getProperty(prefix + "ghostPieceEnabled", "true")))
-                .dropSpeedMultiplier(Double.parseDouble(props.getProperty(prefix + "dropSpeedMultiplier", "1.0")))
-                .softDropSpeed(Double.parseDouble(props.getProperty(prefix + "softDropSpeed", "20.0")))
-                .lockDelay(Integer.parseInt(props.getProperty(prefix + "lockDelay", "500")));
-            
-            // ARCADE 모드인 경우 아이템 설정 추가
+                .srsEnabled(getSetting(modeSettings, "srsEnabled", true))
+                .rotation180Enabled(getSetting(modeSettings, "rotation180Enabled", false))
+                .hardDropEnabled(getSetting(modeSettings, "hardDropEnabled", true))
+                .holdEnabled(getSetting(modeSettings, "holdEnabled", true))
+                .ghostPieceEnabled(getSetting(modeSettings, "ghostPieceEnabled", true))
+                .dropSpeedMultiplier(getSetting(modeSettings, "dropSpeedMultiplier", 1.0))
+                .softDropSpeed(getSetting(modeSettings, "softDropSpeed", 20.0))
+                .lockDelay(getSetting(modeSettings, "lockDelay", 500));
+
             if (gameplayType == GameplayType.ARCADE) {
-                builder.itemConfig(buildItemConfig());
-                System.out.println("   - itemConfig added for ARCADE mode");
+                seoultech.se.core.item.ItemConfig itemConfig = buildItemConfigFromMap(modeSettings);
+                builder.itemConfig(itemConfig);
             }
             
             GameModeConfig config = builder.build();
-                
-            System.out.println("✅ Loaded custom config for " + gameplayType.getDisplayName() + ":");
-            System.out.println("   - hardDropEnabled: " + config.isHardDropEnabled());
-            System.out.println("   - holdEnabled: " + config.isHoldEnabled());
-            System.out.println("   - srsEnabled: " + config.isSrsEnabled());
-            System.out.println("   - dropSpeedMultiplier: " + config.getDropSpeedMultiplier());
-            
+            System.out.println("✅ Loaded custom config for " + gameplayType.getDisplayName());
             return config;
+
         } catch (Exception e) {
             System.err.println("❗ Failed to load custom game mode config: " + e.getMessage());
             e.printStackTrace();
             return null;
         }
+    }
+
+    private seoultech.se.core.item.ItemConfig buildItemConfigFromMap(Map<String, Object> modeSettings) {
+        java.util.Set<seoultech.se.core.item.ItemType> enabledItems = new java.util.HashSet<>();
+        Map<String, Boolean> enabledItemsMap = getSetting(modeSettings, "enabledItems", new HashMap<>());
+        for (Map.Entry<String, Boolean> entry : enabledItemsMap.entrySet()) {
+            if (entry.getValue()) {
+                try {
+                    enabledItems.add(seoultech.se.core.item.ItemType.valueOf(entry.getKey()));
+                } catch (IllegalArgumentException e) {
+                    System.err.println("⚠️ Invalid item type in config: " + entry.getKey());
+                }
+            }
+        }
+
+        return seoultech.se.core.item.ItemConfig.builder()
+            .dropRate(getSetting(modeSettings, "itemDropRate", 0.1))
+            .enabledItems(enabledItems)
+            .maxInventorySize(getSetting(modeSettings, "maxInventorySize", 3))
+            .autoUse(getSetting(modeSettings, "itemAutoUse", false))
+            .build();
     }
     
     /**

@@ -1,12 +1,8 @@
-# General Client Settings
-# This file can be used for settings that are not specific to a game mode,
-# such as UI preferences, sound volumes, etc.
-
 client:
   setting:
     soundVolume: 80.0
-    colorMode: "colorModeDefault" # colorModeDefault, colorModeRGBlind, colorModeBYBlind
-    screenSize: "screenSizeM" # screenSizeXS, screenSizeS, screenSizeM, screenSizeL, screenSizeXL
+    colorMode: colorModeDefault
+    screenSize: screenSizeM
     stageWidth: 500.0
     stageHeight: 700.0
-    difficulty: "difficultyNormal" # difficultyEasy, difficultyNormal, difficultyHard
+    difficulty: difficultyNormal
