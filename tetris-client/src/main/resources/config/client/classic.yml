@@ -1,0 +1,9 @@
+# Classic Mode Settings
+client:
+  modes:
+    classic:
+      srsEnabled: true
+      hardDropEnabled: true
+      holdEnabled: true
+      dropSpeedMultiplier: 1.0
+      lockDelay: 500 # milliseconds

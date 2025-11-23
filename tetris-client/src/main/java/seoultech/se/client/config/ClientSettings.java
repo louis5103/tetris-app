@@ -8,12 +8,18 @@ import seoultech.se.client.config.mode.ArcadeModeSettings;
 import seoultech.se.client.config.mode.ClassicModeSettings;
 
 @Component
-@ConfigurationProperties(prefix = "client.modes")
+@ConfigurationProperties(prefix = "client")
 @Getter
 @Setter
 public class ClientSettings {
 
-    private ClassicModeSettings classic;
-    private ArcadeModeSettings arcade;
+    private Modes modes;
+    private GeneralSettings setting;
 
+    @Getter
+    @Setter
+    public static class Modes {
+        private ClassicModeSettings classic;
+        private ArcadeModeSettings arcade;
+    }
 }

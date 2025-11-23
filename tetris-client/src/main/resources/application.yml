@@ -13,7 +13,10 @@
 # =============================================================================
 spring:
   config:
-    import: classpath:config/gamesettings.yml
+    import: 
+      - classpath:config/client/classic.yml
+      - classpath:config/client/arcade.yml
+      - classpath:config/client/setting.yml
 
   application:
     name: Tetris Desktop Game

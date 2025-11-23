@@ -18,6 +18,7 @@ import javafx.stage.Stage;
 import seoultech.se.client.config.ClientSettings;
 import seoultech.se.client.config.GameModeProperties;
 import seoultech.se.client.config.mode.ArcadeModeSettings;
+import seoultech.se.client.config.mode.ClassicModeSettings;
 import seoultech.se.client.constants.ColorBlindMode;
 import seoultech.se.core.config.GameModeConfig;
 import seoultech.se.core.config.GameplayType;
@@ -359,7 +360,7 @@ public class SettingsService {
                 // 아케이드 모드는 아이템 설정 포함
                 return buildArcadeConfig();
             } else {
-                ClassicModeSettings classicSettings = clientSettings.getClassic();
+                ClassicModeSettings classicSettings = clientSettings.getModes().getClassic();
                 return GameModeConfig.classic(classicSettings.isSrsEnabled());
             }
         } catch (Exception e) {
@@ -377,7 +378,7 @@ public class SettingsService {
      */
     private GameModeConfig buildArcadeConfig() {
         System.out.println("🎮 [SettingsService] Building ARCADE config...");
-        ArcadeModeSettings arcadeSettings = clientSettings.getArcade();
+        ArcadeModeSettings arcadeSettings = clientSettings.getModes().getArcade();
 
         // ItemConfig 생성
         seoultech.se.core.item.ItemConfig itemConfig = buildItemConfig();
@@ -418,7 +419,7 @@ public class SettingsService {
         return seoultech.se.core.item.ItemConfig.builder()
             .dropRate(gameModeProperties.getItemDropRate())
             .enabledItems(enabledItems)
-            .maxInventorySize(gameModeProperties.getMaxInventorySize())
+            .maxInventorySize(gameMode_Properties.getMaxInventorySize())
             .autoUse(gameModeProperties.isItemAutoUse())
             .build();
     }
