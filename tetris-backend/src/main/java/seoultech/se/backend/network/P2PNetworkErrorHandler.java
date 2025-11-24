@@ -55,7 +55,7 @@ public class P2PNetworkErrorHandler {
     /**
      * 재전송 처리 (최대 3회)
      */
-    private ErrorHandlingResult handleRetry(String requestId) {
+    private synchronized ErrorHandlingResult handleRetry(String requestId) {
         AtomicInteger retryCount = retryCountMap.computeIfAbsent(requestId, k -> new AtomicInteger(0));
         int currentRetry = retryCount.incrementAndGet();
 
