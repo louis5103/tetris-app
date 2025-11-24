@@ -128,6 +128,15 @@ tasks.test {
         "glass.platform" to "Monocle",
         "monocle.platform" to "Headless"
     )
+    
+    // 🔍 테스트 로그를 터미널에 출력 (System.out.println 표시)
+    testLogging {
+        showStandardStreams = true
+        events("passed", "skipped", "failed", "standardOut", "standardError")
+        exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+        showCauses = true
+        showStackTraces = true
+    }
 }
 
 // 🎯 개발 실행 태스크

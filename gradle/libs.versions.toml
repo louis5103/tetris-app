@@ -94,7 +94,7 @@ client-javafx-fxml = { module = "org.openjfx:javafx-fxml", version.ref = "javafx
 # 🧪 Client Testing Dependencies (JavaFX)
 client-testfx-core = { module = "org.testfx:testfx-core", version.ref = "testfx" }
 client-testfx-junit5 = { module = "org.testfx:testfx-junit5", version.ref = "testfx" }
-client-monocle = { module = "org.openjfx:javafx-swing", version.ref = "monocle" }
+client-monocle = { module = "org.testfx:openjfx-monocle", version.ref = "monocle" }
 
 [bundles]
 # ============================================================================
