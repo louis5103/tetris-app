@@ -213,7 +213,10 @@ public class SettingSceneController extends BaseController {
 
     @FXML
     public void handleDifficultyChange(ActionEvent event) {
-        // 난이도 변경 기능 구현 필요
+        RadioButton selectedRadioButton = (RadioButton) event.getSource();
+        settingsService.difficultyProperty().setValue(selectedRadioButton.getId());
+        settingsService.saveSettings();
+        System.out.println("🕹️ Difficulty set to: " + selectedRadioButton.getId());
     }
 
     @FXML
