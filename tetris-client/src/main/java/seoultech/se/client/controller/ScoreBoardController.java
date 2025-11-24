@@ -3,6 +3,7 @@ package seoultech.se.client.controller;
 import java.io.IOException;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
 import javafx.fxml.FXML;
@@ -12,6 +13,7 @@ import seoultech.se.client.model.scoreBoard.ScoreBoard;
 import seoultech.se.client.service.NavigationService;
 
 @Component
+@Lazy
 @ConditionalOnProperty(name = "javafx.enabled", havingValue = "true", matchIfMissing = true)
 @RequiredArgsConstructor
 public class ScoreBoardController extends BaseController {
