@@ -158,19 +158,6 @@ public class SettingSceneController extends BaseController {
                 difficultyNormal.setSelected(true); // 기본값
         }
 
-        switch (difficulty) {
-            case "difficultyEasy":
-                difficultyEasy.setSelected(true);
-                break;
-            case "difficultyNormal":
-                difficultyNormal.setSelected(true);
-                break;
-            case "difficultyHard":
-                difficultyHard.setSelected(true);
-                break;
-            default:
-                System.out.println("❗ Unknown difficulty in settings: " + difficulty);
-        }
 
         switch (colorMode) {
             case "colorModeDefault":
