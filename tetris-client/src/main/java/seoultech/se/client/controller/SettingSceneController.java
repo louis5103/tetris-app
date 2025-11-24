@@ -21,10 +21,11 @@ import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.VBox;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
-import seoultech.se.client.config.ApplicationContextProvider;
-import seoultech.se.client.model.*;
-import seoultech.se.client.repository.*;
 import seoultech.se.backend.score.ScoreService;
+import seoultech.se.client.config.ApplicationContextProvider;
+import seoultech.se.client.model.GameAction;
+import seoultech.se.client.model.Setting;
+import seoultech.se.client.repository.SettingsRepository;
 import seoultech.se.client.service.KeyMappingService;
 import seoultech.se.client.service.NavigationService;
 
@@ -503,5 +504,21 @@ public class SettingSceneController extends BaseController {
                 }
             }
         });
+    }
+
+    /**
+     * 로그아웃 버튼 클릭 핸들러
+     * login-view로 이동합니다.
+     */
+    @FXML
+    private void handleLogoutButton() {
+        try {
+            System.out.println("🚪 로그아웃 - 로그인 화면으로 이동");
+            navigationService.navigateTo("/view/login-view.fxml");
+            System.out.println("✅ login-view로 이동 완료");
+        } catch (IOException e) {
+            System.err.println("❌ login-view 로드 실패: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 }

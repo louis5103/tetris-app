@@ -54,8 +54,8 @@
 }
 
 .menu-button-middle {
-    -fx-pref-width: 22em;
-    -fx-pref-height: 4em;
+    -fx-pref-width: 18em;
+    -fx-pref-height: 2.8em;
     -fx-background-color: #333333;
     -fx-text-fill: white;
     -fx-font-size: 1.5em;

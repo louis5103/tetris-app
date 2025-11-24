@@ -84,6 +84,7 @@ backend-h2-database = { module = "com.h2database:h2", version.ref = "h2-database
 
 # 🌱 Client Spring Boot Dependencies (DI container only)
 client-spring-boot-starter = { module = "org.springframework.boot:spring-boot-starter", version.ref = "spring-boot" }
+client-spring-boot-starter-web = { module = "org.springframework.boot:spring-boot-starter-web", version.ref = "spring-boot" }
 client-spring-boot-starter-test = { module = "org.springframework.boot:spring-boot-starter-test", version.ref = "spring-boot" }
 client-spring-boot-configuration-processor = { module = "org.springframework.boot:spring-boot-configuration-processor", version.ref = "spring-boot" }
 
@@ -147,9 +148,10 @@ client-javafx = [
     "client-javafx-fxml"
 ]
 
-# 🌱 Client Spring Bundle (DI container only)
+# 🌱 Client Spring Bundle (DI container + Web for RestTemplate)
 client-spring = [
     "client-spring-boot-starter",
+    "client-spring-boot-starter-web",
     "client-spring-boot-configuration-processor"
 ]
 

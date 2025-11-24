@@ -121,6 +121,7 @@
             <children>
                 <Button fx:id="resetButton" styleClass="menu-button-small" onAction="#handleResetButton" text="Reset" />
                 <Region HBox.hgrow="ALWAYS" />
+                <Button fx:id="logoutButton" styleClass="menu-button-small" onAction="#handleLogoutButton" text="Logout" />
                 <Button fx:id="backButton" styleClass="menu-button-small" onAction="#handleBackButton" text="Back" />
             </children>
         </HBox>
