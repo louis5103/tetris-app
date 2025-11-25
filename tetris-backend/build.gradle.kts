@@ -36,6 +36,10 @@ dependencies {
     implementation(libs.backend.spring.boot.starter.validation)
     implementation("org.springframework.boot:spring-boot-starter-security")
 
+    // WebSocket & STOMP (NetworkClient 지원)
+    implementation("org.springframework.boot:spring-boot-starter-websocket")
+    implementation("org.springframework:spring-messaging")
+
     // JWT
     implementation("io.jsonwebtoken:jjwt-api:0.12.3")
     runtimeOnly("io.jsonwebtoken:jjwt-impl:0.12.3")
