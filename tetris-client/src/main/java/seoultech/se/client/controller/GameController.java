@@ -1,6 +1,9 @@
 package seoultech.se.client.controller;
 
 import java.io.IOException;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -744,143 +747,181 @@ public class GameController {
     private void showUiHints(GameState oldState, GameState newState) {
         Platform.runLater(() -> {
             
-            
-            // 1. 보드 전체 렌더링
-            boardRenderer.drawBoard(newState);
-            
-            // 2. Next Queue 업데이트
-            TetrominoType[] nextQueue = newState.getNextQueue();
-            if (nextQueue != null && nextQueue.length > 0) {
-                boardRenderer.drawNextPiece(nextQueue[0]);
-            }
-            
-            // 3. Hold 업데이트 (테트로미노 타입 또는 아이템 타입이 변경된 경우)
-            if (oldState.getHeldPiece() != newState.getHeldPiece() ||
-                oldState.getHeldItemType() != newState.getHeldItemType()) {
-                // 🔥 FIX: Hold된 아이템 정보도 함께 전달
-                boardRenderer.drawHoldPiece(newState.getHeldPiece(), newState.getHeldItemType());
-            }
-            
-            // 4. 점수/레벨/라인 업데이트
-            gameInfoManager.updateAll(newState);
-            gameLoopManager.updateDropSpeed(newState);
-            
-            // 4.5. 🔥 FIX: SPEED_RESET 아이템 플래그 처리
-            if (newState.isSpeedResetRequested()) {
-                // GameLoopManager의 dropInterval을 초기값으로 리셋
-                gameLoopManager.updateDropSpeed(newState);
-                newState.setSpeedResetRequested(false);
-                System.out.println("⚡ [GameController] Speed reset processed");
-            }
-            
-            // 5. 라인 클리어 감지
             int oldLines = oldState.getLinesCleared();
             int newLines = newState.getLinesCleared();
-            if (newLines > oldLines) {
-                int linesCleared = newState.getLastLinesCleared();
-                boolean isTSpin = newState.isLastLockWasTSpin();
-                boolean isTSpinMini = newState.isLastLockWasTSpinMini();
+            boolean linesWereCleared = newLines > oldLines;
+
+            int width = newState.getBoardWidth();
+            int height = newState.getBoardHeight();
+
+            // 기존 UI 업데이트 로직을 Runnable로 캡슐화
+            Runnable continueWithUiUpdates = () -> {
+                // 1. 보드 전체 렌더링
+                boardRenderer.drawBoard(newState);
                 
-                StringBuilder message = new StringBuilder();
-                
-                // T-Spin 표시
-                if (isTSpin) {
-                    message.append(isTSpinMini ? "T-SPIN MINI " : "T-SPIN ");
+                // 2. Next Queue 업데이트
+                TetrominoType[] nextQueue = newState.getNextQueue();
+                if (nextQueue != null && nextQueue.length > 0) {
+                    boardRenderer.drawNextPiece(nextQueue[0]);
                 }
                 
-                // 라인 타입 표시
-                switch (linesCleared) {
-                    case 1:
-                        message.append("SINGLE");
-                        break;
-                    case 2:
-                        message.append("DOUBLE");
-                        break;
-                    case 3:
-                        message.append("TRIPLE");
-                        break;
-                    case 4:
-                        message.append("TETRIS");
-                        break;
+                // 3. Hold 업데이트 (테트로미노 타입 또는 아이템 타입이 변경된 경우)
+                if (oldState.getHeldPiece() != newState.getHeldPiece() ||
+                    oldState.getHeldItemType() != newState.getHeldItemType()) {
+                    // 🔥 FIX: Hold된 아이템 정보도 함께 전달
+                    boardRenderer.drawHoldPiece(newState.getHeldPiece(), newState.getHeldItemType());
                 }
                 
-                // 중앙에 라인 클리어 타입 표시
-                if (message.length() > 0) {
-                    notificationManager.showLineClearType(message.toString());
+                // 4. 점수/레벨/라인 업데이트
+                gameInfoManager.updateAll(newState);
+                gameLoopManager.updateDropSpeed(newState);
+                
+                // 4.5. 🔥 FIX: SPEED_RESET 아이템 플래그 처리
+                if (newState.isSpeedResetRequested()) {
+                    // GameLoopManager의 dropInterval을 초기값으로 리셋
+                    gameLoopManager.updateDropSpeed(newState);
+                    newState.setSpeedResetRequested(false);
+                    System.out.println("⚡ [GameController] Speed reset processed");
                 }
                 
-                // 우측에 라인 클리어 수 표시
-                notificationManager.showLineClearCount(linesCleared, newLines);
-                
-                // 아이템 드롭 시도 (아케이드 모드)
-                tryDropItemOnLineClear(linesCleared);
-            }
-            
-            // 6. 콤보 감지
-            int oldCombo = oldState.getComboCount();
-            int newCombo = newState.getComboCount();
-            if (newCombo > oldCombo) {
-                notificationManager.showCombo("🔥 COMBO x" + newCombo);
-            }
-            
-            // 7. Back-to-Back 감지
-            int oldB2B = oldState.getBackToBackCount();
-            int newB2B = newState.getBackToBackCount();
-            if (newB2B > oldB2B) {
-                notificationManager.showBackToBack("⚡ B2B x" + newB2B);
-            }
-            
-            // 8. 아이템 드롭 감지 (라인 클리어 시)
-            ItemType droppedItemType = newState.getNextBlockItemType();
-            if (droppedItemType != null && itemInventoryPanel != null) {
-                // 아이템이 드롭되었음 - 인벤토리에 추가
-                seoultech.se.core.engine.item.Item droppedItem = null;
-                if (gameModeConfig != null && gameModeConfig.isItemSystemEnabled()) {
-                    // ItemType으로 직접 Item 생성 (GameEngine 접근 불필요)
-                    droppedItem = createItemFromType(droppedItemType);
-                }
-                
-                if (droppedItem != null) {
-                    boolean added = itemInventoryPanel.addItem(droppedItem);
+                // 5. 라인 클리어 감지 (이 부분은 알림 표시를 위해 유지)
+                if (newLines > oldLines) {
+                    int linesCleared = newState.getLastLinesCleared();
+                    boolean isTSpin = newState.isLastLockWasTSpin();
+                    boolean isTSpinMini = newState.isLastLockWasTSpinMini();
                     
-                    if (added) {
-                        // 아이템 획득 알림
-                        String message = String.format("🎁 Got item: %s", droppedItem.getName());
-                        notificationManager.showLineClearType(message);
-                        System.out.println("✅ [GameController] Item dropped and added to inventory: " + droppedItem.getName());
-                    } else {
-                        // 인벤토리 가득 참
-                        notificationManager.showLineClearType("⚠️ Inventory full!");
-                        System.out.println("⚠️ [GameController] Item inventory full, item lost: " + droppedItem.getName());
+                    StringBuilder message = new StringBuilder();
+                    
+                    // T-Spin 표시
+                    if (isTSpin) {
+                        message.append(isTSpinMini ? "T-SPIN MINI " : "T-SPIN ");
                     }
                     
-                    // 아이템을 사용했으므로 GameState에서 제거
-                    newState.setNextBlockItemType(null);
+                    // 라인 타입 표시
+                    switch (linesCleared) {
+                        case 1: message.append("SINGLE"); break;
+                        case 2: message.append("DOUBLE"); break;
+                        case 3: message.append("TRIPLE"); break;
+                        case 4: message.append("TETRIS"); break;
+                    }
+                    
+                    // 중앙에 라인 클리어 타입 표시
+                    if (message.length() > 0) {
+                        notificationManager.showLineClearType(message.toString());
+                    }
+                    
+                    // 우측에 라인 클리어 수 표시
+                    notificationManager.showLineClearCount(linesCleared, newLines);
+                    
+                    // 아이템 드롭 시도 (아케이드 모드)
+                    tryDropItemOnLineClear(linesCleared);
                 }
-            }
-            
-            // 9. 레벨 업 감지
-            int oldLevel = oldState.getLevel();
-            int newLevel = newState.getLevel();
-            if (newLevel > oldLevel) {
-                notificationManager.showLineClearType("📈 LEVEL UP! - Level " + newLevel);
-            }
-            
-            // 10. 일시정지 감지
-            boolean wasPaused = oldState.isPaused();
-            boolean isPaused = newState.isPaused();
-            if (!wasPaused && isPaused) {
-                pauseGame();
-                popupManager.showPausePopup();
-            } else if (wasPaused && !isPaused) {
-                resumeGame();
-            }
-            
-            // 11. 게임 오버 감지
-            boolean wasGameOver = oldState.isGameOver();
-            boolean isGameOver = newState.isGameOver();
-            if (!wasGameOver && isGameOver) {
-                processGameOver(newState.getScore());
+                
+                // 6. 콤보 감지
+                int oldCombo = oldState.getComboCount();
+                int newCombo = newState.getComboCount();
+                if (newCombo > oldCombo) {
+                    notificationManager.showCombo("🔥 COMBO x" + newCombo);
+                }
+                
+                // 7. Back-to-Back 감지
+                int oldB2B = oldState.getBackToBackCount();
+                int newB2B = newState.getBackToBackCount();
+                if (newB2B > oldB2B) {
+                    notificationManager.showBackToBack("⚡ B2B x" + newB2B);
+                }
+                
+                // 8. 아이템 드롭 감지 (라인 클리어 시)
+                ItemType droppedItemType = newState.getNextBlockItemType();
+                if (droppedItemType != null && itemInventoryPanel != null) {
+                    // 아이템이 드롭되었음 - 인벤토리에 추가
+                    seoultech.se.core.engine.item.Item droppedItem = null;
+                    if (gameModeConfig != null && gameModeConfig.isItemSystemEnabled()) {
+                        // ItemType으로 직접 Item 생성 (GameEngine 접근 불필요)
+                        droppedItem = createItemFromType(droppedItemType);
+                    }
+                    
+                    if (droppedItem != null) {
+                        boolean added = itemInventoryPanel.addItem(droppedItem);
+                        
+                        if (added) {
+                            // 아이템 획득 알림
+                            String message = String.format("🎁 Got item: %s", droppedItem.getName());
+                            notificationManager.showLineClearType(message);
+                            System.out.println("✅ [GameController] Item dropped and added to inventory: " + droppedItem.getName());
+                        } else {
+                            // 인벤토리 가득 참
+                            notificationManager.showLineClearType("⚠️ Inventory full!");
+                            System.out.println("⚠️ [GameController] Item inventory full, item lost: " + droppedItem.getName());
+                        }
+                        
+                        // 아이템을 사용했으므로 GameState에서 제거
+                        newState.setNextBlockItemType(null);
+                    }
+                }
+                
+                // 9. 레벨 업 감지
+                int oldLevel = oldState.getLevel();
+                int newLevel = newState.getLevel();
+                if (newLevel > oldLevel) {
+                    notificationManager.showLineClearType("📈 LEVEL UP! - Level " + newLevel);
+                }
+                
+                // 10. 일시정지 감지
+                boolean wasPaused = oldState.isPaused();
+                boolean isPaused = newState.isPaused();
+                if (!wasPaused && isPaused) {
+                    pauseGame();
+                    popupManager.showPausePopup();
+                } else if (wasPaused && !isPaused) {
+                    resumeGame();
+                }
+                
+                // 11. 게임 오버 감지
+                boolean wasGameOver = oldState.isGameOver();
+                boolean isGameOver = newState.isGameOver();
+                if (!wasGameOver && isGameOver) {
+                    processGameOver(newState.getScore()); 
+                }
+            }; // End of continueWithUiUpdates Runnable
+
+            if (linesWereCleared) {
+                // 라인 클리어 애니메이션 처리
+                System.out.println("DEBUG: Line clear detected. Starting animation logic.");
+                gameLoopManager.pause();
+
+                // 클리어된 라인 인덱스 찾기 (GameState에서 직접 가져오기)
+                List<Integer> clearedRowIndices = java.util.Arrays.stream(newState.getLastClearedRows())
+                                                                    .boxed()
+                                                                    .collect(java.util.stream.Collectors.toList());
+                System.out.println("DEBUG: Cleared row indices: " + clearedRowIndices);
+
+                // 라인 클리어 시 셀을 흰색으로 변경하여 UI 반응성 확인
+                for (int rowIndex : clearedRowIndices) {
+                    for (int col = 0; col < width; col++) { 
+                        if (cellRectangles[rowIndex][col] != null) {
+                             cellRectangles[rowIndex][col].setFill(javafx.scene.paint.Color.WHITE);
+                        }
+                    }
+                }
+
+                // 애니메이션 시간만큼 대기
+                CompletableFuture.delayedExecutor(500, TimeUnit.MILLISECONDS).execute(() -> {
+                    Platform.runLater(() -> {
+                        System.out.println("DEBUG: Animation delay finished. Cleaning up animation.");
+                        // 실제 UI 업데이트 수행 (나머지 기존 로직 실행)
+                        continueWithUiUpdates.run();
+
+                        // 게임 루프 재개 (일시정지 상태가 아니라면)
+                        if (!boardController.getGameState().isPaused()) {
+                            System.out.println("DEBUG: Resuming game loop.");
+                            gameLoopManager.resume();
+                        }
+                    });
+                });
+            } else {
+                // 애니메이션 없는 일반 업데이트 (나머지 기존 로직 실행)
+                continueWithUiUpdates.run();
             }
         });
     }
