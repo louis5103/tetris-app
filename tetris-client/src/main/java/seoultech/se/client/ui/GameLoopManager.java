@@ -76,16 +76,22 @@ public class GameLoopManager {
                 if (callback == null) {
                     return;
                 }
-                
+
                 if (now - lastUpdateTime >= dropInterval) {
-                    boolean shouldContinue = callback.onTick();
-                    
-                    if (!shouldContinue) {
+                    try {
+                        boolean shouldContinue = callback.onTick();
+
+                        if (!shouldContinue) {
+                            stop();
+                            return;
+                        }
+
+                        lastUpdateTime = now;
+                    } catch (Exception e) {
+                        System.err.println("❌ [GameLoopManager] Exception in game loop:");
+                        e.printStackTrace();
                         stop();
-                        return;
                     }
-                    
-                    lastUpdateTime = now;
                 }
             }
         };

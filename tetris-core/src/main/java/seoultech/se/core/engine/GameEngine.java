@@ -139,7 +139,14 @@ public interface GameEngine {
             case MOVE_RIGHT:
                 return tryMoveRight(state);
             case MOVE_DOWN:
-                return tryMoveDown(state, true);  // Soft Drop
+                // ✨ DOWN 이동 시도 후, 실패하면 블록 고정 처리
+                GameState newState = tryMoveDown(state, true);  // Soft Drop
+                if (newState == state) {
+                    // 이동 실패: 블록을 고정 (lockTetromino가 라인 클리어까지 처리)
+                    // 새 블록 생성은 BoardController에서 처리
+                    return lockTetromino(state);
+                }
+                return newState;
             case ROTATE_CW:
                 return tryRotate(state, RotationDirection.CLOCKWISE);
             case ROTATE_CCW:

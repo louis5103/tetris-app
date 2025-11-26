@@ -277,7 +277,11 @@ public class GameController {
      * ✨ 싱글플레이 모드 설정
      */
     private void setupSingleplayMode() {
-        seoultech.se.core.engine.GameEngine gameEngine = boardController.getGameEngine();
+        // GameEngine은 GameExecutionStrategy가 관리 - BoardController를 통해 가져오지 않음
+        seoultech.se.core.engine.factory.GameEngineFactory factory = 
+            new seoultech.se.core.engine.factory.GameEngineFactory();
+        seoultech.se.core.engine.GameEngine gameEngine = factory.createGameEngine(gameModeConfig);
+        
         executionStrategy = new seoultech.se.client.strategy.LocalExecutionStrategy(gameEngine);
         boardController.setExecutionStrategy(executionStrategy);
 
@@ -900,12 +904,15 @@ public class GameController {
             ItemType droppedItemType = newState.getNextBlockItemType();
             if (droppedItemType != null && itemInventoryPanel != null) {
                 // 아이템이 드롭되었음 - 인벤토리에 추가
-                seoultech.se.core.engine.item.Item droppedItem = null;
+                // GameModeConfig로 아케이드 모드 확인
+                boolean isArcadeMode = gameModeConfig != null && 
+                                      gameModeConfig.getItemConfig() != null && 
+                                      gameModeConfig.getItemConfig().isEnabled();
                 
-                if (boardController.getGameEngine() instanceof seoultech.se.core.engine.ArcadeGameEngine) {
-                    seoultech.se.core.engine.ArcadeGameEngine arcadeEngine = 
-                        (seoultech.se.core.engine.ArcadeGameEngine) boardController.getGameEngine();
-                    droppedItem = arcadeEngine.getItemManager().getItem(droppedItemType);
+                seoultech.se.core.engine.item.Item droppedItem = null;
+                if (isArcadeMode) {
+                    // ItemType으로 직접 Item 생성 (GameEngine 접근 불필요)
+                    droppedItem = createItemFromType(droppedItemType);
                 }
                 
                 if (droppedItem != null) {
@@ -977,8 +984,11 @@ public class GameController {
             return;
         }
         
-        // ArcadeGameEngine에서만 아이템 사용 가능
-        if (!(boardController.getGameEngine() instanceof seoultech.se.core.engine.ArcadeGameEngine)) {
+        // 아케이드 모드에서만 아이템 사용 가능
+        boolean isArcadeMode = gameModeConfig != null && 
+                              gameModeConfig.getItemConfig() != null && 
+                              gameModeConfig.getItemConfig().isEnabled();
+        if (!isArcadeMode) {
             System.out.println("⚠️ [GameController] Item system not available in this mode");
             notificationManager.showLineClearType("❌ Items not available in this mode");
             return;
@@ -1022,37 +1032,34 @@ public class GameController {
     /**
      * 라인 클리어 시 아이템 드롭 시도
      * @param linesCleared 클리어된 라인 수
+     * 
+     * 참고: 아이템 드롭은 ArcadeGameEngine.lockTetromino()에서 자동으로 처리되며,
+     * GameState.nextBlockItemType에 저장됩니다. 이 메서드는 현재 사용되지 않습니다.
      */
     private void tryDropItemOnLineClear(int linesCleared) {
-        if (itemInventoryPanel == null || linesCleared <= 0) {
-            return;
-        }
+        // 아이템 드롭은 GameEngine에서 자동 처리됨
+        // showUiHints()에서 nextBlockItemType을 감지하여 인벤토리에 추가
+    }
+    
+    /**
+     * ItemType으로부터 Item 객체 생성
+     * @param itemType 아이템 타입
+     * @return 생성된 Item 객체 또는 null
+     */
+    private seoultech.se.core.engine.item.Item createItemFromType(seoultech.se.core.engine.item.ItemType itemType) {
+        if (itemType == null) return null;
         
-        // ArcadeGameEngine에서만 아이템 드롭 가능
-        if (!(boardController.getGameEngine() instanceof seoultech.se.core.engine.ArcadeGameEngine)) {
-            return;
-        }
-        
-        // TODO: tryDropItem 메서드 구현 필요
-        // 현재는 기능 비활성화
-        /*
-        Item droppedItem = ((seoultech.se.core.engine.ArcadeGameEngine)boardController.getGameEngine()).tryDropItem();
-        
-        if (droppedItem != null) {
-            boolean added = itemInventoryPanel.addItem(droppedItem);
+        try {
+            // ItemType에 해당하는 Item 클래스 이름 가져오기
+            String className = "seoultech.se.core.engine.item.concrete." + itemType.name();
+            Class<?> itemClass = Class.forName(className);
             
-            if (added) {
-                // 아이템 획득 알림
-                String message = String.format("🎁 Got item: %s", droppedItem.getName());
-                notificationManager.showLineClearType(message);
-                System.out.println("✅ [GameController] Item dropped: " + droppedItem.getName());
-            } else {
-                // 인벤토리 가득 참
-                notificationManager.showLineClearType("⚠️ Inventory full!");
-                System.out.println("⚠️ [GameController] Item inventory full, item lost: " + droppedItem.getName());
-            }
+            // 기본 생성자로 인스턴스 생성
+            return (seoultech.se.core.engine.item.Item) itemClass.getDeclaredConstructor().newInstance();
+        } catch (Exception e) {
+            System.err.println("⚠️ Failed to create item from type: " + itemType + " - " + e.getMessage());
+            return null;
         }
-        */
     }
     
     // ========== 게임 제어 ==========
