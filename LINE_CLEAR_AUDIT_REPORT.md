@@ -221,6 +221,13 @@ grid[targetRow][col].setItemMarker(rowData[col].getItemMarker());
    - 라인: ~760
    - 변경: `state.getGrid()[targetRow][col] = rowData[col]` → `setColor/setOccupied/setItemMarker`
 
+2. ✅ **ClassicGameEngine.checkAndClearLines()** - Cell.empty() → clear() 사용 (2025-11-27 추가)
+   - 파일: `ClassicGameEngine.java`
+   - 라인: ~768
+   - 문제: `Cell.empty()`가 새 객체 생성하여 렌더링 시스템과 참조 불일치
+   - 변경: `state.getGrid()[targetRow][col] = Cell.empty()` → `state.getGrid()[targetRow][col].clear()`
+   - 효과: 기존 Cell 객체 재사용으로 렌더링 일관성 확보
+
 ### 이미 해결됨
 2. ✅ **LINE_CLEAR 처리 순서** - Lock 후 처리로 마커 손실 방지
    - 파일: `ArcadeGameEngine.java`

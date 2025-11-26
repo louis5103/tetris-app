@@ -769,7 +769,9 @@ public class ClassicGameEngine implements GameEngine {
         // 남은 위쪽 줄들을 빈 칸으로 초기화
         while (targetRow >= 0) {
             for (int col = 0; col < state.getBoardWidth(); col++) {
-                state.getGrid()[targetRow][col] = Cell.empty();
+                // 🔥 FIX: Cell.empty() 대신 clear() 사용하여 기존 객체 재사용
+                // 렌더링 시스템과의 참조 일관성 유지
+                state.getGrid()[targetRow][col].clear();
             }
             targetRow--;
         }

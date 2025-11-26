@@ -232,6 +232,7 @@ ItemEffect.successWithLines(ItemType.BOMB, blocksCleared, bonusScore, linesClear
 5. ✅ LineClearItem.clearLines() 셀 복사 방식 수정 (렌더링 불일치 방지)
 6. ✅ **LINE_CLEAR 처리 순서 수정: Lock 전 → Lock 후** (마커가 Grid에 추가된 후 처리)
 7. ✅ **ClassicGameEngine Cell 복사 방식 통일** (참조 복사 → 값 복사로 변경)
+8. ✅ **ClassicGameEngine Cell 참조 일관성 확보** (Cell.empty() → clear() 사용)
 
 ### 라인 클리어 로직 감사 (2025-11-27)
 - ✅ ClassicGameEngine, BOMB/PLUS, LINE_CLEAR 모든 라인 클리어 로직 검증 완료
@@ -256,7 +257,8 @@ ItemEffect.successWithLines(ItemType.BOMB, blocksCleared, bonusScore, linesClear
 - ~~LINE_CLEAR 마커가 사라짐~~ → Lock 후 처리로 해결 (마커 추가 후 처리)
 - ~~LINE_CLEAR 효과가 적용되지 않음~~ → Lock 후 처리로 해결 (2025-11-27)
 - ~~Pivot 위치 참조 오류~~ → 미리 저장으로 해결
-- ~~렌더링 불일치~~ → 셀 복사 방식 수정
+- ~~렌더링 불일치 (Cell 복사)~~ → 셀 복사 방식 수정
+- ~~렌더링 불일치 (Cell 참조)~~ → Cell.empty() 대신 clear() 사용 (2025-11-27 최종)
 - ~~다중 라인 제거 오류~~ → Set 기반 처리로 해결
 - ~~라인 클리어 카운트 불일치~~ → 모든 아이템 GameState 반영
 
