@@ -18,25 +18,33 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import seoultech.se.core.GameState;
 import seoultech.se.core.command.GameCommand;
 import seoultech.se.core.command.MoveCommand;
-import seoultech.se.core.config.GameModeConfig;
+import seoultech.se.core.config.GameplayType;
 import seoultech.se.core.dto.PlayerInputDto;
 import seoultech.se.core.dto.ServerStateDto;
+import seoultech.se.core.engine.GameEngine;
+import seoultech.se.core.factory.GameEngineFactory;
+import seoultech.se.core.factory.GameEnginePool;
 
 @ExtendWith(MockitoExtension.class)
 class GameSessionTest {
 
     private GameSession gameSession;
+    private GameEngine gameEngine;
     private final String sessionId = "test-session-01";
     private final String playerA = "playerA";
     private final String playerB = "playerB";
 
-    @Mock
-    private GameModeConfig gameModeConfig;
-
     @BeforeEach
     void setUp() {
-        // GameSession 생성 (내부적으로 GameEngine도 생성됨)
-        gameSession = new GameSession(sessionId, gameModeConfig);
+        // GameEnginePool 생성 (테스트용)
+        GameEngineFactory factory = new GameEngineFactory();
+        GameEnginePool pool = new GameEnginePool(factory);
+
+        // 싱글톤 GameEngine 가져오기
+        gameEngine = pool.getEngine(GameplayType.CLASSIC);
+
+        // GameSession 생성 (GameEngine 주입)
+        gameSession = new GameSession(sessionId, gameEngine);
         gameSession.joinPlayer(playerA);
         gameSession.joinPlayer(playerB);
     }

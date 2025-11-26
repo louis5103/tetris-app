@@ -44,15 +44,19 @@ class ComprehensiveItemLockTest {
         // 모든 아이템 활성화
         ItemConfig itemConfig = ItemConfig.builder()
             .dropRate(1.0)  // 100% 드롭률
-            .enabledItems(Set.of(ItemType.BOMB, ItemType.PLUS, ItemType.LINE_CLEAR, 
+            .enabledItems(Set.of(ItemType.BOMB, ItemType.PLUS, ItemType.LINE_CLEAR,
                    ItemType.SPEED_RESET, ItemType.BONUS_SCORE))
             .build();
-        
-        GameModeConfig config = GameModeConfig.arcade();
-        
-        engine = new ArcadeGameEngine(new ItemManager(itemConfig.getDropRate(), itemConfig.getEnabledItems()));
-        engine.initialize(config);
-        
+
+        // Stateless 리팩토링: GameModeConfig로 생성
+        GameModeConfig config = GameModeConfig.builder()
+            .gameplayType(seoultech.se.core.config.GameplayType.ARCADE)
+            .gameModeType(seoultech.se.core.mode.GameModeType.ITEM)
+            .difficulty(seoultech.se.core.model.enumType.Difficulty.NORMAL)
+            .itemConfig(itemConfig)
+            .build();
+
+        engine = new ArcadeGameEngine(config);
         initialState = new GameState(10, 20);
     }
 

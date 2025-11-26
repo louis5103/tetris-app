@@ -50,21 +50,20 @@ public class CoreConfig {
     
     /**
      * Arcade 게임 엔진 빈
-     * 
+     *
      * 조건: tetris.game.item.enabled = true
-     * 의존성: ItemManager
-     * 
-     * @param itemManager 아이템 관리자
+     * Stateless 리팩토링: Config를 생성자로 주입
+     *
      * @return ArcadeGameEngine 인스턴스
      */
     @Bean
     @ConditionalOnProperty(
-        name = "tetris.game.item.enabled", 
+        name = "tetris.game.item.enabled",
         havingValue = "true"
     )
-    public GameEngine arcadeGameEngine(ItemManager itemManager) {
-        System.out.println("🎮 [CoreConfig] Registering ArcadeGameEngine bean");
-        return new ArcadeGameEngine(itemManager);
+    public GameEngine arcadeGameEngine() {
+        System.out.println("🎮 [CoreConfig] Registering ArcadeGameEngine bean (Stateless)");
+        return new ArcadeGameEngine(GameModeConfig.arcade());
     }
     
     /**

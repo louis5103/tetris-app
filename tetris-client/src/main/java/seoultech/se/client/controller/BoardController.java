@@ -71,9 +71,9 @@ public class BoardController {
         this.tetrominoGenerator = new TetrominoGenerator(randomGenerator, difficulty);
         
         // ✨ Phase 5: GameEngineFactory를 사용하여 적절한 GameEngine 생성
+        // Stateless 리팩토링: 생성자에서 이미 config를 주입하므로 initialize() 호출 불필요
         seoultech.se.core.factory.GameEngineFactory factory = new seoultech.se.core.factory.GameEngineFactory();
         this.gameEngine = factory.createGameEngine(config);
-        this.gameEngine.initialize(config);
         
         // GameModeConfig에 따라 SingleMode 생성
         this.gameMode = new SingleMode(config);
@@ -378,10 +378,8 @@ public class BoardController {
         initializeNextQueue();
         if (gameMode != null) {
             gameMode.initialize(gameState);
-            // GameEngine도 재초기화
-            if (gameEngine != null) {
-                gameEngine.initialize(gameMode.getConfig());
-            }
+            // Stateless 리팩토링: GameEngine은 불변이므로 재초기화 불필요
+            // GameEngine은 이미 생성자에서 config로 초기화됨
         }
     }
     

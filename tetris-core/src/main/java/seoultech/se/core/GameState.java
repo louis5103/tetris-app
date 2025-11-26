@@ -38,6 +38,13 @@ public class GameState {
      */
     private boolean isWeightBombLocked = false;
 
+    /**
+     * 다음 아이템까지 남은 라인 수 (Arcade 모드)
+     * 10줄 클리어마다 아이템 생성 (Req2 명세)
+     * ItemManager의 상태를 GameState로 이동 (Stateless 리팩토링)
+     */
+    private int linesUntilNextItem = 10;
+
     // Hold 기능 관련 정보
     private boolean holdUsedThisTurn;
     private TetrominoType heldPiece;
@@ -152,6 +159,7 @@ public class GameState {
         this.currentItemType = null;
         this.nextBlockItemType = null;
         this.isWeightBombLocked = false;
+        this.linesUntilNextItem = 10;
 
         // Lock Delay 초기화
         this.isLockDelayActive = false;
@@ -201,6 +209,7 @@ public class GameState {
         copy.currentItemType = this.currentItemType;
         copy.nextBlockItemType = this.nextBlockItemType;
         copy.isWeightBombLocked = this.isWeightBombLocked;
+        copy.linesUntilNextItem = this.linesUntilNextItem;
 
         // Hold 기능 관련 정보 복사
         copy.holdUsedThisTurn = this.holdUsedThisTurn;

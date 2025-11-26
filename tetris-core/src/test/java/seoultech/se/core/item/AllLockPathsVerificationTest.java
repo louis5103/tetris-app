@@ -39,15 +39,13 @@ class AllLockPathsVerificationTest {
     @BeforeEach
     void setUp() {
         gameState = new GameState(10, 20);
-        
-        // Classic Engine
-        classicEngine = new ClassicGameEngine();
-        classicEngine.initialize(GameModeConfig.classic());
-        
-        // Arcade Engine with ItemManager
+
+        // Classic Engine (Stateless)
+        classicEngine = new ClassicGameEngine(GameModeConfig.classic());
+
+        // Arcade Engine (Stateless 리팩토링)
+        arcadeEngine = new ArcadeGameEngine(GameModeConfig.arcade());
         itemManager = new ItemManager(0.1, java.util.EnumSet.allOf(ItemType.class));
-        arcadeEngine = new ArcadeGameEngine(itemManager);
-        arcadeEngine.initialize(GameModeConfig.arcade());
     }
     
     // ========== Hard Drop 경로 검증 ==========

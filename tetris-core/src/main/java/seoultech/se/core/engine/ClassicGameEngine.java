@@ -33,28 +33,39 @@ public class ClassicGameEngine implements GameEngine {
     };
     
     /**
-     * 게임 모드 설정
+     * 게임 모드 설정 (불변)
      */
-    private GameModeConfig config;
-    
+    private final GameModeConfig config;
+
     // ========== 생성자 및 초기화 ==========
-    
+
     /**
-     * 기본 생성자
+     * 기본 생성자 (Classic 기본 설정)
      */
     public ClassicGameEngine() {
-        this.config = null;
+        this(GameModeConfig.classic());
     }
-    
+
+    /**
+     * 생성자 (Config 주입)
+     *
+     * @param config 게임 모드 설정
+     */
+    public ClassicGameEngine(GameModeConfig config) {
+        this.config = config != null ? config : GameModeConfig.classic();
+        System.out.println("✅ [ClassicGameEngine] Created (Classic Mode - No Items, Stateless)");
+    }
+
     /**
      * 게임 엔진 초기화
-     * 
+     *
+     * @deprecated Stateless 리팩토링으로 생성자 주입 방식으로 변경됨
      * @param config 게임 모드 설정
      */
     @Override
+    @Deprecated
     public void initialize(GameModeConfig config) {
-        this.config = config;
-        System.out.println("✅ [ClassicGameEngine] Initialized (Classic Mode - No Items)");
+        System.out.println("⚠️ [ClassicGameEngine] initialize() is deprecated - use constructor injection");
     }
     
     /**

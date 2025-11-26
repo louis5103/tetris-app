@@ -23,7 +23,8 @@ application {
 
 dependencies {
     // 🎯 Core 모듈 의존성
-    api(project(":tetris-core"))
+    implementation(project(":tetris-core"))
+    implementation(project(":tetris-client"))
 
     // ============================================================================
     // ⚙️ BACKEND MODULE SPECIFIC DEPENDENCIES

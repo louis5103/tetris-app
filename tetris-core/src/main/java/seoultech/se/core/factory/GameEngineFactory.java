@@ -7,8 +7,6 @@ import seoultech.se.core.config.GameplayType;
 import seoultech.se.core.engine.ArcadeGameEngine;
 import seoultech.se.core.engine.ClassicGameEngine;
 import seoultech.se.core.engine.GameEngine;
-import seoultech.se.core.item.ItemConfig;
-import seoultech.se.core.item.ItemManager;
 
 /**
  * GameEngine Factory
@@ -30,39 +28,26 @@ public class GameEngineFactory {
     
     /**
      * GameModeConfig에 따라 적절한 GameEngine을 생성합니다
-     * 
+     *
+     * Stateless 리팩토링: Config를 생성자로 주입
+     *
      * @param config 게임 모드 설정
      * @return 생성된 GameEngine 인스턴스
      */
     public GameEngine createGameEngine(GameModeConfig config) {
         if (config == null) {
-            System.out.println("⚠️ [GameEngineFactory] Config is null, creating ClassicGameEngine");
+            System.out.println("⚠️ [GameEngineFactory] Config is null, creating ClassicGameEngine with default config");
             return new ClassicGameEngine();
         }
-        
+
         GameplayType gameplayType = config.getGameplayType();
-        
+
         if (gameplayType == GameplayType.ARCADE) {
-            System.out.println("🎮 [GameEngineFactory] Creating ArcadeGameEngine");
-            
-            ItemConfig itemConfig = config.getItemConfig();
-            if (itemConfig == null) {
-                System.out.println("⚠️ [GameEngineFactory] ItemConfig is null, using default");
-                itemConfig = ItemConfig.arcadeDefault();
-            }
-            
-            // ItemManager 생성
-            ItemManager itemManager = new ItemManager(
-                itemConfig.getDropRate(),
-                itemConfig.getEnabledItems()
-            );
-            
-            // ArcadeGameEngine 생성
-            return new ArcadeGameEngine(itemManager);
-            
+            System.out.println("🎮 [GameEngineFactory] Creating ArcadeGameEngine (Stateless)");
+            return new ArcadeGameEngine(config);
         } else {
-            System.out.println("🎮 [GameEngineFactory] Creating ClassicGameEngine");
-            return new ClassicGameEngine();
+            System.out.println("🎮 [GameEngineFactory] Creating ClassicGameEngine (Stateless)");
+            return new ClassicGameEngine(config);
         }
     }
     

@@ -5,14 +5,21 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import seoultech.se.core.config.GameplayType;
+import seoultech.se.core.factory.GameEngineFactory;
+import seoultech.se.core.factory.GameEnginePool;
 
 class GameSessionManagerTest {
 
     private GameSessionManager sessionManager;
+    private GameEnginePool gameEnginePool;
 
     @BeforeEach
     void setUp() {
-        sessionManager = new GameSessionManager();
+        // GameEnginePool 생성 (테스트용)
+        GameEngineFactory factory = new GameEngineFactory();
+        gameEnginePool = new GameEnginePool(factory);
+        sessionManager = new GameSessionManager(gameEnginePool);
     }
 
     @Test

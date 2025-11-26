@@ -3,7 +3,6 @@ package seoultech.se.core.engine;
 import seoultech.se.core.GameState;
 import seoultech.se.core.config.GameModeConfig;
 import seoultech.se.core.item.ItemManager;
-import seoultech.se.core.item.ItemType;
 import seoultech.se.core.model.enumType.TetrominoType;
 
 /**
@@ -24,62 +23,52 @@ import seoultech.se.core.model.enumType.TetrominoType;
 public class ArcadeGameEngine extends ClassicGameEngine {
     
     /**
-     * 아이템 관리자
+     * 아이템 관리자 (불변)
      */
-    private ItemManager itemManager;
-    
-    /**
-     * 게임 모드 설정
-     */
-    private GameModeConfig config;
-    
+    private final ItemManager itemManager;
+
     // ========== 생성자 및 초기화 ==========
-    
+
     /**
-     * 기본 생성자
+     * 기본 생성자 (Arcade 기본 설정)
      */
     public ArcadeGameEngine() {
-        super();
-        this.itemManager = null;
-        this.config = null;
+        this(GameModeConfig.arcade());
     }
-    
+
     /**
-     * ItemManager를 주입받는 생성자
-     * 
-     * @param itemManager 아이템 관리자
-     */
-    public ArcadeGameEngine(ItemManager itemManager) {
-        super();
-        this.itemManager = itemManager;
-        this.config = null;
-    }
-    
-    /**
-     * 게임 엔진 초기화
-     * 
+     * 생성자 (Config 주입)
+     *
      * @param config 게임 모드 설정
      */
-    @Override
-    public void initialize(GameModeConfig config) {
-        super.initialize(config);
-        this.config = config;
-        
-        // ItemManager가 이미 주입되었으면 초기화하지 않음
-        if (itemManager == null && config != null && config.getItemConfig() != null) {
+    public ArcadeGameEngine(GameModeConfig config) {
+        super(config);
+
+        // ItemConfig에서 ItemManager 생성
+        if (config != null && config.getItemConfig() != null) {
             this.itemManager = new ItemManager(
                 config.getItemConfig().getDropRate(),
                 config.getItemConfig().getEnabledItems()
             );
-        }
-        
-        if (itemManager != null) {
-            System.out.println("✅ [ArcadeGameEngine] Initialized (Arcade Mode - Items Enabled)");
+            System.out.println("✅ [ArcadeGameEngine] Created (Arcade Mode - Items Enabled, Stateless)");
             System.out.println("   - Item drop rate: " + (int)(itemManager.getItemDropRate() * 100) + "%");
             System.out.println("   - Enabled items: " + itemManager.getEnabledItems());
         } else {
-            System.out.println("⚠️ [ArcadeGameEngine] Initialized but ItemManager is null!");
+            this.itemManager = new ItemManager();
+            System.out.println("⚠️ [ArcadeGameEngine] Created with default ItemManager");
         }
+    }
+
+    /**
+     * 게임 엔진 초기화
+     *
+     * @deprecated Stateless 리팩토링으로 생성자 주입 방식으로 변경됨
+     * @param config 게임 모드 설정
+     */
+    @Override
+    @Deprecated
+    public void initialize(GameModeConfig config) {
+        System.out.println("⚠️ [ArcadeGameEngine] initialize() is deprecated - use constructor injection");
     }
     
     /**
@@ -416,13 +405,8 @@ public class ArcadeGameEngine extends ClassicGameEngine {
             ", totalLinesCleared: " + totalLinesCleared);
         
         if (itemManager != null && totalLinesCleared > 0) {
-            ItemType droppedItem = itemManager.checkAndGenerateItem(totalLinesCleared);
-            
-            if (droppedItem != null) {
-                // 다음 블록에 아이템 타입 설정
-                newState.setNextBlockItemType(droppedItem);
-                System.out.println("🎁 [ArcadeGameEngine] Item dropped: " + droppedItem);
-            }
+            // Stateless API: GameState를 받아 업데이트된 GameState 반환
+            newState = itemManager.checkAndGenerateItem(newState, totalLinesCleared);
         }
         
         // Phase 4: 무게추 상태 초기화

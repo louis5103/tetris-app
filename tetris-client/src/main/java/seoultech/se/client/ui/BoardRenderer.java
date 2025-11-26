@@ -469,12 +469,33 @@ public class BoardRenderer {
         }
         
         // 🔥 아이템 마커 표시 (pivot 블록에만, WEIGHT_BOMB 제외)
-        if (isItemBlock && pivotGridRow != -1 && 
+        if (isItemBlock && pivotGridRow != -1 &&
             itemType != seoultech.se.core.item.ItemType.WEIGHT_BOMB) {
             Rectangle pivotRect = grid[pivotGridRow][pivotGridCol];
             applyItemMarkerOverlay(pivotRect, itemType);
         }
     }
-    
+
+    /**
+     * 상대방 보드를 그립니다 (멀티플레이 모드)
+     *
+     * 상대방의 게임 상태를 받아서 별도의 영역에 렌더링합니다.
+     * 현재는 기본 구현으로, 추후 별도의 opponent용 Rectangle 배열이 필요할 수 있습니다.
+     *
+     * @param opponentState 상대방의 게임 상태
+     */
+    public void drawOpponent(GameState opponentState) {
+        // TODO: 상대방 보드를 그리기 위한 별도의 UI 영역이 필요합니다
+        // 현재는 로그만 출력하는 기본 구현
+        Platform.runLater(() -> {
+            System.out.println("👥 [BoardRenderer] Opponent board update - Score: " +
+                opponentState.getScore() + ", Lines: " + opponentState.getLinesCleared());
+
+            // 추후 구현:
+            // 1. 별도의 Rectangle[][] opponentCellRectangles 필드 추가
+            // 2. 상대방 보드 전용 UI 영역에 렌더링
+            // 3. 상대방의 현재 테트로미노도 표시
+        });
+    }
 
 }

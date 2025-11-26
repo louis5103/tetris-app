@@ -6,23 +6,45 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import seoultech.se.core.GameState;
-import seoultech.se.core.config.GameModeConfig;
 import seoultech.se.core.dto.PlayerInputDto;
 import seoultech.se.core.dto.ServerStateDto;
 import seoultech.se.core.engine.GameEngine;
-import seoultech.se.core.factory.GameEngineFactory;
 
+/**
+ * 게임 세션
+ *
+ * Stateless 리팩토링: 싱글톤 GameEngine을 공유하여 사용
+ *
+ * 변경 사항:
+ * - GameEngine을 외부에서 주입받음 (GameEnginePool의 싱글톤)
+ * - GameEngineFactory.createGameEngine() 제거
+ * - 여러 세션이 동일한 GameEngine 인스턴스를 공유
+ *
+ * Thread-safety:
+ * - GameEngine은 Stateless이므로 동시 접근 안전
+ * - playerStates는 ConcurrentHashMap으로 보호
+ * - processInput은 synchronized로 보호
+ */
 public class GameSession {
+
     private final String sessionId;
     private final Map<String, GameState> playerStates = new ConcurrentHashMap<>();
     private final Map<String, Long> lastSequences = new ConcurrentHashMap<>();
-    private final GameEngine gameEngine;
+    private final GameEngine gameEngine; // 싱글톤 공유
 
     private final Object lock = new Object(); // 동기화를 위한 락 객체
 
-    public GameSession(String sessionId, GameModeConfig config) {
+    /**
+     * 생성자 (GameEngine 주입)
+     *
+     * @param sessionId 세션 ID
+     * @param gameEngine 싱글톤 GameEngine (GameEnginePool에서 제공)
+     */
+    public GameSession(String sessionId, GameEngine gameEngine) {
         this.sessionId = sessionId;
-        this.gameEngine = new GameEngineFactory().createGameEngine(config);
+        this.gameEngine = gameEngine;
+        System.out.println("✅ [GameSession] Created: " + sessionId +
+            ", Engine: " + (gameEngine != null ? gameEngine.getClass().getSimpleName() : "null"));
     }
 
     public void joinPlayer(String playerId) {
