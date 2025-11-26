@@ -87,16 +87,6 @@ public class GameController {
     // 팝업 오버레이 요소들
     @FXML private javafx.scene.layout.VBox pauseOverlay;
     @FXML private javafx.scene.layout.VBox gameOverOverlay;
-    @FXML private Label finalScoreLabel;
-
-    // 게임 오버 팝업 내 FXML 요소
-    @FXML private HBox nameInputBox;
-    @FXML private TextField usernameInput;
-    @FXML private TableView<Map<String, Object>> scoreBoardTable;
-    @FXML private TableColumn<Map<String, Object>, String> rankColumn;
-    @FXML private TableColumn<Map<String, Object>, String> difficultyColumn;
-    @FXML private TableColumn<Map<String, Object>, String> playerColumn;
-    @FXML private TableColumn<Map<String, Object>, String> scoreColumn;
     
     // 아이템 인벤토리 UI
     @FXML private javafx.scene.layout.HBox itemInventoryContainer;
@@ -132,9 +122,6 @@ public class GameController {
     private Rectangle[][] cellRectangles;
     private Rectangle[][] holdCellRectangles;
     private Rectangle[][] nextCellRectangles;
-
-    private long currentScore;
-    private boolean isItemMode;
 
     /**
      * FXML이 로드된 후 자동으로 호출됩니다
@@ -323,7 +310,7 @@ public class GameController {
         });
         
         // PopupManager 초기화
-        popupManager = new PopupManager(pauseOverlay, gameOverOverlay, finalScoreLabel);
+        popupManager = new PopupManager(pauseOverlay, gameOverOverlay, scoreService);
         popupManager.setCallback(createPopupCallback());
         
         // InputHandler 초기화
@@ -368,15 +355,12 @@ public class GameController {
                     }
                 };
 
-                if (nameInputBox.isVisible()) {
-                    saveScoreAndRefreshUi().thenRun(() -> Platform.runLater(navigationTask))
+                popupManager.saveScoreIfPending().thenRun(() -> Platform.runLater(navigationTask))
                         .exceptionally(ex -> {
-                            Platform.runLater(navigationTask);
+                            ex.printStackTrace();
+                            Platform.runLater(navigationTask); // 점수 저장에 실패해도 네비게이션은 실행
                             return null;
                         });
-                } else {
-                    navigationTask.run();
-                }
             }
 
             @Override
@@ -406,15 +390,12 @@ public class GameController {
                     }
                 };
 
-                if (nameInputBox.isVisible()) {
-                    saveScoreAndRefreshUi().thenRun(() -> Platform.runLater(restartTask))
+                popupManager.saveScoreIfPending().thenRun(() -> Platform.runLater(restartTask))
                         .exceptionally(ex -> {
-                            Platform.runLater(restartTask);
+                            ex.printStackTrace();
+                            Platform.runLater(restartTask); // 점수 저장에 실패해도 재시작은 실행
                             return null;
                         });
-                } else {
-                    restartTask.run();
-                }
             }
         };
     }
@@ -875,71 +856,9 @@ public class GameController {
     private void processGameOver(long finalScore) {
         gameLoopManager.stop();
         gameOverLabel.setVisible(true);
-        popupManager.showGameOverPopup(finalScore);
-        
-        this.currentScore = finalScore;
-        this.isItemMode = gameModeConfig.getItemConfig() != null && gameModeConfig.getItemConfig().isEnabled();
 
-        
-        List<ScoreRankDto> scores = scoreService.getTopScores(isItemMode, 10);
-        loadScores(scores);
-
-        boolean isTopTen = scores.size() < 10 || scores.stream().anyMatch(s -> currentScore > s.getScore());
-        if (isTopTen) {
-            Platform.runLater(() -> {
-                nameInputBox.setVisible(true);
-                nameInputBox.setManaged(true);
-                usernameInput.requestFocus();
-            });
-        }
-    }
-
-    private void loadScores(List<ScoreRankDto> scores) {
-        Platform.runLater(() -> {
-            List<Map<String, Object>> scoreMaps = scores.stream()
-                    .map(score -> Map.<String, Object>of(
-                            "rank", score.getRank(),
-                            "player", score.getName(),
-                            "score", score.getScore(),
-                            "difficulty", score.getGameMode() + (isItemMode ? " (Item)" : "")
-                    ))
-                    .collect(Collectors.toList());
-            
-            ObservableList<Map<String, Object>> scoreData = FXCollections.observableArrayList(scoreMaps);
-            scoreBoardTable.setItems(scoreData);
-        });
-    }
-
-    @FXML
-    private void handleNameInput() {
-        saveScoreAndRefreshUi().thenRun(() -> {
-            Platform.runLater(() -> boardGridPane.requestFocus());
-        });
-    }
-
-    private CompletableFuture<Void> saveScoreAndRefreshUi() {
-        String username = usernameInput.getText();
-        if (username == null || username.trim().isEmpty()) {
-            return CompletableFuture.failedFuture(new IllegalArgumentException("Username is required."));
-        }
-
-        ScoreRequestDto newScore = new ScoreRequestDto();
-        newScore.setName(username);
-        newScore.setScore((int) currentScore);
-        seoultech.se.core.model.enumType.Difficulty currentDifficulty = settingsService.getCurrentDifficulty();
-        seoultech.se.backend.score.GameMode scoreGameMode = seoultech.se.backend.score.GameMode.valueOf(currentDifficulty.name());
-        newScore.setGameMode(scoreGameMode);
-        newScore.setItemMode(this.isItemMode);
-
-        return CompletableFuture.runAsync(() -> scoreService.saveScore(newScore))
-            .thenRun(() -> {
-                Platform.runLater(() -> {
-                    nameInputBox.setVisible(false);
-                    nameInputBox.setManaged(false);
-                    List<ScoreRankDto> updatedScores = scoreService.getTopScores(this.isItemMode, 10);
-                    loadScores(updatedScores);
-                });
-            });
+        boolean isItemMode = gameModeConfig.getItemConfig() != null && gameModeConfig.getItemConfig().isEnabled();
+        popupManager.showGameOverPopup(finalScore, isItemMode, settingsService.getCurrentDifficulty());
     }
     
     // ========== UI 알림 메서드 ==========

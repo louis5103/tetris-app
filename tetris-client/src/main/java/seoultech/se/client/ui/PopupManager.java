@@ -1,8 +1,22 @@
 package seoultech.se.client.ui;
 
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
+
 import javafx.application.Platform;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.scene.control.Label;
+import javafx.scene.control.TableView;
+import javafx.scene.control.TextField;
+import javafx.scene.control.TableColumn;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
+import seoultech.se.backend.score.ScoreRankDto;
+import seoultech.se.backend.score.ScoreRequestDto;
+import seoultech.se.backend.score.ScoreService;
 
 /**
  * 게임 내 팝업 오버레이를 관리하는 클래스
@@ -44,8 +58,26 @@ public class PopupManager {
     // UI 요소들
     private final VBox pauseOverlay;
     private final VBox gameOverOverlay;
-    private final Label finalScoreLabel;
-    
+
+    // 게임 오버 화면의 UI 요소 (final 제거)
+    private Label finalScoreLabel;
+    private TextField usernameInput;
+    private TableView<Map<String, Object>> scoreBoardTable;
+    private TableColumn<Map<String, Object>, String> rankColumn;
+    private TableColumn<Map<String, Object>, String> difficultyColumn;
+    private TableColumn<Map<String, Object>, String> playerColumn;
+    private TableColumn<Map<String, Object>, String> scoreColumn;
+    private HBox nameInputBox;
+
+    // 서비스
+    private final ScoreService scoreService;
+
+    // 게임 상태 저장을 위한 필드
+    private long currentScore;
+    private boolean isItemMode;
+    private seoultech.se.core.model.enumType.Difficulty difficulty;
+
+
     // 모드 선택 팝업
     private VBox modeSelectionOverlay;
     private ModeSelectionPopup modeSelectionPopup;
@@ -58,12 +90,38 @@ public class PopupManager {
      * 
      * @param pauseOverlay 일시정지 오버레이 VBox
      * @param gameOverOverlay 게임 오버 오버레이 VBox
-     * @param finalScoreLabel 게임 오버 화면의 최종 점수 Label
+     * @param scoreService 점수 서비스
      */
-    public PopupManager(VBox pauseOverlay, VBox gameOverOverlay, Label finalScoreLabel) {
+    public PopupManager(VBox pauseOverlay, VBox gameOverOverlay, ScoreService scoreService) {
         this.pauseOverlay = pauseOverlay;
         this.gameOverOverlay = gameOverOverlay;
-        this.finalScoreLabel = finalScoreLabel;
+        this.scoreService = scoreService;
+
+        // lookup을 사용하여 필요한 UI 요소들을 gameOverOverlay 내에서 찾아서 초기화
+        if (gameOverOverlay != null) {
+            this.finalScoreLabel = (Label) gameOverOverlay.lookup("#finalScoreLabel");
+            this.usernameInput = (TextField) gameOverOverlay.lookup("#usernameInput");
+            this.scoreBoardTable = (TableView<Map<String, Object>>) gameOverOverlay.lookup("#scoreBoardTable");
+            this.nameInputBox = (HBox) gameOverOverlay.lookup("#nameInputBox");
+        }
+        
+        // TableColumn은 TableView의 자식이므로 TableView에서 lookup (null-safe)
+        if (this.scoreBoardTable != null) {
+            javafx.collections.ObservableList<TableColumn<Map<String, Object>, ?>> columns = this.scoreBoardTable.getColumns();
+            this.rankColumn = (TableColumn<Map<String, Object>, String>) columns.get(0);
+            this.difficultyColumn = (TableColumn<Map<String, Object>, String>) columns.get(1);
+            this.playerColumn = (TableColumn<Map<String, Object>, String>) columns.get(2);
+            this.scoreColumn = (TableColumn<Map<String, Object>, String>) columns.get(3);
+            // this.rankColumn = (TableColumn<Map<String, Object>, String>) scoreBoardTable.lookup("#rankColumn");
+            // this.difficultyColumn = (TableColumn<Map<String, Object>, String>) scoreBoardTable.lookup("#difficultyColumn");
+            // this.playerColumn = (TableColumn<Map<String, Object>, String>) scoreBoardTable.lookup("#playerColumn");
+            // this.scoreColumn = (TableColumn<Map<String, Object>, String>) scoreBoardTable.lookup("#scoreColumn");
+        }
+        
+        // FXML의 onAction을 제거하고 프로그램적으로 이벤트 핸들러 등록 (null-safe)
+        if (this.usernameInput != null) {
+            this.usernameInput.setOnAction(event -> handleNameInput());
+        }
     }
     
     /**
@@ -91,8 +149,10 @@ public class PopupManager {
      */
     private void setOverlayVisibility(VBox overlay, boolean visible) {
         Platform.runLater(() -> {
-            overlay.setVisible(visible);
-            overlay.setManaged(visible);
+            if (overlay != null) {
+                overlay.setVisible(visible);
+                overlay.setManaged(visible);
+            }
         });
     }
     
@@ -111,14 +171,37 @@ public class PopupManager {
     }
     
     /**
-     * 게임 오버 팝업을 표시합니다
+     * 게임 오버 팝업을 표시하고 관련 로직을 모두 처리합니다.
      * 
      * @param finalScore 최종 점수
+     * @param isItemMode 아이템 모드 여부
+     * @param difficulty 난이도
      */
-    public void showGameOverPopup(long finalScore) {
+    public void showGameOverPopup(long finalScore, boolean isItemMode, seoultech.se.core.model.enumType.Difficulty difficulty) {
+        this.currentScore = finalScore;
+        this.isItemMode = isItemMode;
+        this.difficulty = difficulty;
+
         Platform.runLater(() -> {
-            finalScoreLabel.setText(String.valueOf(finalScore));
+            if (finalScoreLabel != null) {
+                finalScoreLabel.setText(String.valueOf(finalScore));
+            }
         });
+        
+        List<ScoreRankDto> scores = scoreService.getTopScores(isItemMode, 10);
+        loadScores(scores);
+
+        boolean isTopTen = scores.size() < 10 || scores.stream().anyMatch(s -> currentScore > s.getScore());
+        if (isTopTen) {
+            Platform.runLater(() -> {
+                if (nameInputBox != null && usernameInput != null) {
+                    nameInputBox.setVisible(true);
+                    nameInputBox.setManaged(true);
+                    usernameInput.requestFocus();
+                }
+            });
+        }
+        
         setOverlayVisibility(gameOverOverlay, true);
     }
     
@@ -143,7 +226,7 @@ public class PopupManager {
      * @return 표시되어 있으면 true
      */
     public boolean isPausePopupVisible() {
-        return pauseOverlay.isVisible();
+        return pauseOverlay != null && pauseOverlay.isVisible();
     }
     
     /**
@@ -152,7 +235,7 @@ public class PopupManager {
      * @return 표시되어 있으면 true
      */
     public boolean isGameOverPopupVisible() {
-        return gameOverOverlay.isVisible();
+        return gameOverOverlay != null && gameOverOverlay.isVisible();
     }
     
     // ========== 버튼 핸들러 메서드 (GameController의 @FXML 메서드에서 호출) ==========
@@ -173,7 +256,6 @@ public class PopupManager {
      * GameController의 @FXML handleQuitFromOverlay()에서 호출됩니다
      */
     public void handleQuitAction() {
-        hidePausePopup();
         if (callback != null) {
             callback.onQuitRequested();
         }
@@ -184,7 +266,6 @@ public class PopupManager {
      * GameController의 @FXML handleMainFromOverlay()에서 호출됩니다
      */
     public void handleMainMenuAction() {
-        hideGameOverPopup();
         if (callback != null) {
             callback.onMainMenuRequested();
         }
@@ -195,9 +276,76 @@ public class PopupManager {
      * GameController의 @FXML handleRestartFromOverlay()에서 호출됩니다
      */
     public void handleRestartAction() {
-        hideGameOverPopup();
         if (callback != null) {
             callback.onRestartRequested();
+        }
+    }
+
+    // ========== Game Over Popup 내부 로직 ==========
+
+    private void loadScores(List<ScoreRankDto> scores) {
+        Platform.runLater(() -> {
+            if (scoreBoardTable == null) return;
+
+            List<Map<String, Object>> scoreMaps = scores.stream()
+                    .map(score -> Map.<String, Object>of(
+                            "rank", score.getRank(),
+                            "player", score.getName(),
+                            "score", score.getScore(),
+                            "difficulty", score.getGameMode() + (isItemMode ? " (Item)" : "")
+                    ))
+                    .collect(Collectors.toList());
+            
+            ObservableList<Map<String, Object>> scoreData = FXCollections.observableArrayList(scoreMaps);
+            scoreBoardTable.setItems(scoreData);
+        });
+    }
+
+    private void handleNameInput() {
+        saveScoreAndRefreshUi().thenRun(() -> {
+            Platform.runLater(() -> {
+                if (gameOverOverlay != null) {
+                    gameOverOverlay.requestFocus(); // 포커스를 다른 곳으로 이동
+                }
+            });
+        });
+    }
+
+    private CompletableFuture<Void> saveScoreAndRefreshUi() {
+        if (usernameInput == null) {
+            return CompletableFuture.failedFuture(new IllegalStateException("usernameInput is not initialized."));
+        }
+        String username = usernameInput.getText();
+        if (username == null || username.trim().isEmpty()) {
+            // 이름이 비어있으면 저장하지 않고 완료된 Future 반환
+            return CompletableFuture.completedFuture(null);
+        }
+
+        ScoreRequestDto newScore = new ScoreRequestDto();
+        newScore.setName(username);
+        newScore.setScore((int) currentScore);
+        seoultech.se.backend.score.GameMode scoreGameMode = seoultech.se.backend.score.GameMode.valueOf(this.difficulty.name());
+        newScore.setGameMode(scoreGameMode);
+        newScore.setItemMode(this.isItemMode);
+
+        return CompletableFuture.runAsync(() -> scoreService.saveScore(newScore))
+            .thenRun(() -> {
+                Platform.runLater(() -> {
+                    if (nameInputBox != null) {
+                        nameInputBox.setVisible(false);
+                        nameInputBox.setManaged(false);
+                    }
+                    List<ScoreRankDto> updatedScores = scoreService.getTopScores(this.isItemMode, 10);
+                    loadScores(updatedScores);
+                });
+            });
+    }
+
+    public CompletableFuture<Void> saveScoreIfPending() {
+        if (nameInputBox != null && nameInputBox.isVisible()) {
+            return saveScoreAndRefreshUi();
+        } else {
+            return CompletableFuture.completedFuture(null);
         }
     }
     
@@ -213,12 +361,13 @@ public class PopupManager {
         this.modeSelectionPopup = new ModeSelectionPopup();
         
         // 오버레이에 팝업 추가
-        modeSelectionOverlay.getChildren().clear();
-        modeSelectionOverlay.getChildren().add(modeSelectionPopup);
+        if (modeSelectionOverlay != null) {
+            modeSelectionOverlay.getChildren().clear();
+            modeSelectionOverlay.getChildren().add(modeSelectionPopup);
+        }
         
         // 초기에는 숨김
-        modeSelectionOverlay.setVisible(false);
-        modeSelectionOverlay.setManaged(false);
+        setOverlayVisibility(modeSelectionOverlay, false);
         
         System.out.println("✅ Mode selection popup initialized");
     }
@@ -248,8 +397,7 @@ public class PopupManager {
                 });
                 
                 // 팝업 표시
-                modeSelectionOverlay.setVisible(true);
-                modeSelectionOverlay.setManaged(true);
+                setOverlayVisibility(modeSelectionOverlay, true);
             });
         } else {
             System.err.println("❗ Mode selection popup not initialized. Call initModeSelectionPopup() first.");

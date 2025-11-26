@@ -136,7 +136,7 @@
 
                             <HBox fx:id="nameInputBox" styleClass="notice-box" alignment="CENTER" spacing="10" visible="false" managed="false">
                                 <Label text="Your name:" styleClass="notice-label"/>
-                                <TextField fx:id="usernameInput" onAction="#handleNameInput" promptText="Enter your name" />
+                                <TextField fx:id="usernameInput" promptText="Enter your name" />
                             </HBox>
 
                             <TableView fx:id="scoreBoardTable" styleClass="score-table" prefHeight="250">
