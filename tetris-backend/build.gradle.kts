@@ -24,7 +24,8 @@ application {
 dependencies {
     // 🎯 Core 모듈 의존성
     implementation(project(":tetris-core"))
-    implementation(project(":tetris-client"))
+    // REMOVED: implementation(project(":tetris-client")) - circular dependency
+    // Backend should not depend on client
 
     // ============================================================================
     // ⚙️ BACKEND MODULE SPECIFIC DEPENDENCIES

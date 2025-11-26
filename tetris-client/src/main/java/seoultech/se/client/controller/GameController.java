@@ -103,12 +103,22 @@ public class GameController {
     @Autowired
     private ScoreService scoreService;
 
+    @Autowired(required = false)
+    private seoultech.se.backend.network.NetworkClient networkClient;
+
+    @Autowired(required = false)
+    private seoultech.se.backend.network.MultiPlayStrategies multiPlayStrategies;
+
     // 게임 로직 컨트롤러
     private BoardController boardController;
-    
+
     // 게임 모드 설정
     private GameModeConfig gameModeConfig;
-    
+
+    // ✨ Strategy Pattern: 플레이 타입 및 실행 전략
+    private seoultech.se.core.mode.PlayType playType;
+    private seoultech.se.client.strategy.GameExecutionStrategy executionStrategy;
+
     // UI 관리 클래스들
     private BoardRenderer boardRenderer;
     private NotificationManager notificationManager;
@@ -117,7 +127,7 @@ public class GameController {
     private InputHandler inputHandler;
     private GameInfoManager gameInfoManager;
     private ItemInventoryPanel itemInventoryPanel;
-    
+
     // Rectangle 배열들
     private Rectangle[][] cellRectangles;
     private Rectangle[][] holdCellRectangles;
@@ -156,17 +166,35 @@ public class GameController {
      * 
      * @param config 게임 모드 설정
      */
-    public void setGameModeConfig(GameModeConfig config) {
+    /**
+     * 게임 모드 설정 (PlayType 포함)
+     *
+     * @param config 게임 모드 설정
+     * @param playType 플레이 타입 (LOCAL_SINGLE or ONLINE_MULTI)
+     */
+    public void setGameModeConfig(GameModeConfig config, seoultech.se.core.mode.PlayType playType) {
         this.gameModeConfig = config;
-        System.out.println("⚙️ Game mode config set: " + 
+        this.playType = playType;
+
+        System.out.println("⚙️ Game mode config set: " +
             (config.getGameplayType() != null ? config.getGameplayType() : "CLASSIC") +
+            ", PlayType: " + playType.getDisplayName() +
             ", SRS: " + config.isSrsEnabled() +
             ", Hard Drop: " + config.isHardDropEnabled() +
             ", Hold: " + config.isHoldEnabled() +
             ", Drop Speed: " + config.getDropSpeedMultiplier() + "x");
-        
+
         // 이제 실제 게임 초기화 수행
         startInitialization();
+    }
+
+    /**
+     * 게임 모드 설정 (하위 호환성 - PlayType 기본값: LOCAL_SINGLE)
+     *
+     * @param config 게임 모드 설정
+     */
+    public void setGameModeConfig(GameModeConfig config) {
+        setGameModeConfig(config, seoultech.se.core.mode.PlayType.LOCAL_SINGLE);
     }
     
     /**
@@ -200,18 +228,109 @@ public class GameController {
         // UI 초기화
         initializeGridPane(gameState);
         initializePreviewPanes();
-        
+
         // UI 관리 클래스들 초기화
         initializeManagers();
-        
+
+        // ✨ Strategy 초기화 (플레이 타입에 따라)
+        initializeExecutionStrategy();
+
         // 아이템 인벤토리 초기화 (아케이드 모드인 경우)
         initializeItemInventory();
-        
+
         gameInfoManager.updateAll(gameState);
         setupKeyboardControls();
         startGame();
 
         System.out.println("✅ GameController initialization complete!");
+    }
+
+    /**
+     * ✨ 실행 전략 초기화
+     *
+     * 플레이 타입에 따라 적절한 Strategy를 생성하고 BoardController에 설정합니다.
+     * - LOCAL_SINGLE: LocalExecutionStrategy (GameEngine 직접 호출)
+     * - ONLINE_MULTI: NetworkExecutionStrategy (MultiPlayStrategies 사용)
+     */
+    private void initializeExecutionStrategy() {
+        if (playType == null) {
+            playType = seoultech.se.core.mode.PlayType.LOCAL_SINGLE;
+            System.out.println("⚠️ PlayType was null, defaulting to LOCAL_SINGLE");
+        }
+
+        if (playType == seoultech.se.core.mode.PlayType.ONLINE_MULTI) {
+            // 멀티플레이는 세션 생성 후 setupMultiplayMode() 호출 필요
+            System.out.println("ℹ️ Multiplay mode - Strategy will be set after session creation");
+        } else {
+            // 싱글플레이 모드
+            setupSingleplayMode();
+        }
+    }
+
+    /**
+     * ✨ 싱글플레이 모드 설정
+     */
+    private void setupSingleplayMode() {
+        seoultech.se.core.engine.GameEngine gameEngine = boardController.getGameEngine();
+        executionStrategy = new seoultech.se.client.strategy.LocalExecutionStrategy(gameEngine);
+        boardController.setExecutionStrategy(executionStrategy);
+
+        System.out.println("✅ Single-play mode initialized with LocalExecutionStrategy");
+    }
+
+    /**
+     * ✨ 멀티플레이 모드 설정
+     *
+     * 세션 생성/매칭 성공 후 외부에서 호출됩니다.
+     *
+     * @param sessionId STOMP 세션 ID
+     */
+    public void setupMultiplayMode(String sessionId) {
+        if (multiPlayStrategies == null) {
+            throw new IllegalStateException(
+                "MultiPlayStrategies not available. " +
+                "Ensure backend module dependencies are correctly configured."
+            );
+        }
+
+        if (boardController == null) {
+            throw new IllegalStateException(
+                "BoardController not initialized. " +
+                "Call setGameModeConfig() before setupMultiplayMode()."
+            );
+        }
+
+        // 1. 초기 GameState로 세션 초기화
+        GameState initialState = boardController.getGameState();
+        multiPlayStrategies.init(sessionId, initialState);
+
+        // 2. 상대방 상태 업데이트 콜백 설정
+        multiPlayStrategies.setOpponentStateCallback(this::onOpponentStateUpdate);
+
+        // 3. NetworkExecutionStrategy 생성 및 설정
+        executionStrategy = new seoultech.se.client.strategy.NetworkExecutionStrategy(multiPlayStrategies);
+        boardController.setExecutionStrategy(executionStrategy);
+
+        System.out.println("✅ Multi-play mode initialized - Session: " + sessionId);
+    }
+
+    /**
+     * ✨ 상대방 상태 업데이트 처리
+     *
+     * MultiPlayStrategies가 서버로부터 상대방 GameState를 받으면 호출됩니다.
+     *
+     * @param opponentState 상대방의 GameState
+     */
+    private void onOpponentStateUpdate(GameState opponentState) {
+        // TODO: 상대방 보드를 UI에 렌더링
+        // 예: 화면 분할 또는 작은 미리보기로 상대방 보드 표시
+        Platform.runLater(() -> {
+            System.out.println("👥 [GameController] Opponent state received:");
+            System.out.println("   - Score: " + opponentState.getScore());
+            System.out.println("   - Level: " + opponentState.getLevel());
+            System.out.println("   - Lines: " + opponentState.getLinesCleared());
+            // TODO: 실제 UI 업데이트 로직 구현
+        });
     }
     
     /**
@@ -901,41 +1020,68 @@ public class GameController {
     /**
      * 게임을 재시작합니다
      */
+    /**
+     * ✨ 게임 재시작
+     *
+     * 모든 상태를 초기화하고 같은 설정(gameModeConfig, playType)으로 재시작합니다.
+     * Strategy도 다시 설정되어 완전히 새로운 게임이 시작됩니다.
+     */
     private void restartGame() {
         try {
             System.out.println("🔄 Restarting game...");
-            
-            // 1. 게임 루프 정리
+
+            // 1. ✨ Strategy cleanup (네트워크 연결 등 정리)
+            cleanupExecutionStrategy();
+
+            // 2. 게임 루프 정리
             if (gameLoopManager != null) {
                 gameLoopManager.cleanup();
                 System.out.println("   ✓ GameLoopManager cleaned up");
             }
-            
-            // 2. 키보드 이벤트 핸들러 제거
+
+            // 3. 키보드 이벤트 핸들러 제거
             javafx.scene.Scene currentScene = boardGridPane.getScene();
             if (currentScene != null) {
                 currentScene.setOnKeyPressed(null);
                 System.out.println("   ✓ Keyboard handlers removed");
             }
-            
-            // 3. 오버레이 숨기기
+
+            // 4. 오버레이 숨기기
             popupManager.hideAllPopups();
-            
-            // 4. UI 요소 초기화 (gameOverLabel 숨기기)
+
+            // 5. UI 요소 초기화 (gameOverLabel 숨기기)
             if (gameOverLabel != null) {
                 gameOverLabel.setVisible(false);
                 gameOverLabel.setManaged(false);
             }
-            
-            // 5. 게임 재초기화 (현재 gameModeConfig 유지)
-            System.out.println("🎮 Reinitializing game with current config...");
+
+            // 6. ✨ 게임 재초기화 (gameModeConfig, playType 유지, Strategy 재설정)
+            System.out.println("🎮 Reinitializing game with current config and playType...");
             startInitialization();
-            
+
             System.out.println("✅ Game restarted successfully");
         } catch (Exception e) {
             e.printStackTrace();
             showError("재시작 오류", "게임을 재시작하는 데 실패했습니다.");
         }
+    }
+
+    /**
+     * ✨ 실행 전략 정리
+     *
+     * 멀티플레이인 경우 네트워크 연결을 정리합니다.
+     * Restart나 Quit 시 호출됩니다.
+     */
+    private void cleanupExecutionStrategy() {
+        if (executionStrategy instanceof seoultech.se.client.strategy.NetworkExecutionStrategy) {
+            // 네트워크 연결 정리
+            if (multiPlayStrategies != null) {
+                multiPlayStrategies.disconnect();
+                System.out.println("   ✓ Network connections cleaned up");
+            }
+        }
+        executionStrategy = null;
+        System.out.println("   ✓ ExecutionStrategy cleaned up");
     }
 }
 

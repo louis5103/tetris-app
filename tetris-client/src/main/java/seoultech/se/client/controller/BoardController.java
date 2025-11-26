@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 
 import lombok.Getter;
 import seoultech.se.client.mode.SingleMode;
+import seoultech.se.client.strategy.GameExecutionStrategy;
 import seoultech.se.core.GameState;
 import seoultech.se.core.command.GameCommand;
 import seoultech.se.core.command.MoveCommand;
@@ -28,12 +29,15 @@ public class BoardController {
     private final Random random = new Random();
     private GameMode gameMode;
     private GameEngine gameEngine;  // 게임 엔진 추가
-    
+
+    // ✨ Strategy Pattern: 로컬/네트워크 실행 전략
+    private GameExecutionStrategy executionStrategy;
+
     // ✨ Phase 4: 난이도 시스템 통합
     private Difficulty difficulty;  // 현재 난이도
     private RandomGenerator randomGenerator;  // 시드 기반 난수 생성기
     private TetrominoGenerator tetrominoGenerator;  // 7-bag 생성기
-    
+
     private List<TetrominoType> currentBag = new ArrayList<>();
     private List<TetrominoType> nextBag = new ArrayList<>();
     private int bagIndex = 0;
@@ -106,46 +110,64 @@ public class BoardController {
         this.tetrominoGenerator = new TetrominoGenerator(randomGenerator, difficulty);
         System.out.println("🎮 Difficulty changed to: " + difficulty);
     }
-    
+
+    /**
+     * ✨ 게임 실행 전략 설정
+     *
+     * GameController가 게임 모드에 따라 호출:
+     * - 싱글플레이: LocalExecutionStrategy
+     * - 멀티플레이: NetworkExecutionStrategy
+     *
+     * @param strategy 실행 전략
+     */
+    public void setExecutionStrategy(GameExecutionStrategy strategy) {
+        this.executionStrategy = strategy;
+        System.out.println("✅ [BoardController] ExecutionStrategy set: " +
+            (strategy != null ? strategy.getClass().getSimpleName() : "null"));
+    }
+
     public GameModeConfig getConfig() {
         return gameMode != null ? gameMode.getConfig() : GameModeConfig.classic();
     }
     
+    /**
+     * ✨ 게임 명령 실행 (Strategy Pattern 적용)
+     *
+     * executionStrategy가 설정되어 있으면 Strategy를 통해 실행:
+     * - LocalExecutionStrategy: GameEngine 직접 호출
+     * - NetworkExecutionStrategy: MultiPlayStrategies를 통한 네트워크 전송
+     *
+     * Strategy가 null이면 IllegalStateException 발생 (Fail-fast)
+     *
+     * @param command 실행할 게임 명령
+     * @return 새로운 게임 상태
+     */
     public GameState executeCommand(GameCommand command) {
         if (gameState.isGameOver()) {
             return gameState;
         }
-        if (gameState.isPaused() && 
+        if (gameState.isPaused() &&
             command.getType() != seoultech.se.core.command.CommandType.RESUME &&
             command.getType() != seoultech.se.core.command.CommandType.PAUSE) {
             return gameState;
         }
-        GameState newState = null;
-        switch (command.getType()) {
-            case MOVE:
-                newState = handleMoveCommand((MoveCommand) command);
-                break;
-            case ROTATE:
-                newState = handleRotateCommand((RotateCommand) command);
-                break;
-            case HARD_DROP:
-                newState = handleHardDropCommand();
-                break;
-            case HOLD:
-                newState = handleHoldCommand();
-                break;
-            case PAUSE:
-                newState = handlePauseCommand();
-                break;
-            case RESUME:
-                newState = handleResumeCommand();
-                break;
-            default:
-                return gameState;
+
+        // ✨ Strategy가 설정되지 않았으면 설계 오류 (Fail-fast)
+        if (executionStrategy == null) {
+            throw new IllegalStateException(
+                "GameExecutionStrategy not initialized! " +
+                "Call setExecutionStrategy() before executing commands."
+            );
         }
+
+        // ✨ Strategy를 통해 명령 실행 (로컬/네트워크 투명)
+        GameState newState = executionStrategy.execute(command, gameState);
+
+        // 상태 업데이트
         if (newState != null && newState != gameState) {
             this.gameState = newState;
         }
+
         return this.gameState;
     }
 
