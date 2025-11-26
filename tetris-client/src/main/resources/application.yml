@@ -61,45 +61,13 @@ javafx:
 # =============================================================================
 # 테트리스 게임 설정
 # =============================================================================
+# ⚠️ 게임 모드별 설정은 config/client/classic.yml, arcade.yml에서 관리
+# ⚠️ 사용자 런타임 설정은 config/client/setting.yml에서 관리
+# ⚠️ 난이도(Difficulty)는 GameModeConfigFactory에서 배율 적용
+# =============================================================================
 tetris:
   # ---------------------------------------------------------------------------
-  # 난이도 시스템 설정 (Difficulty System) ✨ NEW
-  # ---------------------------------------------------------------------------
-  difficulty:
-    # Easy 모드 설정
-    easy:
-      display-name: "쉬움"
-      # I형 블록 출현 확률 배율 (1.0 = 14.3%, 1.2 = 17.1%)
-      i-block-multiplier: 1.2
-      # 레벨업 시 속도 증가율 배율 (0.8 = 20% 감소)
-      speed-increase-multiplier: 0.8
-      # 점수 배율 (SRS 표준: 낮은 난이도 = 낮은 배율)
-      score-multiplier: 0.5
-      # 락 딜레이 배율 (1.2 = 20% 증가)
-      lock-delay-multiplier: 1.2
-      
-    # Normal 모드 설정 (기본값)
-    normal:
-      display-name: "보통"
-      i-block-multiplier: 1.0
-      speed-increase-multiplier: 1.0
-      score-multiplier: 1.0
-      lock-delay-multiplier: 1.0
-      
-    # Hard 모드 설정
-    hard:
-      display-name: "어려움"
-      # I형 블록 출현 확률 배율 (0.8 = 20% 감소)
-      i-block-multiplier: 0.8
-      # 레벨업 시 속도 증가율 배율 (1.2 = 20% 증가)
-      speed-increase-multiplier: 1.2
-      # 점수 배율 (SRS 표준: 높은 난이도 = 높은 배율)
-      score-multiplier: 1.5
-      # 락 딜레이 배율 (0.8 = 20% 감소)
-      lock-delay-multiplier: 0.8
-  
-  # ---------------------------------------------------------------------------
-  # 7-bag 시스템 설정 ✨ NEW
+  # 7-bag 시스템 설정
   # ---------------------------------------------------------------------------
   bag-system:
     # 가방 크기 (기본 7개)
@@ -191,35 +159,7 @@ tetris:
     # 저장 위치
     location: ${TETRIS_SAVE_LOCATION:${user.home}/.tetris/}
   
-  # ---------------------------------------------------------------------------
-  # 게임 모드 설정 (Game Mode Configuration)
-  # ---------------------------------------------------------------------------
-  mode:
-    # Play Type: LOCAL_SINGLE, ONLINE_MULTI
-    play-type: ${GAME_MODE_PLAY_TYPE:LOCAL_SINGLE}
-    # Gameplay Type: CLASSIC, ARCADE
-    gameplay-type: ${GAME_MODE_GAMEPLAY_TYPE:CLASSIC}
-    # SRS (Super Rotation System) 활성화
-    srs-enabled: ${GAME_MODE_SRS_ENABLED:true}
-    
-    # 마지막 선택 설정 (자동 저장)
-    last-play-type: ${GAME_MODE_LAST_PLAY_TYPE:LOCAL_SINGLE}
-    last-gameplay-type: ${GAME_MODE_LAST_GAMEPLAY_TYPE:CLASSIC}
-    last-srs-enabled: ${GAME_MODE_LAST_SRS_ENABLED:true}
-    
-    # 아이템 드롭 확률 (0.0 ~ 1.0)
-    item-drop-rate: ${ITEM_DROP_RATE:0.1}
-    # 최대 인벤토리 크기
-    max-inventory-size: ${ITEM_MAX_INVENTORY:3}
-    # 아이템 자동 사용
-    item-auto-use: ${ITEM_AUTO_USE:false}
-    
-    # 아이템 활성화 설정
-    item-enabled:
-      BOMB: ${ITEM_ENABLED_BOMB:true}
-      PLUS: ${ITEM_ENABLED_PLUS:true}
-      SPEED_RESET: ${ITEM_ENABLED_SPEED_RESET:true}
-      BONUS_SCORE: ${ITEM_ENABLED_BONUS_SCORE:true}
+
 
 # =============================================================================
 # 로깅 설정 (Logging Configuration)
@@ -240,20 +180,6 @@ spring:
     activate:
       on-profile: dev
 
-# 개발 환경 전용 설정
-tetris:
-  difficulty:
-    easy:
-      # 개발/테스트를 위해 I형 블록을 더 많이 출현
-      i-block-multiplier: 1.5
-      # 속도를 더 느리게
-      speed-increase-multiplier: 0.6
-    hard:
-      # 개발/테스트를 위해 I형 블록을 더 적게 출현
-      i-block-multiplier: 0.6
-      # 속도를 더 빠르게
-      speed-increase-multiplier: 1.5
-
 # 개발 환경 로깅 (디버그 모드)
 logging:
   level:
@@ -269,24 +195,8 @@ spring:
     activate:
       on-profile: test
 
-# 테스트 환경 전용 설정 (극단적인 값으로 테스트)
+# 테스트 환경 전용 설정
 tetris:
-  difficulty:
-    easy:
-      # 테스트: 극단적으로 I형 블록을 많이 출현
-      i-block-multiplier: 2.0
-      # 속도 증가 거의 없음
-      speed-increase-multiplier: 0.5
-      # 점수 2배
-      score-multiplier: 2.0
-    hard:
-      # 테스트: 극단적으로 I형 블록을 적게 출현
-      i-block-multiplier: 0.5
-      # 속도 증가 2배
-      speed-increase-multiplier: 2.0
-      # 점수 절반
-      score-multiplier: 0.5
-  
   # 테스트 환경에서는 애니메이션 비활성화 (속도 향상)
   animation:
     line-clear:

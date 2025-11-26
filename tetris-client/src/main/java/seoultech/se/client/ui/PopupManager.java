@@ -292,7 +292,7 @@ public class PopupManager {
                             "rank", score.getRank(),
                             "player", score.getName(),
                             "score", score.getScore(),
-                            "difficulty", score.getGameMode() + (isItemMode ? " (Item)" : "")
+                            "difficulty", score.getDifficulty() + (isItemMode ? " (Item)" : "")
                     ))
                     .collect(Collectors.toList());
             
@@ -324,8 +324,7 @@ public class PopupManager {
         ScoreRequestDto newScore = new ScoreRequestDto();
         newScore.setName(username);
         newScore.setScore((int) currentScore);
-        seoultech.se.backend.score.GameMode scoreGameMode = seoultech.se.backend.score.GameMode.valueOf(this.difficulty.name());
-        newScore.setGameMode(scoreGameMode);
+        newScore.setDifficulty(this.difficulty);
         newScore.setItemMode(this.isItemMode);
 
         return CompletableFuture.runAsync(() -> scoreService.saveScore(newScore))

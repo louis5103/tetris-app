@@ -111,6 +111,14 @@ public class InputHandler {
         }
         
         GameAction action = actionOpt.get();
+        
+        // 일시정지 상태 체크: PAUSE_RESUME 액션만 허용
+        if (gameStateProvider != null && gameStateProvider.isPaused()) {
+            if (action != GameAction.PAUSE_RESUME) {
+                return; // 일시정지 중에는 PAUSE_RESUME 외의 키 무시
+            }
+        }
+        
         GameCommand command = createCommandFromAction(action);
         
         // Command가 생성되었으면 콜백 호출

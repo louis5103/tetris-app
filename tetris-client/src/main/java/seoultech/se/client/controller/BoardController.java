@@ -5,12 +5,10 @@ import java.util.List;
 import org.springframework.stereotype.Component;
 
 import lombok.Getter;
-import seoultech.se.client.mode.SingleMode;
 import seoultech.se.client.strategy.GameExecutionStrategy;
 import seoultech.se.core.GameState;
 import seoultech.se.core.command.GameCommand;
 import seoultech.se.core.config.GameModeConfig;
-import seoultech.se.core.engine.mode.GameMode;
 import seoultech.se.core.model.Tetromino;
 import seoultech.se.core.model.enumType.Difficulty;
 import seoultech.se.core.model.enumType.TetrominoType;
@@ -21,7 +19,7 @@ import seoultech.se.core.random.TetrominoGenerator;
 @Component
 public class BoardController {
     private GameState gameState;
-    private GameMode gameMode;
+    private GameModeConfig gameModeConfig;
 
     // ✨ Strategy Pattern: 로컬/네트워크 실행 전략
     private GameExecutionStrategy executionStrategy;
@@ -58,28 +56,25 @@ public class BoardController {
         this.gameState = new GameState(10, 20);
         this.gameStartTime = System.currentTimeMillis();
         this.difficulty = difficulty;
+        this.gameModeConfig = config;
         
         // ✨ Phase 4: TetrominoGenerator 초기화 (결정론적 생성)
         this.tetrominoGenerator = new TetrominoGenerator(new RandomGenerator(), difficulty);
         
-        // GameModeConfig에 따라 SingleMode 생성
-        this.gameMode = new SingleMode(config);
-        this.gameMode.initialize(this.gameState);
-        
         initializeNextQueue();
         
-        System.out.println("📦 BoardController created with config: " + 
+        System.out.println("[Controller] BoardController initialized - Mode: " + 
             (config.getGameplayType() != null ? config.getGameplayType().getDisplayName() : "CLASSIC") +
-            ", SRS: " + config.isSrsEnabled() +
             ", Difficulty: " + difficulty);
     }
     
-    public void setGameMode(GameMode gameMode) {
-        if (this.gameMode != null) {
-            this.gameMode.cleanup();
-        }
-        this.gameMode = gameMode;
-        this.gameMode.initialize(this.gameState);
+    /**
+     * GameModeConfig 설정
+     * 
+     * @param config 게임 모드 설정
+     */
+    public void setGameModeConfig(GameModeConfig config) {
+        this.gameModeConfig = config;
     }
     
     /**
@@ -91,7 +86,6 @@ public class BoardController {
         this.difficulty = difficulty;
         // TetrominoGenerator 재생성
         this.tetrominoGenerator = new TetrominoGenerator(new RandomGenerator(), difficulty);
-        System.out.println("🎮 Difficulty changed to: " + difficulty);
     }
 
     /**
@@ -105,12 +99,12 @@ public class BoardController {
      */
     public void setExecutionStrategy(GameExecutionStrategy strategy) {
         this.executionStrategy = strategy;
-        System.out.println("✅ [BoardController] ExecutionStrategy set: " +
+        System.out.println("[Controller] Execution strategy set: " + 
             (strategy != null ? strategy.getClass().getSimpleName() : "null"));
     }
 
     public GameModeConfig getConfig() {
-        return gameMode != null ? gameMode.getConfig() : GameModeConfig.classic();
+        return gameModeConfig;
     }
     
     /**
@@ -137,6 +131,7 @@ public class BoardController {
 
         // ✨ Strategy가 설정되지 않았으면 설계 오류 (Fail-fast)
         if (executionStrategy == null) {
+            System.err.println("[ERROR] GameExecutionStrategy not initialized!");
             throw new IllegalStateException(
                 "GameExecutionStrategy not initialized! " +
                 "Call setExecutionStrategy() before executing commands."
@@ -147,18 +142,15 @@ public class BoardController {
         GameState newState = executionStrategy.execute(command, gameState);
 
         // 상태 업데이트
-        if (newState != null && newState != gameState) {
-            // ✨ Lock 발생 여부 확인: 
-            // - lastLinesCleared 카운터가 증가했거나 (라인 클리어 발생)
-            // - lastLockedPivotY가 설정되었다면 (블록이 lock됨)
-            boolean lockOccurred = (newState.getLastLinesCleared() > gameState.getLastLinesCleared()) ||
-                                   (newState.getLastLockedPivotY() >= 0 && gameState.getLastLockedPivotY() < 0);
-            
+        // ✨ FIX: GameEngine이 이동 실패 시 원본을 반환할 수 있으므로 조건 완화
+        if (newState != null) {
             this.gameState = newState;
             
-            // Lock 후 새 블록 생성 필요
-            if (lockOccurred && !newState.isGameOver()) {
-                // 새 블록 생성
+            // ✨ PROPER FIX: Check if currentTetromino is null (locked and cleared by GameEngine)
+            boolean needsNewTetromino = (newState.getCurrentTetromino() == null);
+            
+            // GameEngine이 currentTetromino를 null로 설정했다면 새 블록 생성
+            if (needsNewTetromino && !newState.isGameOver()) {
                 spawnNewTetromino(this.gameState);
                 updateNextQueue(this.gameState);
             }
@@ -175,8 +167,6 @@ public class BoardController {
         
         // 🎁 아이템이 예약되어 있으면 아이템 테트로미노 생성
         if (nextItemType != null) {
-            System.out.println("🎁 [BoardController] Spawning item tetromino: " + nextItemType);
-            
             if (nextItemType == seoultech.se.core.engine.item.ItemType.WEIGHT_BOMB) {
                 // 무게추는 특수 테트로미노 형태 (OO / OOOO)
                 // ✅ FIXED: Lock 시 아이템 효과 적용을 위해 currentItemType 유지
@@ -205,8 +195,8 @@ public class BoardController {
         state.setCurrentX(state.getBoardWidth() / 2 - 1);
         state.setCurrentY(0);
         
-        System.out.println("🎮 [BoardController] Spawned tetromino: " + nextType + 
-            (state.getCurrentItemType() != null ? " with item: " + state.getCurrentItemType() : ""));
+        System.out.println("[Game] Spawned: " + nextType + 
+            (state.getCurrentItemType() != null ? " (Item: " + state.getCurrentItemType() + ")" : ""));
     }
 
     private TetrominoType getNextTetrominoType() {
@@ -233,9 +223,6 @@ public class BoardController {
     }
     
     public void resetGame() {
-        if (gameMode != null) {
-            gameMode.cleanup();
-        }
         this.gameState = new GameState(10, 20);
         this.gameStartTime = System.currentTimeMillis();
         
@@ -243,14 +230,9 @@ public class BoardController {
         this.tetrominoGenerator = new TetrominoGenerator(new RandomGenerator(), difficulty);
         
         initializeNextQueue();
-        if (gameMode != null) {
-            gameMode.initialize(gameState);
-        }
     }
     
     public void cleanup() {
-        if (gameMode != null) {
-            gameMode.cleanup();
-        }
+        // Cleanup resources if needed
     }
 }

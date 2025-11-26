@@ -50,12 +50,11 @@ public class ArcadeGameEngine extends ClassicGameEngine {
                 config.getItemConfig().getDropRate(),
                 config.getItemConfig().getEnabledItems()
             );
-            System.out.println("✅ [ArcadeGameEngine] Created (Arcade Mode - Items Enabled, Stateless)");
-            System.out.println("   - Item drop rate: " + (int)(itemManager.getItemDropRate() * 100) + "%");
-            System.out.println("   - Enabled items: " + itemManager.getEnabledItems());
+            System.out.println("[Engine] ArcadeGameEngine initialized - Items enabled (" + 
+                itemManager.getEnabledItems().size() + " types)");
         } else {
             this.itemManager = new ItemManager();
-            System.out.println("⚠️ [ArcadeGameEngine] Created with default ItemManager");
+            System.out.println("[Engine] ArcadeGameEngine initialized - Default item config");
         }
     }
 

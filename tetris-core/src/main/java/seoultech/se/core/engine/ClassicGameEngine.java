@@ -53,7 +53,7 @@ public class ClassicGameEngine implements GameEngine {
      */
     public ClassicGameEngine(GameModeConfig config) {
         this.config = config != null ? config : GameModeConfig.classic();
-        System.out.println("✅ [ClassicGameEngine] Created (Classic Mode - No Items, Stateless)");
+        System.out.println("[Engine] ClassicGameEngine initialized");
     }
 
     /**
@@ -65,7 +65,7 @@ public class ClassicGameEngine implements GameEngine {
     @Override
     @Deprecated
     public void initialize(GameModeConfig config) {
-        System.out.println("⚠️ [ClassicGameEngine] initialize() is deprecated - use constructor injection");
+        // Deprecated - use constructor injection
     }
     
     /**
@@ -153,14 +153,11 @@ public class ClassicGameEngine implements GameEngine {
             
             return newState;
         } else {
-            System.out.println("❌ [ClassicGameEngine] tryMoveDown FAILED - Y=" + state.getCurrentY() + 
-                ", newY=" + newY + ", type=" + state.getCurrentTetromino().getType());
             // Phase 4: 무게추가 바닥/블록에 닿으면 잠김
             if (state.getCurrentTetromino().getType() == TetrominoType.WEIGHT_BOMB && 
                 !state.isWeightBombLocked()) {
                 GameState newState = state.deepCopy();
                 newState.setWeightBombLocked(true);
-                System.out.println("⚓ [ClassicGameEngine] WEIGHT_BOMB locked - horizontal movement disabled");
                 return newState;  // 상태만 변경, 위치는 그대로
             }
             
@@ -383,7 +380,6 @@ public class ClassicGameEngine implements GameEngine {
      */
     @Override
     public GameState lockTetromino(GameState state) {
-        System.out.println("📦 [ClassicGameEngine] lockTetromino() CALLED - Class: " + this.getClass().getSimpleName());
         return lockTetrominoInternal(state, true);
     }
     
@@ -419,9 +415,6 @@ public class ClassicGameEngine implements GameEngine {
         // pivotAbsY = currentY + (pivotY - pivotY) = currentY
         int lockedPivotX = state.getCurrentX();
         int lockedPivotY = state.getCurrentY();
-        
-        System.out.println("🎯 [ClassicGameEngine] Locking tetromino - Pivot absolute position: (" + 
-            lockedPivotY + ", " + lockedPivotX + ")");
 
         // T-Spin 감지 (블록이 고정되기 전에 체크)
         boolean isTSpin = detectTSpin(state);
@@ -507,26 +500,6 @@ public class ClassicGameEngine implements GameEngine {
 
         // 3. 라인 클리어 체크 및 실행
         checkAndClearLines(newState, isTSpin, isTSpinMini);
-        
-        System.out.println("🎯 [ClassicGameEngine] After checkAndClearLines: lastLinesCleared = " + 
-            newState.getLastLinesCleared());
-        
-        // 🔍 디버그: checkAndClearLines 후 'L' 마커 보존 여부 확인
-        if (state.getCurrentItemType() == seoultech.se.core.engine.item.ItemType.LINE_CLEAR) {
-            int markerCount = 0;
-            for (int row = 0; row < newState.getBoardHeight(); row++) {
-                for (int col = 0; col < newState.getBoardWidth(); col++) {
-                    if (newState.getGrid()[row][col].hasItemMarker() && 
-                        newState.getGrid()[row][col].getItemMarker() == seoultech.se.core.engine.item.ItemType.LINE_CLEAR) {
-                        markerCount++;
-                        System.out.println("Ⓛ [ClassicGameEngine] 'L' marker still exists at (" + row + ", " + col + ")");
-                    }
-                }
-            }
-            if (markerCount == 0) {
-                System.out.println("⚠️ [ClassicGameEngine] WARNING: 'L' marker was lost after checkAndClearLines!");
-            }
-        }
 
         // 4. 점수 및 통계 업데이트
         boolean leveledUp = false;
@@ -536,6 +509,9 @@ public class ClassicGameEngine implements GameEngine {
             
             // 라인 클리어 추가 및 레벨업 체크
             leveledUp = newState.addLinesCleared(newState.getLastLinesCleared());
+            if (leveledUp) {
+                System.out.println("[Game] Level Up! New level: " + newState.getLevel());
+            }
 
             // 콤보 업데이트
             newState.setComboCount(newState.getComboCount() + 1);
@@ -565,6 +541,9 @@ public class ClassicGameEngine implements GameEngine {
         
         // 6. 회전 플래그 리셋
         newState.setLastActionWasRotation(false);
+        
+        // 7. ✨ CRITICAL FIX: 현재 테트로미노 제거 (새 블록 생성 신호)
+        newState.setCurrentTetromino(null);
         
         // Lock 메타데이터 저장
         newState.setLastLockedTetromino(lockedTetromino);
@@ -714,24 +693,23 @@ public class ClassicGameEngine implements GameEngine {
         // 라인 체크
         for (int row = state.getBoardHeight() - 1; row >= 0; row--) {
             boolean isFullLine = true;
-            int occupiedCount = 0;
 
             for(int col = 0; col < state.getBoardWidth(); col++) {
                 Cell cell = state.getGrid()[row][col];
                 if(!cell.isOccupied()) {
                     isFullLine = false;
-                } else {
-                    occupiedCount++;
+                    break;
                 }
             }
 
             if (isFullLine) {
                 clearedRowsList.add(row);
-                System.out.println("✨ [ClassicGameEngine] Full line detected at row " + row);
-            } else if (occupiedCount > 0) {
-                // 디버그: 부분적으로 채워진 줄 정보
-                System.out.println("📊 [ClassicGameEngine] Row " + row + ": " + occupiedCount + "/" + state.getBoardWidth() + " cells occupied");
             }
+        }
+
+        if (!clearedRowsList.isEmpty()) {
+            System.out.println("[Game] Lines cleared: " + clearedRowsList.size() + 
+                (isTSpin ? (isTSpinMini ? " (T-Spin Mini)" : " (T-Spin)") : ""));
         }
 
         if (clearedRowsList.isEmpty()){

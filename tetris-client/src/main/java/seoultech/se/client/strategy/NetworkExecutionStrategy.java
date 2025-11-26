@@ -1,13 +1,16 @@
 package seoultech.se.client.strategy;
 
+import java.util.function.Consumer;
+
 import seoultech.se.backend.network.NetworkGameClient;
+import seoultech.se.backend.network.NetworkTemplate;
 import seoultech.se.core.GameState;
 import seoultech.se.core.command.GameCommand;
 
 /**
  * 네트워크 실행 전략 (멀티플레이)
  *
- * MultiPlayStrategies를 활용하여 Client-side prediction과
+ * NetworkGameClient를 활용하여 Client-side prediction과
  * Server reconciliation을 수행합니다.
  *
  * 실행 흐름:
@@ -26,13 +29,43 @@ public class NetworkExecutionStrategy implements GameExecutionStrategy {
     /**
      * NetworkExecutionStrategy 생성자
      *
-     * @param networkGameClient 네트워크 통신을 담당하는 NetworkGameClient 인스턴스
+     * @param networkTemplate 네트워크 통신 템플릿 (현재 사용 안함, 향후 확장용)
+     * @param networkGameClient 네트워크 게임 클라이언트 (Client-side prediction 담당)
      */
-    public NetworkExecutionStrategy(NetworkGameClient multiPlayStrategies) {
-        if (multiPlayStrategies == null) {
-            throw new IllegalArgumentException("MultiPlayStrategies cannot be null");
+    public NetworkExecutionStrategy(
+            NetworkTemplate networkTemplate,
+            NetworkGameClient networkGameClient) {
+        if (networkTemplate == null) {
+            throw new IllegalArgumentException("NetworkTemplate cannot be null");
         }
-        this.networkGameClient = multiPlayStrategies;
+        if (networkGameClient == null) {
+            throw new IllegalArgumentException("NetworkGameClient cannot be null");
+        }
+        // networkTemplate은 향후 확장을 위해 검증만 수행
+        this.networkGameClient = networkGameClient;
+    }
+
+    /**
+     * 세션 초기화 및 멀티플레이 모드 설정
+     *
+     * @param sessionId STOMP 세션 ID
+     * @param initialState 초기 게임 상태
+     * @param opponentStateCallback 상대방 상태 업데이트 콜백
+     * @param attackLinesCallback 공격 라인 수신 콜백
+     */
+    public void setupMultiplayMode(
+            String sessionId,
+            GameState initialState,
+            Consumer<GameState> opponentStateCallback,
+            Consumer<Integer> attackLinesCallback) {
+        // NetworkGameClient 초기화
+        networkGameClient.init(sessionId, initialState);
+        
+        // 콜백 설정
+        networkGameClient.setOpponentStateCallback(opponentStateCallback);
+        networkGameClient.setAttackLinesCallback(attackLinesCallback);
+        
+        System.out.println("✅ NetworkExecutionStrategy initialized - Session: " + sessionId);
     }
 
     /**

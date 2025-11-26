@@ -175,6 +175,24 @@ public class MultiplayerMatchingService {
     }
 
     /**
+     * NetworkExecutionStrategy 생성
+     * 
+     * @return 새로운 NetworkExecutionStrategy 인스턴스
+     */
+    public seoultech.se.client.strategy.NetworkExecutionStrategy createNetworkExecutionStrategy() {
+        if (networkTemplate == null || networkGameClient == null) {
+            throw new IllegalStateException(
+                "Network components not available. " +
+                "Ensure backend module dependencies are correctly configured."
+            );
+        }
+        return new seoultech.se.client.strategy.NetworkExecutionStrategy(
+            networkTemplate,
+            networkGameClient
+        );
+    }
+
+    /**
      * 연결 종료
      */
     public void disconnect() {

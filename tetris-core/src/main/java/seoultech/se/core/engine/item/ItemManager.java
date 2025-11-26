@@ -182,8 +182,8 @@ public class ItemManager {
             ItemType itemType = generateRandomItemType();
 
             if (itemType != null) {
+                System.out.println("[Item] Generated: " + itemType);
                 newState.setNextBlockItemType(itemType);
-                System.out.println("🎁 [ItemManager] Item generated after " + LINES_PER_ITEM + " lines: " + itemType);
             }
 
             // 카운터 리셋
@@ -191,8 +191,6 @@ public class ItemManager {
         } else {
             // 카운터만 갱신
             newState.setLinesUntilNextItem(remaining);
-            System.out.println("📊 [ItemManager] Lines cleared: " + linesCleared +
-                ", remaining: " + remaining);
         }
 
         return newState;
@@ -259,16 +257,16 @@ public class ItemManager {
      */
     public ItemEffect useItem(Item item, GameState gameState, int row, int col) {
         if (item == null || !item.isEnabled()) {
-            System.out.println("⚠️ Cannot use item: " + (item != null ? item.getType() : "null"));
+            System.err.println("[ERROR] Cannot use item: " + (item != null ? item.getType() : "null"));
             return ItemEffect.none();
         }
         
+        System.out.println("[Item] Using: " + item.getType());
         ItemEffect effect = item.apply(gameState, row, col);
         
-        if (effect.isSuccess()) {
-            System.out.println("✨ Item used successfully: " + item.getType() + 
-                " - Blocks cleared: " + effect.getBlocksCleared() + 
-                ", Bonus score: " + effect.getBonusScore());
+        if (effect.isSuccess() && effect.getBlocksCleared() > 0) {
+            System.out.println("[Item] Effect - Cleared: " + effect.getBlocksCleared() + 
+                " blocks, Score: +" + effect.getBonusScore());
         }
         
         return effect;

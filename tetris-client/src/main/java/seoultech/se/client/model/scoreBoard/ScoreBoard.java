@@ -47,7 +47,7 @@ public class ScoreBoard extends VBox{
         rankCol.setCellValueFactory(new PropertyValueFactory<>("rank"));
         nameCol.setCellValueFactory(new PropertyValueFactory<>("name"));
         scoreCol.setCellValueFactory(new PropertyValueFactory<>("score"));
-        modeCol.setCellValueFactory(new PropertyValueFactory<>("gameMode"));
+        modeCol.setCellValueFactory(new PropertyValueFactory<>("difficulty"));
         dateCol.setCellValueFactory(new PropertyValueFactory<>("createdAt"));
 
         // 테이블에 컬럼 추가

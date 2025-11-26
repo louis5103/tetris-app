@@ -134,30 +134,55 @@ public interface GameEngine {
         }
         
         switch (command.getCommandType()) {
-            case MOVE_LEFT:
-                return tryMoveLeft(state);
-            case MOVE_RIGHT:
-                return tryMoveRight(state);
-            case MOVE_DOWN:
-                // ✨ DOWN 이동 시도 후, 실패하면 블록 고정 처리
-                GameState newState = tryMoveDown(state, true);  // Soft Drop
-                if (newState == state) {
-                    // 이동 실패: 블록을 고정 (lockTetromino가 라인 클리어까지 처리)
-                    // 새 블록 생성은 BoardController에서 처리
-                    return lockTetromino(state);
+            case MOVE:
+                // MoveCommand를 캐스팅하여 Direction 확인
+                if (command instanceof seoultech.se.core.command.MoveCommand) {
+                    seoultech.se.core.command.MoveCommand moveCmd = (seoultech.se.core.command.MoveCommand) command;
+                    switch (moveCmd.getDirection()) {
+                        case LEFT:
+                            return tryMoveLeft(state);
+                        case RIGHT:
+                            return tryMoveRight(state);
+                        case DOWN:
+                            // ✨ DOWN 이동 시도 후, 실패하면 블록 고정 처리
+                            GameState newState = tryMoveDown(state, moveCmd.isSoftDrop());
+                            if (newState == state) {
+                                // 이동 실패: 블록을 고정 (lockTetromino가 라인 클리어까지 처리)
+                                // 새 블록 생성은 BoardController에서 처리
+                                return lockTetromino(state);
+                            }
+                            return newState;
+                        default:
+                            return state;
+                    }
                 }
-                return newState;
-            case ROTATE_CW:
-                return tryRotate(state, RotationDirection.CLOCKWISE);
-            case ROTATE_CCW:
-                return tryRotate(state, RotationDirection.COUNTERCLOCKWISE);
+                return state;
+            case ROTATE:
+                // RotateCommand를 캐스팅하여 방향 확인
+                if (command instanceof seoultech.se.core.command.RotateCommand) {
+                    seoultech.se.core.command.RotateCommand rotateCmd = (seoultech.se.core.command.RotateCommand) command;
+                    return tryRotate(state, rotateCmd.getDirection());
+                }
+                return state;
             case HARD_DROP:
                 return hardDrop(state);
             case HOLD:
                 return tryHold(state);
             case PAUSE:
+                // GameState를 복사하여 isPaused를 true로 설정
+                if (!state.isPaused()) {
+                    GameState pausedState = state.deepCopy();
+                    pausedState.setPaused(true);
+                    return pausedState;
+                }
+                return state;
             case RESUME:
-                // Pause/Resume은 BoardController에서 처리
+                // GameState를 복사하여 isPaused를 false로 설정
+                if (state.isPaused()) {
+                    GameState resumedState = state.deepCopy();
+                    resumedState.setPaused(false);
+                    return resumedState;
+                }
                 return state;
             default:
                 return state;

@@ -1,28 +1,17 @@
 package seoultech.se.client.controller;
 
 import java.io.IOException;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import javafx.application.Platform;
-import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Label;
-import javafx.scene.control.TableColumn;
-import javafx.scene.control.TableView;
-import javafx.scene.control.TextField;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.shape.Rectangle;
-import seoultech.se.backend.score.ScoreRankDto;
-import seoultech.se.backend.score.ScoreRequestDto;
 import seoultech.se.backend.score.ScoreService;
 import seoultech.se.client.config.ApplicationContextProvider;
 import seoultech.se.client.constants.UIConstants;
@@ -100,15 +89,12 @@ public class GameController {
 
     @Autowired
     private ScoreService scoreService;
-
-    @Autowired(required = false)
-    private seoultech.se.backend.network.NetworkTemplate networkClient;
-
-    @Autowired(required = false)
-    private seoultech.se.backend.network.NetworkGameClient multiPlayStrategies;
-
-    @Autowired(required = false)
-    private seoultech.se.client.service.MultiplayerMatchingService matchingService;
+    
+    @Autowired
+    private seoultech.se.client.service.GameModeConfigFactory configFactory;
+    
+    @Autowired
+    private seoultech.se.client.config.ClientSettings clientSettings;
 
     // 게임 로직 컨트롤러
     private BoardController boardController;
@@ -116,8 +102,8 @@ public class GameController {
     // 게임 모드 설정
     private GameModeConfig gameModeConfig;
 
-    // ✨ Strategy Pattern: 플레이 타입 및 실행 전략
-    private seoultech.se.core.engine.mode.PlayType playType;
+    // ✨ Strategy Pattern: 멀티플레이 여부 및 실행 전략
+    private boolean isMultiplayerMode = false;
     private seoultech.se.client.strategy.GameExecutionStrategy executionStrategy;
 
     // UI 관리 클래스들
@@ -165,58 +151,54 @@ public class GameController {
     }
     
     /**
-     * 게임 모드 설정을 적용하고 게임을 초기화합니다
+     * 게임 모드 설정 (NEW - ClientSettings + Difficulty 기반)
      * MainController에서 씬 전환 전에 호출됩니다
      * 
-     * @param config 게임 모드 설정
+     * @param gameplayType 게임플레이 타입 (CLASSIC or ARCADE)
+     * @param isMultiplayer 멀티플레이 모드 여부
      */
-    /**
-     * 게임 모드 설정 (PlayType 포함)
-     *
-     * @param config 게임 모드 설정
-     * @param playType 플레이 타입 (LOCAL_SINGLE or ONLINE_MULTI)
-     */
-    public void setGameModeConfig(GameModeConfig config, seoultech.se.core.engine.mode.PlayType playType) {
-        this.gameModeConfig = config;
-        this.playType = playType;
+    public void setGameMode(seoultech.se.core.config.GameplayType gameplayType, boolean isMultiplayer) {
+        this.isMultiplayerMode = isMultiplayer;
+        
+        // 현재 선택된 Difficulty 가져오기
+        seoultech.se.core.model.enumType.Difficulty difficulty = settingsService.getCurrentDifficulty();
+        
+        // ClientSettings + Difficulty → GameModeConfig 생성
+        this.gameModeConfig = configFactory.create(clientSettings, gameplayType, difficulty);
 
-        System.out.println("⚙️ Game mode config set: " +
-            (config.getGameplayType() != null ? config.getGameplayType() : "CLASSIC") +
-            ", PlayType: " + playType.getDisplayName() +
-            ", SRS: " + config.isSrsEnabled() +
-            ", Hard Drop: " + config.isHardDropEnabled() +
-            ", Hold: " + config.isHoldEnabled() +
-            ", Drop Speed: " + config.getDropSpeedMultiplier() + "x");
+        System.out.println("⚙️ Game mode set: " +
+            gameplayType.getDisplayName() +
+            ", Mode: " + (isMultiplayer ? "MULTIPLAYER" : "SINGLEPLAYER") +
+            ", Difficulty: " + difficulty +
+            ", SRS: " + gameModeConfig.isSrsEnabled() +
+            ", Hard Drop: " + gameModeConfig.isHardDropEnabled() +
+            ", Drop Speed: " + gameModeConfig.getDropSpeedMultiplier() + "x");
 
         // 이제 실제 게임 초기화 수행
         startInitialization();
     }
-
+    
     /**
-     * 게임 모드 설정 (하위 호환성 - PlayType 기본값: LOCAL_SINGLE)
-     *
-     * @param config 게임 모드 설정
+     * 싱글플레이 게임 시작 (하위 호환성)
      */
-    public void setGameModeConfig(GameModeConfig config) {
-        setGameModeConfig(config, seoultech.se.core.engine.mode.PlayType.LOCAL_SINGLE);
+    public void setGameMode(seoultech.se.core.config.GameplayType gameplayType) {
+        setGameMode(gameplayType, false);
     }
     
     /**
      * 실제 게임 초기화를 수행합니다
-     * setGameModeConfig()에서 호출되어 config가 확실히 설정된 후 실행됩니다
+     * setGameMode()에서 호출되어 config가 확실히 설정된 후 실행됩니다
      */
     private void startInitialization() {
         System.out.println("🚀 Starting game initialization with config...");
         
-        // GameModeConfig 기본값 설정 (혹시 모를 경우 대비)
+        // GameModeConfig 검증 (필수)
         if (gameModeConfig == null) {
-            gameModeConfig = GameModeConfig.classic();
-            System.out.println("⚠️ Config was null, using default CLASSIC");
+            throw new IllegalStateException("GameModeConfig must be set before initialization. Call setGameMode() first.");
         }
 
-        // ✨ Phase 5: 설정된 난이도 가져오기
-        seoultech.se.core.model.enumType.Difficulty difficulty = 
-            settingsService.getCurrentDifficulty();
+        // GameModeConfig에 이미 포함된 Difficulty 사용 (중복 조회 제거)
+        seoultech.se.core.model.enumType.Difficulty difficulty = gameModeConfig.getDifficulty();
         
         System.out.println("🎮 Creating BoardController with difficulty: " + difficulty.getDisplayName());
         
@@ -226,8 +208,6 @@ public class GameController {
         GameState gameState = boardController.getGameState();
         System.out.println("📊 Board created: " + gameState.getBoardWidth() + "x" + gameState.getBoardHeight());
         System.out.println("   - Difficulty: " + difficulty.getDisplayName());
-        System.out.println("   - I-Block Multiplier: " + difficulty.getIBlockMultiplier() + "x");
-        System.out.println("   - Score Multiplier: " + difficulty.getScoreMultiplier() + "x");
 
         // UI 초기화
         initializeGridPane(gameState);
@@ -253,16 +233,11 @@ public class GameController {
      * ✨ 실행 전략 초기화
      *
      * 플레이 타입에 따라 적절한 Strategy를 생성하고 BoardController에 설정합니다.
-     * - LOCAL_SINGLE: LocalExecutionStrategy (GameEngine 직접 호출)
-     * - ONLINE_MULTI: NetworkExecutionStrategy (MultiPlayStrategies 사용)
+     * - Singleplay: LocalExecutionStrategy (GameEngine 직접 호출)
+     * - Multiplay: NetworkExecutionStrategy (MultiPlayStrategies 사용)
      */
     private void initializeExecutionStrategy() {
-        if (playType == null) {
-            playType = seoultech.se.core.engine.mode.PlayType.LOCAL_SINGLE;
-            System.out.println("⚠️ PlayType was null, defaulting to LOCAL_SINGLE");
-        }
-
-        if (playType == seoultech.se.core.engine.mode.PlayType.ONLINE_MULTI) {
+        if (isMultiplayerMode) {
             // 멀티플레이: 상대방 보드 활성화
             enableOpponentBoard();
             System.out.println("ℹ️ Multiplay mode - Strategy will be set after session creation");
@@ -291,16 +266,16 @@ public class GameController {
     /**
      * ✨ 멀티플레이 모드 설정
      *
-     * 세션 생성/매칭 성공 후 외부에서 호출됩니다.
+     * 세션 생성/매칭 성공 후 외부(매칭 화면 컨트롤러)에서 호출됩니다.
      *
+     * @param networkStrategy 설정된 NetworkExecutionStrategy
      * @param sessionId STOMP 세션 ID
      */
-    public void setupMultiplayMode(String sessionId) {
-        if (multiPlayStrategies == null) {
-            throw new IllegalStateException(
-                "MultiPlayStrategies not available. " +
-                "Ensure backend module dependencies are correctly configured."
-            );
+    public void setupMultiplayMode(
+            seoultech.se.client.strategy.NetworkExecutionStrategy networkStrategy,
+            String sessionId) {
+        if (networkStrategy == null) {
+            throw new IllegalArgumentException("NetworkExecutionStrategy cannot be null");
         }
 
         if (boardController == null) {
@@ -310,66 +285,21 @@ public class GameController {
             );
         }
 
-        // 1. 초기 GameState로 세션 초기화
+        this.executionStrategy = networkStrategy;
+
+        // 초기 GameState 및 콜백과 함께 멀티플레이 모드 설정
         GameState initialState = boardController.getGameState();
-        multiPlayStrategies.init(sessionId, initialState);
+        networkStrategy.setupMultiplayMode(
+            sessionId,
+            initialState,
+            this::onOpponentStateUpdate,
+            this::onAttackLinesReceived
+        );
 
-        // 2. 상대방 상태 업데이트 콜백 설정
-        multiPlayStrategies.setOpponentStateCallback(this::onOpponentStateUpdate);
-
-        // 3. 공격 라인 수신 콜백 설정
-        multiPlayStrategies.setAttackLinesCallback(this::onAttackLinesReceived);
-
-        // 4. NetworkExecutionStrategy 생성 및 설정
-        executionStrategy = new seoultech.se.client.strategy.NetworkExecutionStrategy(multiPlayStrategies);
+        // BoardController에 전략 설정
         boardController.setExecutionStrategy(executionStrategy);
 
         System.out.println("✅ Multi-play mode initialized - Session: " + sessionId);
-    }
-
-    /**
-     * ✨ 멀티플레이 매칭 시작
-     *
-     * 매칭 서비스를 통해 서버 연결 및 세션 생성을 수행합니다.
-     * 성공 시 setupMultiplayMode()가 자동으로 호출됩니다.
-     *
-     * @param serverUrl 서버 URL (예: "ws://localhost:8080/game")
-     * @param jwtToken JWT 인증 토큰
-     */
-    public void startMultiplayerMatching(String serverUrl, String jwtToken) {
-        if (matchingService == null) {
-            showError("Matching service not available",
-                "MultiplayerMatchingService is not configured. Check backend dependencies.");
-            return;
-        }
-
-        System.out.println("🔍 [GameController] Starting multiplayer matching...");
-
-        matchingService.startMatching(
-            serverUrl,
-            jwtToken,
-            // 성공 콜백: 세션 ID를 받아서 setupMultiplayMode 호출
-            sessionId -> {
-                System.out.println("✅ [GameController] Matching successful - SessionID: " + sessionId);
-                Platform.runLater(() -> {
-                    try {
-                        setupMultiplayMode(sessionId);
-                        System.out.println("✅ [GameController] Multiplayer mode setup complete");
-                    } catch (Exception e) {
-                        System.err.println("❌ [GameController] Failed to setup multiplayer mode: " + e.getMessage());
-                        e.printStackTrace();
-                        showError("Setup Failed", "Failed to initialize multiplayer mode: " + e.getMessage());
-                    }
-                });
-            },
-            // 실패 콜백: 에러 메시지 표시
-            errorMessage -> {
-                System.err.println("❌ [GameController] Matching failed: " + errorMessage);
-                Platform.runLater(() -> {
-                    showError("Matching Failed", errorMessage);
-                });
-            }
-        );
     }
 
     /**
@@ -456,10 +386,7 @@ public class GameController {
         System.out.println("   - itemConfig: " + (gameModeConfig != null ? gameModeConfig.getItemConfig() : "null"));
         System.out.println("   - isEnabled: " + (gameModeConfig != null && gameModeConfig.getItemConfig() != null ? gameModeConfig.getItemConfig().isEnabled() : "N/A"));
         
-        if (gameModeConfig != null && 
-            gameModeConfig.getItemConfig() != null && 
-            gameModeConfig.getItemConfig().isEnabled()) {
-            
+        if (gameModeConfig != null && gameModeConfig.isItemSystemEnabled()) {
             int maxInventorySize = gameModeConfig.getItemConfig().getMaxInventorySize();
             System.out.println("   - maxInventorySize: " + maxInventorySize);
             
@@ -524,17 +451,18 @@ public class GameController {
             GameState gameState = boardController.getGameState();
             
             if (gameState.isGameOver()) {
+                System.out.println("⚠️ [GameController] Game is over, stopping loop");
                 return false; // 게임 루프 중지
             }
             
             if (gameState.isPaused()) {
+                System.out.println("⏸️  [GameController] Game is paused, skipping tick");
                 return true; // 일시정지 중이면 블록 낙하 안 함, 루프는 계속
             }
             
             // 블록 자동 낙하
             GameState oldState = gameState.deepCopy();
             GameState newState = boardController.executeCommand(new MoveCommand(Direction.DOWN));
-            
             // GameState 비교하여 UI 힌트 추출 및 업데이트
             showUiHints(oldState, newState);
             
@@ -815,6 +743,8 @@ public class GameController {
      */
     private void showUiHints(GameState oldState, GameState newState) {
         Platform.runLater(() -> {
+            
+            
             // 1. 보드 전체 렌더링
             boardRenderer.drawBoard(newState);
             
@@ -904,13 +834,8 @@ public class GameController {
             ItemType droppedItemType = newState.getNextBlockItemType();
             if (droppedItemType != null && itemInventoryPanel != null) {
                 // 아이템이 드롭되었음 - 인벤토리에 추가
-                // GameModeConfig로 아케이드 모드 확인
-                boolean isArcadeMode = gameModeConfig != null && 
-                                      gameModeConfig.getItemConfig() != null && 
-                                      gameModeConfig.getItemConfig().isEnabled();
-                
                 seoultech.se.core.engine.item.Item droppedItem = null;
-                if (isArcadeMode) {
+                if (gameModeConfig != null && gameModeConfig.isItemSystemEnabled()) {
                     // ItemType으로 직접 Item 생성 (GameEngine 접근 불필요)
                     droppedItem = createItemFromType(droppedItemType);
                 }
@@ -985,10 +910,7 @@ public class GameController {
         }
         
         // 아케이드 모드에서만 아이템 사용 가능
-        boolean isArcadeMode = gameModeConfig != null && 
-                              gameModeConfig.getItemConfig() != null && 
-                              gameModeConfig.getItemConfig().isEnabled();
-        if (!isArcadeMode) {
+        if (gameModeConfig == null || !gameModeConfig.isItemSystemEnabled()) {
             System.out.println("⚠️ [GameController] Item system not available in this mode");
             notificationManager.showLineClearType("❌ Items not available in this mode");
             return;
@@ -1092,7 +1014,7 @@ public class GameController {
         gameLoopManager.stop();
         gameOverLabel.setVisible(true);
 
-        boolean isItemMode = gameModeConfig.getItemConfig() != null && gameModeConfig.getItemConfig().isEnabled();
+        boolean isItemMode = gameModeConfig != null && gameModeConfig.isItemSystemEnabled();
         popupManager.showGameOverPopup(finalScore, isItemMode, settingsService.getCurrentDifficulty());
     }
     
@@ -1187,15 +1109,10 @@ public class GameController {
      *
      * 멀티플레이인 경우 네트워크 연결을 정리합니다.
      * Restart나 Quit 시 호출됩니다.
+     * 
+     * 참고: 네트워크 연결 정리는 매칭 화면 컨트롤러에서 처리해야 합니다.
      */
     private void cleanupExecutionStrategy() {
-        if (executionStrategy instanceof seoultech.se.client.strategy.NetworkExecutionStrategy) {
-            // 네트워크 연결 정리
-            if (multiPlayStrategies != null) {
-                multiPlayStrategies.disconnect();
-                System.out.println("   ✓ Network connections cleaned up");
-            }
-        }
         executionStrategy = null;
         opponentBoardView = null; // 상대방 보드 뷰 정리
         System.out.println("   ✓ ExecutionStrategy cleaned up");

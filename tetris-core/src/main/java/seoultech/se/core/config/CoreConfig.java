@@ -116,7 +116,7 @@ public class CoreConfig {
         
         // 기본 Classic 모드 설정
         return GameModeConfig.builder()
-            .gameModeType(seoultech.se.core.engine.mode.GameModeType.CLASSIC)
+            .gameplayType(seoultech.se.core.config.GameplayType.CLASSIC)
             .difficulty(seoultech.se.core.model.enumType.Difficulty.NORMAL)
             .itemConfig(null)  // Classic 모드는 아이템 없음
             .build();

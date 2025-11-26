@@ -1,31 +1,20 @@
 package seoultech.se.client.controller;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
-import javafx.fxml.FXMLLoader;
-import javafx.scene.Parent;
-import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.RadioButton;
 import javafx.scene.control.Slider;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
-import javafx.scene.layout.VBox;
-import javafx.stage.Modality;
-import javafx.stage.Stage;
 import seoultech.se.backend.score.ScoreService;
 import seoultech.se.client.config.ApplicationContextProvider;
 import seoultech.se.client.model.GameAction;
-import seoultech.se.client.model.Setting;
-import seoultech.se.client.repository.SettingsRepository;
 import seoultech.se.client.service.KeyMappingService;
 import seoultech.se.client.service.NavigationService;
 
@@ -36,8 +25,6 @@ public class SettingSceneController extends BaseController {
     private NavigationService navigationService;
     @Autowired
     private KeyMappingService keyMappingService;
-    @Autowired
-    private SettingsRepository settingsRepository;
 
     private ScoreService scoreService;
 
@@ -78,13 +65,8 @@ public class SettingSceneController extends BaseController {
     private GameAction waitingForKey = null;
     private Button activeButton = null;
 
-    // Custom Settings
-    @FXML
-    private VBox settingContainer;
-    @FXML
-    private Button saveCustomButton, deleteCustomButton;
-    private List<Setting> settings = new ArrayList<>();
-    private Setting selectedSetting = null;
+    // Custom Settings (Deprecated - removed)
+    // Custom setting feature has been removed
 
     @FXML
     private Button resetButton;
@@ -109,7 +91,7 @@ public class SettingSceneController extends BaseController {
         });
 
         updateButtonLabels();
-        loadCustomSettings();
+        // loadCustomSettings() removed - custom settings feature deprecated
 
     }
 
@@ -384,127 +366,15 @@ public class SettingSceneController extends BaseController {
         updateButtonLabels();
     }
 
-    private void loadCustomSettings() {
-        settings = settingsRepository.loadSettings();
-        settingContainer.getChildren().clear();
+    // loadCustomSettings() removed - custom settings feature deprecated
 
-        for (Setting setting : settings) {
-            Button button = createCustomSettingButton(setting);
-            if (setting.isSelected()) {
-                button.getStyleClass().add("custom-setting-button-selected");
-                selectedSetting = setting;
-            }
-            settingContainer.getChildren().add(button);
-        }
-    }
+    // addCustomSetting() removed - custom settings feature deprecated
 
-    public void addCustomSetting(Setting setting) {
-        settings.add(setting);
-        settingsRepository.saveSettings(settings);
-        Button button = createCustomSettingButton(setting);
-        settingContainer.getChildren().add(button);
-    }
+    // createCustomSettingButton() removed - custom settings feature deprecated
 
-    private Button createCustomSettingButton(Setting setting) {
-        Button button = new Button(setting.getName());
-        button.getStyleClass().add("menu-button-middle");
-        button.setMaxWidth(Double.MAX_VALUE);
+    // applyCustomSettings() removed - custom settings feature deprecated
 
-        button.setOnAction(event -> {
-            // Deselect all settings first
-            settings.forEach(s -> s.setSelected(false));
-
-            settingContainer.getChildren().forEach(node -> {
-                if (node instanceof Button) {
-                    node.getStyleClass().remove("custom-setting-button-selected");
-                }
-            });
-
-            // Select current setting
-            setting.setSelected(true);
-            button.getStyleClass().add("custom-setting-button-selected");
-            selectedSetting = setting;
-
-            applyCustomSettings(setting);
-
-            // Save the changes
-            settingsRepository.saveSettings(settings);
-        });
-
-        return button;
-    }
-
-    private void applyCustomSettings(Setting setting) {
-        Map<String, String> configs = setting.getConfigurations();
-        if (configs != null) {
-            double soundVolume = Double.parseDouble(configs.getOrDefault("soundVolume", "80"));
-            settingsService.soundVolumeProperty().set(soundVolume);
-            settingsService.colorModeProperty().set(configs.getOrDefault("colorMode", "colorModeDefault"));
-            settingsService.screenSizeProperty().set(configs.getOrDefault("screenSize", "screenSizeM"));
-            settingsService.stageHeightProperty().set(Double.parseDouble(configs.getOrDefault("stageHeight", "700")));
-            settingsService.stageWidthProperty().set(Double.parseDouble(configs.getOrDefault("stageWidth", "500")));
-            double width = Double.parseDouble(configs.getOrDefault("stageWidth", "500"));
-            double height = Double.parseDouble(configs.getOrDefault("stageHeight", "700"));
-            settingsService.saveSettings();
-            settingsService.applyResolution(width, height);
-        }
-    }
-
-    @FXML
-    private void handleSaveCustomButton() {
-        try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/view/custom-setting-pop.fxml"));
-            Parent root = loader.load();
-
-            CustomSettingPopController popController = loader.getController();
-            popController.setMainController(this);
-
-            Stage popupStage = new Stage();
-            popupStage.initModality(Modality.APPLICATION_MODAL);
-            popupStage.setTitle("Save Setting");
-            popupStage.setScene(new Scene(root));
-
-            popupStage.showAndWait();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    @FXML
-    private void handleDeleteCustomButton() {
-        if (selectedSetting != null) {
-            settings.remove(selectedSetting);
-            settingsRepository.saveSettings(settings);
-            loadCustomSettings();
-            settingContainer.getChildren().forEach(node -> {
-                if (node instanceof Button) {
-                    Button btn = (Button) node;
-                    btn.getStyleClass().remove("custom-setting-button-selected");
-                }
-            });
-            selectedSetting = null;
-        }
-    }
-
-    public void selectCustomSetting(Setting setting) {
-        // Deselect all settings
-        settings.forEach(s -> s.setSelected(false));
-
-        // Select the chosen setting
-        setting.setSelected(true);
-        settingsRepository.saveSettings(settings);
-
-        // Update UI
-        settingContainer.getChildren().forEach(node -> {
-            if (node instanceof Button) {
-                Button btn = (Button) node;
-                btn.getStyleClass().remove("custom-setting-button-selected");
-                if (btn.getText().equals(setting.getName())) {
-                    btn.getStyleClass().add("custom-setting-button-selected");
-                }
-            }
-        });
-    }
+    // handleSaveCustomButton(), handleDeleteCustomButton(), selectCustomSetting() removed - custom settings feature deprecated
 
     /**
      * 로그아웃 버튼 클릭 핸들러
