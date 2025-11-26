@@ -1,9 +1,9 @@
-package seoultech.se.core.item.impl;
+package seoultech.se.core.engine.item.impl;
 
 import seoultech.se.core.GameState;
-import seoultech.se.core.item.AbstractItem;
-import seoultech.se.core.item.ItemEffect;
-import seoultech.se.core.item.ItemType;
+import seoultech.se.core.engine.item.AbstractItem;
+import seoultech.se.core.engine.item.ItemEffect;
+import seoultech.se.core.engine.item.ItemType;
 import seoultech.se.core.model.Cell;
 import seoultech.se.core.model.enumType.TetrominoType;
 

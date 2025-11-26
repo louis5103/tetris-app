@@ -8,7 +8,7 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
-import seoultech.se.core.item.Item;
+import seoultech.se.core.engine.item.Item;
 
 /**
  * 아이템 인벤토리 UI 패널

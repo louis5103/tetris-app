@@ -1,4 +1,4 @@
-package seoultech.se.core.mode;
+package seoultech.se.core.engine.mode;
 
 /**
  * 플레이 타입을 정의하는 열거형

@@ -9,7 +9,7 @@ import org.springframework.context.annotation.Configuration;
 import lombok.Getter;
 import lombok.Setter;
 import seoultech.se.core.config.GameplayType;
-import seoultech.se.core.mode.PlayType;
+import seoultech.se.core.engine.mode.PlayType;
 
 /**
  * 게임 모드 설정을 위한 Configuration Properties

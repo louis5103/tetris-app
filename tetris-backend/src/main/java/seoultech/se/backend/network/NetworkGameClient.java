@@ -14,8 +14,8 @@ import seoultech.se.core.engine.GameEngine;
 
 @Component
 @RequiredArgsConstructor
-public class MultiPlayStrategies {
-    private final NetworkClient networkClient;
+public class NetworkGameClient {
+    private final NetworkTemplate networkClient;
     private final GameEngine gameEngine;
 
     private final LinkedList<PlayerInputDto> inputBuffer = new LinkedList<>();

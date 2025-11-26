@@ -5,9 +5,10 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
 import seoultech.se.core.config.GameplayType;
 import seoultech.se.core.engine.GameEngine;
-import seoultech.se.core.factory.GameEnginePool;
+import seoultech.se.core.engine.factory.GameEnginePool;
 
 /**
  * 게임 세션 매니저

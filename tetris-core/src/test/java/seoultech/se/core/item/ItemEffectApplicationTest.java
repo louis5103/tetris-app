@@ -16,6 +16,11 @@ import org.junit.jupiter.params.provider.CsvSource;
 import seoultech.se.core.GameState;
 import seoultech.se.core.config.GameModeConfig;
 import seoultech.se.core.engine.ArcadeGameEngine;
+import seoultech.se.core.engine.item.Item;
+import seoultech.se.core.engine.item.ItemConfig;
+import seoultech.se.core.engine.item.ItemEffect;
+import seoultech.se.core.engine.item.ItemManager;
+import seoultech.se.core.engine.item.ItemType;
 import seoultech.se.core.model.enumType.Color;
 
 /**
@@ -46,7 +51,7 @@ class ItemEffectApplicationTest {
         // Stateless 리팩토링: GameModeConfig로 생성
         GameModeConfig config = GameModeConfig.builder()
             .gameplayType(seoultech.se.core.config.GameplayType.ARCADE)
-            .gameModeType(seoultech.se.core.mode.GameModeType.ITEM)
+            .gameModeType(seoultech.se.core.engine.mode.GameModeType.ITEM)
             .difficulty(seoultech.se.core.model.enumType.Difficulty.NORMAL)
             .itemConfig(itemConfig)
             .build();

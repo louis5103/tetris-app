@@ -8,8 +8,8 @@ import org.springframework.context.annotation.Configuration;
 import seoultech.se.core.engine.ArcadeGameEngine;
 import seoultech.se.core.engine.ClassicGameEngine;
 import seoultech.se.core.engine.GameEngine;
-import seoultech.se.core.item.ItemConfig;
-import seoultech.se.core.item.ItemManager;
+import seoultech.se.core.engine.item.ItemConfig;
+import seoultech.se.core.engine.item.ItemManager;
 
 /**
  * Core 모듈 설정 클래스
@@ -116,7 +116,7 @@ public class CoreConfig {
         
         // 기본 Classic 모드 설정
         return GameModeConfig.builder()
-            .gameModeType(seoultech.se.core.mode.GameModeType.CLASSIC)
+            .gameModeType(seoultech.se.core.engine.mode.GameModeType.CLASSIC)
             .difficulty(seoultech.se.core.model.enumType.Difficulty.NORMAL)
             .itemConfig(null)  // Classic 모드는 아이템 없음
             .build();

@@ -12,8 +12,8 @@ import org.junit.jupiter.api.Test;
 
 import seoultech.se.core.GameState;
 import seoultech.se.core.config.GameModeConfig;
-import seoultech.se.core.item.ItemManager;
-import seoultech.se.core.item.ItemType;
+import seoultech.se.core.engine.item.ItemManager;
+import seoultech.se.core.engine.item.ItemType;
 import seoultech.se.core.model.Tetromino;
 import seoultech.se.core.model.enumType.TetrominoType;
 

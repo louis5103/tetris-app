@@ -11,9 +11,14 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import seoultech.se.core.GameState;
-import seoultech.se.core.item.impl.BombItem;
-import seoultech.se.core.item.impl.BonusScoreItem;
-import seoultech.se.core.item.impl.PlusItem;
+import seoultech.se.core.engine.item.Item;
+import seoultech.se.core.engine.item.ItemConfig;
+import seoultech.se.core.engine.item.ItemEffect;
+import seoultech.se.core.engine.item.ItemManager;
+import seoultech.se.core.engine.item.ItemType;
+import seoultech.se.core.engine.item.impl.BombItem;
+import seoultech.se.core.engine.item.impl.BonusScoreItem;
+import seoultech.se.core.engine.item.impl.PlusItem;
 import seoultech.se.core.model.Cell;
 import seoultech.se.core.model.enumType.Color;
 

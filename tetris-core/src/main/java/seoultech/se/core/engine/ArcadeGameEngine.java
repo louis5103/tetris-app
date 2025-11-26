@@ -2,7 +2,7 @@ package seoultech.se.core.engine;
 
 import seoultech.se.core.GameState;
 import seoultech.se.core.config.GameModeConfig;
-import seoultech.se.core.item.ItemManager;
+import seoultech.se.core.engine.item.ItemManager;
 import seoultech.se.core.model.enumType.TetrominoType;
 
 /**
@@ -121,11 +121,11 @@ public class ArcadeGameEngine extends ClassicGameEngine {
         TetrominoType previousHeld = newState.getHeldPiece();
         
         // Phase 5: 현재 블록의 아이템 정보 저장
-        seoultech.se.core.item.ItemType currentItemType = newState.getCurrentItemType();
+        seoultech.se.core.engine.item.ItemType currentItemType = newState.getCurrentItemType();
         boolean currentWeightBombLocked = newState.isWeightBombLocked();
         
         // Phase 5: Hold된 블록의 아이템 정보 가져오기
-        seoultech.se.core.item.ItemType previousItemType = newState.getHeldItemType();
+        seoultech.se.core.engine.item.ItemType previousItemType = newState.getHeldItemType();
         boolean previousWeightBombLocked = newState.isHeldWeightBombLocked();
         
         if (previousHeld == null) {
@@ -272,7 +272,7 @@ public class ArcadeGameEngine extends ClassicGameEngine {
         // Phase 4: 무게추 낙하 중 블록 제거
         if (state.getCurrentTetromino().getType() == seoultech.se.core.model.enumType.TetrominoType.WEIGHT_BOMB) {
             // 이동 전에 아래 블록 제거
-            int blocksCleared = seoultech.se.core.item.impl.WeightBombItem.processWeightBombFall(state);
+            int blocksCleared = seoultech.se.core.engine.item.impl.WeightBombItem.processWeightBombFall(state);
             
             if (blocksCleared > 0) {
                 // 점수 추가 (블록당 10점)
@@ -306,14 +306,14 @@ public class ArcadeGameEngine extends ClassicGameEngine {
         
         if (state.getCurrentTetromino().getType() == seoultech.se.core.model.enumType.TetrominoType.WEIGHT_BOMB) {
             // 무게추 위치 계산
-            int[] weightBombX = seoultech.se.core.item.impl.WeightBombItem.getWeightBombXPositions(state);
+            int[] weightBombX = seoultech.se.core.engine.item.impl.WeightBombItem.getWeightBombXPositions(state);
             int weightBombY = state.getCurrentY();
             
             // 🔥 CRITICAL FIX: deepCopy 후 블록 제거
             stateAfterWeightBomb = state.deepCopy();
             
             // 수직 경로의 모든 블록 제거
-            int blocksCleared = seoultech.se.core.item.impl.WeightBombItem.clearVerticalPath(
+            int blocksCleared = seoultech.se.core.engine.item.impl.WeightBombItem.clearVerticalPath(
                 stateAfterWeightBomb, weightBombX, weightBombY
             );
             
@@ -370,14 +370,14 @@ public class ArcadeGameEngine extends ClassicGameEngine {
         int lineClearMarkerLines = 0;
         if (itemManager != null) {
             java.util.List<Integer> markedLines = 
-                seoultech.se.core.item.impl.LineClearItem.findAndClearMarkedLines(newState);
+                seoultech.se.core.engine.item.impl.LineClearItem.findAndClearMarkedLines(newState);
             
             if (!markedLines.isEmpty()) {
                 lineClearMarkerLines = markedLines.size();
                 
                 // 'L' 마커 줄 삭제
                 int blocksCleared = 
-                    seoultech.se.core.item.impl.LineClearItem.clearLines(newState, markedLines);
+                    seoultech.se.core.engine.item.impl.LineClearItem.clearLines(newState, markedLines);
                 
                 // 점수 추가 (줄당 100점 기본 + 블록당 10점)
                 long lineBonus = markedLines.size() * 100 * newState.getLevel();

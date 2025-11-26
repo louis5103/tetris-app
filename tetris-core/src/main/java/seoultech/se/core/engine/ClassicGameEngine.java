@@ -490,7 +490,7 @@ public class ClassicGameEngine implements GameEngine {
         
         // Phase 3: 'L' 마커 추가 (아이템 블록인 경우)
         if (state.getCurrentItemType() != null && 
-            state.getCurrentItemType() == seoultech.se.core.item.ItemType.LINE_CLEAR &&
+            state.getCurrentItemType() == seoultech.se.core.engine.item.ItemType.LINE_CLEAR &&
             !blockPositions.isEmpty()) {
             // 무작위로 하나의 블록에 'L' 마커 추가
             java.util.Random random = new java.util.Random();
@@ -498,7 +498,7 @@ public class ClassicGameEngine implements GameEngine {
             int[] markerPos = blockPositions.get(randomIndex);
             
             newState.getGrid()[markerPos[0]][markerPos[1]].setItemMarker(
-                seoultech.se.core.item.ItemType.LINE_CLEAR
+                seoultech.se.core.engine.item.ItemType.LINE_CLEAR
             );
             
             System.out.println("Ⓛ [ClassicGameEngine] LINE_CLEAR marker added at (" + 
@@ -512,12 +512,12 @@ public class ClassicGameEngine implements GameEngine {
             newState.getLastLinesCleared());
         
         // 🔍 디버그: checkAndClearLines 후 'L' 마커 보존 여부 확인
-        if (state.getCurrentItemType() == seoultech.se.core.item.ItemType.LINE_CLEAR) {
+        if (state.getCurrentItemType() == seoultech.se.core.engine.item.ItemType.LINE_CLEAR) {
             int markerCount = 0;
             for (int row = 0; row < newState.getBoardHeight(); row++) {
                 for (int col = 0; col < newState.getBoardWidth(); col++) {
                     if (newState.getGrid()[row][col].hasItemMarker() && 
-                        newState.getGrid()[row][col].getItemMarker() == seoultech.se.core.item.ItemType.LINE_CLEAR) {
+                        newState.getGrid()[row][col].getItemMarker() == seoultech.se.core.engine.item.ItemType.LINE_CLEAR) {
                         markerCount++;
                         System.out.println("Ⓛ [ClassicGameEngine] 'L' marker still exists at (" + row + ", " + col + ")");
                     }

@@ -1,4 +1,4 @@
-package seoultech.se.core.mode;
+package seoultech.se.core.engine.mode;
 
 /**
  * 게임 모드 타입

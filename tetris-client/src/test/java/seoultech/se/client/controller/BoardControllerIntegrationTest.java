@@ -2,7 +2,7 @@ package seoultech.se.client.controller;
 
 import seoultech.se.client.mode.SingleMode;
 import seoultech.se.core.config.GameModeConfig;
-import seoultech.se.core.mode.GameModeType;
+import seoultech.se.core.engine.mode.GameModeType;
 
 /**
  * BoardController 통합 테스트

@@ -15,7 +15,7 @@ import seoultech.se.core.command.MoveCommand;
 import seoultech.se.core.command.RotateCommand;
 import seoultech.se.core.config.GameModeConfig;
 import seoultech.se.core.engine.GameEngine;
-import seoultech.se.core.mode.GameMode;
+import seoultech.se.core.engine.mode.GameMode;
 import seoultech.se.core.model.Tetromino;
 import seoultech.se.core.model.enumType.Difficulty;
 import seoultech.se.core.model.enumType.TetrominoType;
@@ -76,7 +76,7 @@ public class BoardController {
         
         // ✨ Phase 5: GameEngineFactory를 사용하여 적절한 GameEngine 생성
         // Stateless 리팩토링: 생성자에서 이미 config를 주입하므로 initialize() 호출 불필요
-        seoultech.se.core.factory.GameEngineFactory factory = new seoultech.se.core.factory.GameEngineFactory();
+        seoultech.se.core.engine.factory.GameEngineFactory factory = new seoultech.se.core.engine.factory.GameEngineFactory();
         this.gameEngine = factory.createGameEngine(config);
         
         // GameModeConfig에 따라 SingleMode 생성
@@ -209,7 +209,7 @@ public class BoardController {
         }
         
         // Lock 전에 아이템 타입 기록
-        seoultech.se.core.item.ItemType itemType = gameState.getCurrentItemType();
+        seoultech.se.core.engine.item.ItemType itemType = gameState.getCurrentItemType();
         
         System.out.println("🎯 [BoardController] HARD DROP - Item type BEFORE hardDrop(): " + itemType);
         
@@ -282,7 +282,7 @@ public class BoardController {
 
     private GameState lockAndSpawnNext() {
         // Lock 전에 아이템 타입 기록
-        seoultech.se.core.item.ItemType itemType = gameState.getCurrentItemType();
+        seoultech.se.core.engine.item.ItemType itemType = gameState.getCurrentItemType();
         
         System.out.println("🎮 [BoardController] Calling lockTetromino on: " + gameEngine.getClass().getSimpleName());
         GameState newState = gameEngine.lockTetromino(gameState);
@@ -322,18 +322,18 @@ public class BoardController {
 
     private void spawnNewTetromino(GameState state) {
         TetrominoType nextType;
-        seoultech.se.core.item.ItemType nextItemType = state.getNextBlockItemType();
+        seoultech.se.core.engine.item.ItemType nextItemType = state.getNextBlockItemType();
         
         // 🎁 아이템이 예약되어 있으면 아이템 테트로미노 생성
         if (nextItemType != null) {
             System.out.println("🎁 [BoardController] Spawning item tetromino: " + nextItemType);
             
-            if (nextItemType == seoultech.se.core.item.ItemType.WEIGHT_BOMB) {
+            if (nextItemType == seoultech.se.core.engine.item.ItemType.WEIGHT_BOMB) {
                 // 무게추는 특수 테트로미노 형태 (OO / OOOO)
                 // ✅ FIXED: Lock 시 아이템 효과 적용을 위해 currentItemType 유지
                 nextType = TetrominoType.WEIGHT_BOMB;
                 state.setCurrentItemType(nextItemType); // 아이템 타입 유지하여 효과 적용 가능하도록
-            } else if (nextItemType == seoultech.se.core.item.ItemType.LINE_CLEAR) {
+            } else if (nextItemType == seoultech.se.core.engine.item.ItemType.LINE_CLEAR) {
                 // LINE_CLEAR 아이템은 일반 테트로미노지만 pivot 블록에 'L' 마커
                 nextType = getNextTetrominoType();
                 state.setCurrentItemType(nextItemType);
@@ -421,7 +421,7 @@ public class BoardController {
      * @param itemType Lock 전에 기록한 아이템 타입
      * @param lockSource Lock 발생 지점 (디버깅용)
      */
-    private void applyItemEffectAfterLock(GameState newState, seoultech.se.core.item.ItemType itemType, String lockSource) {
+    private void applyItemEffectAfterLock(GameState newState, seoultech.se.core.engine.item.ItemType itemType, String lockSource) {
         // 아이템이 없으면 스킵
         if (itemType == null) {
             return;
@@ -456,7 +456,7 @@ public class BoardController {
             return;
         }
         
-        seoultech.se.core.item.Item item = arcadeEngine.getItemManager().getItem(itemType);
+        seoultech.se.core.engine.item.Item item = arcadeEngine.getItemManager().getItem(itemType);
         
         if (item == null) {
             System.err.println("⚠️ [BoardController] " + lockSource + " - Item not found in ItemManager: " + itemType);
@@ -464,7 +464,7 @@ public class BoardController {
         }
         
         // 🔥 LINE_CLEAR는 ArcadeGameEngine에서 자동 처리되므로 여기서 apply() 호출 안 함
-        if (itemType == seoultech.se.core.item.ItemType.LINE_CLEAR) {
+        if (itemType == seoultech.se.core.engine.item.ItemType.LINE_CLEAR) {
             System.out.println("ℹ️ [BoardController] " + lockSource + " - LINE_CLEAR handled by ArcadeGameEngine");
             return;
         }
@@ -473,7 +473,7 @@ public class BoardController {
         System.out.println("🔥 [BoardController] " + lockSource + " - Applying item effect: " + itemType + 
             " at position (" + actualRow + ", " + actualCol + ")");
         
-        seoultech.se.core.item.ItemEffect effect = item.apply(newState, actualRow, actualCol);
+        seoultech.se.core.engine.item.ItemEffect effect = item.apply(newState, actualRow, actualCol);
         
         if (effect.isSuccess()) {
             // ✨ Phase 4: 아이템 점수에도 난이도 배율 적용

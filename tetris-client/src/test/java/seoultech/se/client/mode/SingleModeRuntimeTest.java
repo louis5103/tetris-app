@@ -2,7 +2,7 @@ package seoultech.se.client.mode;
 
 import seoultech.se.core.GameState;
 import seoultech.se.core.config.GameModeConfig;
-import seoultech.se.core.mode.GameModeType;
+import seoultech.se.core.engine.mode.GameModeType;
 
 /**
  * SingleMode 런타임 테스트

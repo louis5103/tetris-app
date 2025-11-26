@@ -17,7 +17,7 @@ import seoultech.se.core.dto.ServerStateDto;
 
 
 @Component
-public class NetworkClient {
+public class NetworkTemplate {
     private StompSession session;
 
     public void connect(String url, String jwtToken) {

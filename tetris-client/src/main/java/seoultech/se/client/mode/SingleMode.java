@@ -6,8 +6,8 @@ import lombok.Getter;
 import lombok.Setter;
 import seoultech.se.core.GameState;
 import seoultech.se.core.config.GameModeConfig;
-import seoultech.se.core.mode.GameMode;
-import seoultech.se.core.mode.GameModeType;
+import seoultech.se.core.engine.mode.GameMode;
+import seoultech.se.core.engine.mode.GameModeType;
 
 /**
  * 싱글플레이어 모드

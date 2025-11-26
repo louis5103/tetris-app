@@ -1,7 +1,7 @@
 package seoultech.se.core;
 
 import lombok.Data;
-import seoultech.se.core.item.ItemType;
+import seoultech.se.core.engine.item.ItemType;
 import seoultech.se.core.model.Cell;
 import seoultech.se.core.model.Tetromino;
 import seoultech.se.core.model.enumType.TetrominoType;

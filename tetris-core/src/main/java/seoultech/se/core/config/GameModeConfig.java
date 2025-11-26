@@ -5,7 +5,7 @@ import java.util.Map;
 
 import lombok.Builder;
 import lombok.Getter;
-import seoultech.se.core.item.ItemConfig;
+import seoultech.se.core.engine.item.ItemConfig;
 
 /**
  * 게임 모드 설정 객체
@@ -136,7 +136,7 @@ public class GameModeConfig {
      * 게임 모드 타입 (기본: SINGLE)
      */
     @Builder.Default
-    private final seoultech.se.core.mode.GameModeType gameModeType = seoultech.se.core.mode.GameModeType.SINGLE;
+    private final seoultech.se.core.engine.mode.GameModeType gameModeType = seoultech.se.core.engine.mode.GameModeType.SINGLE;
     
     /**
      * 난이도 (기본: NORMAL)

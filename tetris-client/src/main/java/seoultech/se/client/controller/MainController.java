@@ -22,7 +22,7 @@ import seoultech.se.client.service.NavigationService;
 import seoultech.se.client.service.SettingsService;
 import seoultech.se.core.config.GameModeConfig;
 import seoultech.se.core.config.GameplayType;
-import seoultech.se.core.mode.PlayType;
+import seoultech.se.core.engine.mode.PlayType;
 
 
 /**

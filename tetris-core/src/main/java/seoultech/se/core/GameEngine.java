@@ -4,11 +4,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 import seoultech.se.core.config.GameModeConfig;
-import seoultech.se.core.item.Item;
-import seoultech.se.core.item.ItemConfig;
-import seoultech.se.core.item.ItemEffect;
-import seoultech.se.core.item.ItemManager;
-import seoultech.se.core.item.ItemType;
+import seoultech.se.core.engine.item.Item;
+import seoultech.se.core.engine.item.ItemConfig;
+import seoultech.se.core.engine.item.ItemEffect;
+import seoultech.se.core.engine.item.ItemManager;
+import seoultech.se.core.engine.item.ItemType;
 import seoultech.se.core.model.Cell;
 import seoultech.se.core.model.Tetromino;
 import seoultech.se.core.model.enumType.RotationDirection;

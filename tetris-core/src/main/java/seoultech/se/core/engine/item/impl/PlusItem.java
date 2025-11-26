@@ -1,30 +1,26 @@
-package seoultech.se.core.item.impl;
+package seoultech.se.core.engine.item.impl;
 
 import seoultech.se.core.GameState;
-import seoultech.se.core.item.AbstractItem;
-import seoultech.se.core.item.ItemEffect;
-import seoultech.se.core.item.ItemType;
+import seoultech.se.core.engine.item.AbstractItem;
+import seoultech.se.core.engine.item.ItemEffect;
+import seoultech.se.core.engine.item.ItemType;
 import seoultech.se.core.model.Cell;
 
 /**
- * 폭탄 아이템
+ * 십자(Plus) 아이템
  * 
- * 아이템 위치 기준 반경 2칸 (5x5 영역)의 블록을 제거합니다.
+ * 아이템 위치의 행(row)과 열(column) 전체를 제거합니다.
  * 
  * 효과:
- * - 중심점 (row, col)을 기준으로 상하좌우 각 2칸씩 총 5x5 영역 제거
- * - 제거된 블록 수만큼 점수 부여
+ * - 지정된 행의 모든 블록 제거
+ * - 지정된 열의 모든 블록 제거
+ * - 중복되는 교차점은 한 번만 계산
  * 
  * 사용 예시:
- * - 블록이 쌓여 위험한 상황에서 긴급 탈출용
- * - 보드 중앙 정리에 효과적
+ * - 한 줄이 거의 채워진 상황에서 라인 클리어 대신 사용
+ * - 특정 열이 높게 쌓인 경우 정리용
  */
-public class BombItem extends AbstractItem {
-    
-    /**
-     * 폭발 반경 (기본: 2)
-     */
-    private static final int EXPLOSION_RADIUS = 2;
+public class PlusItem extends AbstractItem {
     
     /**
      * 블록당 점수
@@ -34,16 +30,16 @@ public class BombItem extends AbstractItem {
     /**
      * 생성자
      */
-    public BombItem() {
-        super(ItemType.BOMB);
+    public PlusItem() {
+        super(ItemType.PLUS);
     }
     
     /**
-     * 폭탄 효과 적용
+     * 십자 효과 적용
      * 
      * @param gameState 게임 상태
-     * @param row 중심 행
-     * @param col 중심 열
+     * @param row 제거할 행
+     * @param col 제거할 열
      * @return 아이템 효과
      */
     @Override
@@ -58,51 +54,52 @@ public class BombItem extends AbstractItem {
         
         // 경계 체크
         if (row < 0 || row >= boardHeight || col < 0 || col >= boardWidth) {
-            System.err.println("⚠️ [BombItem] Invalid position: (" + row + ", " + col + ")");
+            System.err.println("⚠️ [PlusItem] Invalid position: (" + row + ", " + col + ")");
             System.err.println("   - Board size: " + boardHeight + "x" + boardWidth);
             return ItemEffect.none();
         }
         
         int blocksCleared = 0;
         
-        System.out.println("💣 [BombItem] Applying BOMB effect at (" + row + ", " + col + ")");
+        System.out.println("➕ [PlusItem] Applying PLUS effect at (" + row + ", " + col + ")");
         System.out.println("   - Board size: " + boardHeight + "x" + boardWidth);
         
-        // 5x5 영역 제거 (중심 기준 상하좌우 각 2칸)
-        int startRow = Math.max(0, row - EXPLOSION_RADIUS);
-        int endRow = Math.min(boardHeight - 1, row + EXPLOSION_RADIUS);
-        int startCol = Math.max(0, col - EXPLOSION_RADIUS);
-        int endCol = Math.min(boardWidth - 1, col + EXPLOSION_RADIUS);
+        // 행 제거
+        System.out.println("   - Clearing row " + row);
+        for (int c = 0; c < boardWidth; c++) {
+            if (grid[row][c] != null && grid[row][c].isOccupied()) {
+                System.out.println("     * Clearing block at (" + row + ", " + c + ")");
+                grid[row][c].clear();
+                blocksCleared++;
+            }
+        }
         
-        System.out.println("   - Explosion area: rows " + startRow + "-" + endRow + 
-            ", cols " + startCol + "-" + endCol);
-        
-        // 블록 제거
-        for (int r = startRow; r <= endRow; r++) {
-            for (int c = startCol; c <= endCol; c++) {
-                if (grid[r][c] != null && grid[r][c].isOccupied()) {
-                    grid[r][c].clear();
-                    blocksCleared++;
-                }
+        // 열 제거 (교차점 제외)
+        System.out.println("   - Clearing column " + col);
+        for (int r = 0; r < boardHeight; r++) {
+            if (r != row && grid[r][col] != null && grid[r][col].isOccupied()) {
+                System.out.println("     * Clearing block at (" + r + ", " + col + ")");
+                grid[r][col].clear();
+                blocksCleared++;
             }
         }
         
         int bonusScore = blocksCleared * SCORE_PER_BLOCK;
         
-        String message = String.format("💣 Bomb exploded! %d blocks cleared at (%d, %d)", 
-            blocksCleared, row, col);
+        String message = String.format("➕ Plus cleared! Row %d and Column %d - %d blocks cleared", 
+            row, col, blocksCleared);
         
-        System.out.println("✅ [BombItem] " + message);
+        System.out.println("✅ [PlusItem] " + message);
         
         // 🎮 GAME UX: 중력 적용 (라인 클리어는 제거)
-        // 5x5 영역 삭제 후 위의 블록이 아래로 떨어지도록 하여 자연스러운 게임 경험 제공
+        // 십자 영역 삭제 후 위의 블록이 아래로 떨어지도록 하여 자연스러운 게임 경험 제공
         // 단, 라인 클리어는 하지 않음 (연쇄 효과 방지, 예측 가능성 확보)
         if (blocksCleared > 0) {
             applyGravity(gameState);
             System.out.println("   - Gravity applied (no line clear)");
         }
         
-        return ItemEffect.success(ItemType.BOMB, blocksCleared, bonusScore, message);
+        return ItemEffect.success(ItemType.PLUS, blocksCleared, bonusScore, message);
     }
     
     /**

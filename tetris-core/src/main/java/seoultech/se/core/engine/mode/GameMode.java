@@ -1,4 +1,4 @@
-package seoultech.se.core.mode;
+package seoultech.se.core.engine.mode;
 
 import seoultech.se.core.GameState;
 import seoultech.se.core.command.GameCommand;

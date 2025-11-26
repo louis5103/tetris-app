@@ -27,7 +27,7 @@ import seoultech.se.client.config.mode.ClassicModeSettings;
 import seoultech.se.client.constants.ColorBlindMode;
 import seoultech.se.core.config.GameModeConfig;
 import seoultech.se.core.config.GameplayType;
-import seoultech.se.core.mode.PlayType;
+import seoultech.se.core.engine.mode.PlayType;
 
 @Service
 public class SettingsService {
@@ -387,7 +387,7 @@ public class SettingsService {
         ArcadeModeSettings arcadeSettings = clientSettings.getModes().getArcade();
 
         // ItemConfig 생성
-        seoultech.se.core.item.ItemConfig itemConfig = buildItemConfig();
+        seoultech.se.core.engine.item.ItemConfig itemConfig = buildItemConfig();
         
         System.out.println("✅ ItemConfig created - isEnabled: " + itemConfig.isEnabled());
         
@@ -407,13 +407,13 @@ public class SettingsService {
      * 
      * @return ItemConfig 객체
      */
-    private seoultech.se.core.item.ItemConfig buildItemConfig() {
+    private seoultech.se.core.engine.item.ItemConfig buildItemConfig() {
         // 활성화된 아이템 타입 수집
-        java.util.Set<seoultech.se.core.item.ItemType> enabledItems = 
+        java.util.Set<seoultech.se.core.engine.item.ItemType> enabledItems = 
             new java.util.HashSet<>();
         
-        for (seoultech.se.core.item.ItemType itemType : 
-             seoultech.se.core.item.ItemType.values()) {
+        for (seoultech.se.core.engine.item.ItemType itemType : 
+             seoultech.se.core.engine.item.ItemType.values()) {
             if (gameModeProperties.isItemEnabled(itemType.name())) {
                 enabledItems.add(itemType);
             }
@@ -422,7 +422,7 @@ public class SettingsService {
         System.out.println("📊 Item drop rate: " + (int)(gameModeProperties.getItemDropRate() * 100) + "%");
         System.out.println("📊 Enabled items: " + enabledItems);
         
-        return seoultech.se.core.item.ItemConfig.builder()
+        return seoultech.se.core.engine.item.ItemConfig.builder()
             .dropRate(gameModeProperties.getItemDropRate())
             .enabledItems(enabledItems)
             .maxInventorySize(gameModeProperties.getMaxInventorySize())
@@ -500,13 +500,13 @@ public class SettingsService {
             modeSettings.put("lockDelay", config.getLockDelay());
 
             if (gameplayType == GameplayType.ARCADE && config.getItemConfig() != null) {
-                seoultech.se.core.item.ItemConfig itemConfig = config.getItemConfig();
+                seoultech.se.core.engine.item.ItemConfig itemConfig = config.getItemConfig();
                 modeSettings.put("itemDropRate", itemConfig.getDropRate());
                 modeSettings.put("maxInventorySize", itemConfig.getMaxInventorySize());
                 modeSettings.put("itemAutoUse", itemConfig.isAutoUse());
                 
                 Map<String, Boolean> enabledItems = new LinkedHashMap<>();
-                for (seoultech.se.core.item.ItemType itemType : seoultech.se.core.item.ItemType.values()) {
+                for (seoultech.se.core.engine.item.ItemType itemType : seoultech.se.core.engine.item.ItemType.values()) {
                     enabledItems.put(itemType.name(), itemConfig.getEnabledItems().contains(itemType));
                 }
                 modeSettings.put("enabledItems", enabledItems);
@@ -557,7 +557,7 @@ public class SettingsService {
                 .lockDelay(getSetting(modeSettings, "lockDelay", 500));
 
             if (gameplayType == GameplayType.ARCADE) {
-                seoultech.se.core.item.ItemConfig itemConfig = buildItemConfigFromMap(modeSettings);
+                seoultech.se.core.engine.item.ItemConfig itemConfig = buildItemConfigFromMap(modeSettings);
                 builder.itemConfig(itemConfig);
             }
             
@@ -572,20 +572,20 @@ public class SettingsService {
         }
     }
 
-    private seoultech.se.core.item.ItemConfig buildItemConfigFromMap(Map<String, Object> modeSettings) {
-        java.util.Set<seoultech.se.core.item.ItemType> enabledItems = new java.util.HashSet<>();
+    private seoultech.se.core.engine.item.ItemConfig buildItemConfigFromMap(Map<String, Object> modeSettings) {
+        java.util.Set<seoultech.se.core.engine.item.ItemType> enabledItems = new java.util.HashSet<>();
         Map<String, Boolean> enabledItemsMap = getSetting(modeSettings, "enabledItems", new HashMap<>());
         for (Map.Entry<String, Boolean> entry : enabledItemsMap.entrySet()) {
             if (entry.getValue()) {
                 try {
-                    enabledItems.add(seoultech.se.core.item.ItemType.valueOf(entry.getKey()));
+                    enabledItems.add(seoultech.se.core.engine.item.ItemType.valueOf(entry.getKey()));
                 } catch (IllegalArgumentException e) {
                     System.err.println("⚠️ Invalid item type in config: " + entry.getKey());
                 }
             }
         }
 
-        return seoultech.se.core.item.ItemConfig.builder()
+        return seoultech.se.core.engine.item.ItemConfig.builder()
             .dropRate(getSetting(modeSettings, "itemDropRate", 0.1))
             .enabledItems(enabledItems)
             .maxInventorySize(getSetting(modeSettings, "maxInventorySize", 3))

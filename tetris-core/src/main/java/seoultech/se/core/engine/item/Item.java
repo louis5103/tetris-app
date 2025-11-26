@@ -1,4 +1,4 @@
-package seoultech.se.core.item;
+package seoultech.se.core.engine.item;
 
 import seoultech.se.core.GameState;
 

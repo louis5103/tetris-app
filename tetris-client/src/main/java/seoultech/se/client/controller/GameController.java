@@ -1,12 +1,10 @@
 package seoultech.se.client.controller;
 
 import java.io.IOException;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -18,14 +16,11 @@ import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableColumn;
-import javafx.scene.control.TableRow;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.shape.Rectangle;
-
-import seoultech.se.backend.score.GameMode;
 import seoultech.se.backend.score.ScoreRankDto;
 import seoultech.se.backend.score.ScoreRequestDto;
 import seoultech.se.backend.score.ScoreService;
@@ -46,8 +41,8 @@ import seoultech.se.core.GameState;
 import seoultech.se.core.command.Direction;
 import seoultech.se.core.command.MoveCommand;
 import seoultech.se.core.config.GameModeConfig;
-import seoultech.se.core.item.Item;
-import seoultech.se.core.item.ItemType;
+import seoultech.se.core.engine.item.Item;
+import seoultech.se.core.engine.item.ItemType;
 import seoultech.se.core.model.enumType.TetrominoType;
 
 /**
@@ -116,7 +111,7 @@ public class GameController {
     private GameModeConfig gameModeConfig;
 
     // ✨ Strategy Pattern: 플레이 타입 및 실행 전략
-    private seoultech.se.core.mode.PlayType playType;
+    private seoultech.se.core.engine.mode.PlayType playType;
     private seoultech.se.client.strategy.GameExecutionStrategy executionStrategy;
 
     // UI 관리 클래스들
@@ -172,7 +167,7 @@ public class GameController {
      * @param config 게임 모드 설정
      * @param playType 플레이 타입 (LOCAL_SINGLE or ONLINE_MULTI)
      */
-    public void setGameModeConfig(GameModeConfig config, seoultech.se.core.mode.PlayType playType) {
+    public void setGameModeConfig(GameModeConfig config, seoultech.se.core.engine.mode.PlayType playType) {
         this.gameModeConfig = config;
         this.playType = playType;
 
@@ -194,7 +189,7 @@ public class GameController {
      * @param config 게임 모드 설정
      */
     public void setGameModeConfig(GameModeConfig config) {
-        setGameModeConfig(config, seoultech.se.core.mode.PlayType.LOCAL_SINGLE);
+        setGameModeConfig(config, seoultech.se.core.engine.mode.PlayType.LOCAL_SINGLE);
     }
     
     /**
@@ -254,11 +249,11 @@ public class GameController {
      */
     private void initializeExecutionStrategy() {
         if (playType == null) {
-            playType = seoultech.se.core.mode.PlayType.LOCAL_SINGLE;
+            playType = seoultech.se.core.engine.mode.PlayType.LOCAL_SINGLE;
             System.out.println("⚠️ PlayType was null, defaulting to LOCAL_SINGLE");
         }
 
-        if (playType == seoultech.se.core.mode.PlayType.ONLINE_MULTI) {
+        if (playType == seoultech.se.core.engine.mode.PlayType.ONLINE_MULTI) {
             // 멀티플레이는 세션 생성 후 setupMultiplayMode() 호출 필요
             System.out.println("ℹ️ Multiplay mode - Strategy will be set after session creation");
         } else {
@@ -791,7 +786,7 @@ public class GameController {
             ItemType droppedItemType = newState.getNextBlockItemType();
             if (droppedItemType != null && itemInventoryPanel != null) {
                 // 아이템이 드롭되었음 - 인벤토리에 추가
-                seoultech.se.core.item.Item droppedItem = null;
+                seoultech.se.core.engine.item.Item droppedItem = null;
                 
                 if (boardController.getGameEngine() instanceof seoultech.se.core.engine.ArcadeGameEngine) {
                     seoultech.se.core.engine.ArcadeGameEngine arcadeEngine = 

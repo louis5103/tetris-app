@@ -128,7 +128,7 @@ public class BoardRenderer {
         
         // 아이템 블록 여부 확인
         boolean isItemBlock = gameState.getCurrentItemType() != null;
-        seoultech.se.core.item.ItemType itemType = gameState.getCurrentItemType();
+        seoultech.se.core.engine.item.ItemType itemType = gameState.getCurrentItemType();
         
         for (int row = 0; row < shape.length; row++) {
             for (int col = 0; col < shape[0].length; col++) {
@@ -194,7 +194,7 @@ public class BoardRenderer {
      * @param rect 대상 Rectangle
      * @param itemType 아이템 타입
      */
-    private void applyItemMarkerOverlay(Rectangle rect, seoultech.se.core.item.ItemType itemType) {
+    private void applyItemMarkerOverlay(Rectangle rect, seoultech.se.core.engine.item.ItemType itemType) {
         if (itemType == null) {
             System.err.println("⚠️ [BoardRenderer] applyItemMarkerOverlay called with null itemType");
             return;
@@ -365,7 +365,7 @@ public class BoardRenderer {
      * @param type 테트로미노 타입 (null이면 비움)
      * @param itemType 아이템 타입 (null이면 일반 블록)
      */
-    public void drawHoldPiece(TetrominoType type, seoultech.se.core.item.ItemType itemType) {
+    public void drawHoldPiece(TetrominoType type, seoultech.se.core.engine.item.ItemType itemType) {
         Platform.runLater(() -> {
             // 모든 셀 초기화
             clearPreviewGrid(holdCellRectangles);
@@ -424,7 +424,7 @@ public class BoardRenderer {
      * @param type 테트로미노 타입
      * @param itemType 아이템 타입 (null이면 일반 블록)
      */
-    private void drawPreviewPiece(Rectangle[][] grid, TetrominoType type, seoultech.se.core.item.ItemType itemType) {
+    private void drawPreviewPiece(Rectangle[][] grid, TetrominoType type, seoultech.se.core.engine.item.ItemType itemType) {
         int[][] shape = type.shape;
         Color color = ColorMapper.toJavaFXColor(type.color);
         
@@ -470,7 +470,7 @@ public class BoardRenderer {
         
         // 🔥 아이템 마커 표시 (pivot 블록에만, WEIGHT_BOMB 제외)
         if (isItemBlock && pivotGridRow != -1 &&
-            itemType != seoultech.se.core.item.ItemType.WEIGHT_BOMB) {
+            itemType != seoultech.se.core.engine.item.ItemType.WEIGHT_BOMB) {
             Rectangle pivotRect = grid[pivotGridRow][pivotGridCol];
             applyItemMarkerOverlay(pivotRect, itemType);
         }

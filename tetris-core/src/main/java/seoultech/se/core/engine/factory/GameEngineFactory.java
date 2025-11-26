@@ -1,4 +1,4 @@
-package seoultech.se.core.factory;
+package seoultech.se.core.engine.factory;
 
 import org.springframework.stereotype.Component;
 

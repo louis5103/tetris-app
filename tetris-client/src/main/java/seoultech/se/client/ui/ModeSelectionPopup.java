@@ -14,7 +14,7 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import lombok.Getter;
 import seoultech.se.core.config.GameplayType;
-import seoultech.se.core.mode.PlayType;
+import seoultech.se.core.engine.mode.PlayType;
 
 /**
  * 게임 모드 선택 팝업 컴포넌트

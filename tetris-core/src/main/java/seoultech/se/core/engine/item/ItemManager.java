@@ -1,4 +1,4 @@
-package seoultech.se.core.item;
+package seoultech.se.core.engine.item;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -92,16 +92,16 @@ public class ItemManager {
      */
     private void registerPrototypes() {
         // Phase 3: LINE_CLEAR 아이템 등록
-        registerItem(new seoultech.se.core.item.impl.LineClearItem());
+        registerItem(new seoultech.se.core.engine.item.impl.LineClearItem());
         
         // Phase 4: WEIGHT_BOMB 아이템 등록
-        registerItem(new seoultech.se.core.item.impl.WeightBombItem());
+        registerItem(new seoultech.se.core.engine.item.impl.WeightBombItem());
         
         // Phase 5: 추가 아이템들 등록
-        registerItem(new seoultech.se.core.item.impl.PlusItem());
-        registerItem(new seoultech.se.core.item.impl.SpeedResetItem());
-        registerItem(new seoultech.se.core.item.impl.BonusScoreItem());
-        registerItem(new seoultech.se.core.item.impl.BombItem());
+        registerItem(new seoultech.se.core.engine.item.impl.PlusItem());
+        registerItem(new seoultech.se.core.engine.item.impl.SpeedResetItem());
+        registerItem(new seoultech.se.core.engine.item.impl.BonusScoreItem());
+        registerItem(new seoultech.se.core.engine.item.impl.BombItem());
         
         System.out.println("📦 ItemManager: All items registered");
     }
