@@ -36,7 +36,7 @@ class ItemSystemTest {
         gameState = new GameState(10, 20);
         
         // 모든 아이템 활성화된 ItemManager 생성
-        itemManager = new ItemManager(0.1, EnumSet.allOf(ItemType.class));
+        itemManager = new ItemManager(10, EnumSet.allOf(ItemType.class));
         
         // 아이템 등록
         itemManager.registerItem(new BombItem());
@@ -151,7 +151,7 @@ class ItemSystemTest {
         // 새로운 ItemManager 생성 (BOMB 제외)
         EnumSet<ItemType> itemsWithoutBomb = EnumSet.allOf(ItemType.class);
         itemsWithoutBomb.remove(ItemType.BOMB);
-        ItemManager managerWithoutBomb = new ItemManager(0.1, itemsWithoutBomb);
+        ItemManager managerWithoutBomb = new ItemManager(10, itemsWithoutBomb);
 
         // Then: BOMB은 비활성화됨
         assertFalse(managerWithoutBomb.isItemEnabled(ItemType.BOMB));

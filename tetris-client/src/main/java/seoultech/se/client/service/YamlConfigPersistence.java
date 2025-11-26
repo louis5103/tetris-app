@@ -6,8 +6,6 @@ import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.Yaml;
 import seoultech.se.client.config.ClientSettings;
 import seoultech.se.client.config.GeneralSettings;
-import seoultech.se.client.config.mode.ArcadeModeSettings;
-import seoultech.se.client.config.mode.ClassicModeSettings;
 
 import java.io.*;
 import java.nio.file.Files;
@@ -19,10 +17,11 @@ import java.util.Map;
 /**
  * YAML 설정 파일 저장 전용 컴포넌트
  * 
- * 설정 파일 구조:
- * - config/client/setting.yml: GeneralSettings (기본 설정)
- * - config/client/classic.yml: ClassicModeSettings
- * - config/client/arcade.yml: ArcadeModeSettings
+ * 사용자 환경 설정(GeneralSettings)만 저장합니다.
+ * 게임 모드 설정(Classic/Arcade)은 game-modes.yml에서 관리되며 변경하지 않습니다.
+ * 
+ * 설정 파일:
+ * - config/client/setting.yml: GeneralSettings (사용자 환경 설정)
  */
 @Component
 public class YamlConfigPersistence {
@@ -65,74 +64,11 @@ public class YamlConfigPersistence {
     }
     
     /**
-     * ClassicModeSettings를 classic.yml에 저장
-     */
-    public void saveClassicModeSettings(ClassicModeSettings settings) throws IOException {
-        Path configPath = resolveConfigPath("client/classic.yml");
-        
-        Map<String, Object> root = new LinkedHashMap<>();
-        Map<String, Object> client = new LinkedHashMap<>();
-        Map<String, Object> modes = new LinkedHashMap<>();
-        Map<String, Object> classic = new LinkedHashMap<>();
-        
-        classic.put("srsEnabled", settings.isSrsEnabled());
-        classic.put("rotation180Enabled", settings.isRotation180Enabled());
-        classic.put("hardDropEnabled", settings.isHardDropEnabled());
-        classic.put("holdEnabled", settings.isHoldEnabled());
-        classic.put("ghostPieceEnabled", settings.isGhostPieceEnabled());
-        classic.put("dropSpeedMultiplier", settings.getDropSpeedMultiplier());
-        classic.put("softDropSpeed", settings.getSoftDropSpeed());
-        classic.put("lockDelay", settings.getLockDelay());
-        classic.put("maxLockResets", settings.getMaxLockResets());
-        
-        modes.put("classic", classic);
-        client.put("modes", modes);
-        root.put("client", client);
-        
-        writeYamlFile(configPath, root);
-        System.out.println("✅ Classic mode settings saved to: " + configPath);
-    }
-    
-    /**
-     * ArcadeModeSettings를 arcade.yml에 저장
-     */
-    public void saveArcadeModeSettings(ArcadeModeSettings settings) throws IOException {
-        Path configPath = resolveConfigPath("client/arcade.yml");
-        
-        Map<String, Object> root = new LinkedHashMap<>();
-        Map<String, Object> client = new LinkedHashMap<>();
-        Map<String, Object> modes = new LinkedHashMap<>();
-        Map<String, Object> arcade = new LinkedHashMap<>();
-        
-        arcade.put("srsEnabled", settings.isSrsEnabled());
-        arcade.put("rotation180Enabled", settings.isRotation180Enabled());
-        arcade.put("hardDropEnabled", settings.isHardDropEnabled());
-        arcade.put("holdEnabled", settings.isHoldEnabled());
-        arcade.put("ghostPieceEnabled", settings.isGhostPieceEnabled());
-        arcade.put("dropSpeedMultiplier", settings.getDropSpeedMultiplier());
-        arcade.put("softDropSpeed", settings.getSoftDropSpeed());
-        arcade.put("lockDelay", settings.getLockDelay());
-        arcade.put("maxLockResets", settings.getMaxLockResets());
-        arcade.put("itemDropRate", settings.getItemDropRate());
-        arcade.put("maxInventorySize", settings.getMaxInventorySize());
-        arcade.put("itemAutoUse", settings.isItemAutoUse());
-        arcade.put("enabledItems", settings.getEnabledItems());
-        
-        modes.put("arcade", arcade);
-        client.put("modes", modes);
-        root.put("client", client);
-        
-        writeYamlFile(configPath, root);
-        System.out.println("✅ Arcade mode settings saved to: " + configPath);
-    }
-    
-    /**
-     * 전체 ClientSettings 저장 (모든 yml 파일에 분산 저장)
+     * 전체 ClientSettings 저장
+     * 현재는 GeneralSettings만 저장합니다.
      */
     public void saveAllSettings(ClientSettings clientSettings) throws IOException {
         saveGeneralSettings(clientSettings.getSetting());
-        saveClassicModeSettings(clientSettings.getModes().getClassic());
-        saveArcadeModeSettings(clientSettings.getModes().getArcade());
         System.out.println("✅ All settings saved successfully");
     }
     

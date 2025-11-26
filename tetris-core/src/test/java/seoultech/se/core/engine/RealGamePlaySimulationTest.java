@@ -34,7 +34,7 @@ public class RealGamePlaySimulationTest {
         // Stateless 리팩토링: GameModeConfig로 생성
         GameModeConfig config = GameModeConfig.arcade();
         arcadeEngine = new ArcadeGameEngine(config);
-        itemManager = new ItemManager(0.1, EnumSet.allOf(ItemType.class));
+        itemManager = new ItemManager(10, EnumSet.allOf(ItemType.class));
 
         gameState = new GameState(10, 20);
         

@@ -1,41 +1,111 @@
 package seoultech.se.client.service;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-import seoultech.se.client.config.ClientSettings;
-import seoultech.se.client.config.mode.ArcadeModeSettings;
-import seoultech.se.client.config.mode.ClassicModeSettings;
 import seoultech.se.core.config.GameModeConfig;
 import seoultech.se.core.config.GameplayType;
-import seoultech.se.core.engine.item.ItemConfig;
-import seoultech.se.core.engine.item.ItemType;
 import seoultech.se.core.model.enumType.Difficulty;
 
-import java.util.HashSet;
-import java.util.Map;
+import java.util.EnumSet;
+import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * GameModeConfig 팩토리
  * 
- * ClientSettings(사용자 저장 설정) + Difficulty(런타임 선택)를 통합하여
+ * YML 프로퍼티(@Value) + Difficulty(런타임 선택)를 통합하여
  * GameModeConfig(게임 실행 설정)을 생성합니다.
  * 
+ * 리팩토링: Settings 클래스 제거, @Value로 YML 직접 읽기
+ * 
  * 책임:
- * 1. ClientSettings → GameModeConfig 변환
+ * 1. YML 프로퍼티(@Value) → GameModeConfig 변환
  * 2. Difficulty 배율 적용 (dropSpeed, lockDelay)
- * 3. ItemConfig 생성 (Arcade 모드)
+ * 3. Classic/Arcade 필드를 명확히 분리하여 관리
  */
 @Component
 public class GameModeConfigFactory {
     
+    // ========== Classic Mode 설정 ==========
+    @Value("${tetris.modes.classic.srsEnabled}")
+    private boolean classicSrsEnabled;
+    
+    @Value("${tetris.modes.classic.rotation180Enabled}")
+    private boolean classicRotation180Enabled;
+    
+    @Value("${tetris.modes.classic.hardDropEnabled}")
+    private boolean classicHardDropEnabled;
+    
+    @Value("${tetris.modes.classic.holdEnabled}")
+    private boolean classicHoldEnabled;
+    
+    @Value("${tetris.modes.classic.ghostPieceEnabled}")
+    private boolean classicGhostPieceEnabled;
+    
+    @Value("${tetris.modes.classic.dropSpeedMultiplier}")
+    private double classicDropSpeedMultiplier;
+    
+    @Value("${tetris.modes.classic.softDropSpeed}")
+    private int classicSoftDropSpeed;
+    
+    @Value("${tetris.modes.classic.lockDelay}")
+    private int classicLockDelay;
+    
+    @Value("${tetris.modes.classic.maxLockResets}")
+    private int classicMaxLockResets;
+    
+    // ========== Arcade Mode 설정 ==========
+    @Value("${tetris.modes.arcade.srsEnabled}")
+    private boolean arcadeSrsEnabled;
+    
+    @Value("${tetris.modes.arcade.rotation180Enabled}")
+    private boolean arcadeRotation180Enabled;
+    
+    @Value("${tetris.modes.arcade.hardDropEnabled}")
+    private boolean arcadeHardDropEnabled;
+    
+    @Value("${tetris.modes.arcade.holdEnabled}")
+    private boolean arcadeHoldEnabled;
+    
+    @Value("${tetris.modes.arcade.ghostPieceEnabled}")
+    private boolean arcadeGhostPieceEnabled;
+    
+    @Value("${tetris.modes.arcade.dropSpeedMultiplier}")
+    private double arcadeDropSpeedMultiplier;
+    
+    @Value("${tetris.modes.arcade.softDropSpeed}")
+    private int arcadeSoftDropSpeed;
+    
+    @Value("${tetris.modes.arcade.lockDelay}")
+    private int arcadeLockDelay;
+    
+    @Value("${tetris.modes.arcade.maxLockResets}")
+    private int arcadeMaxLockResets;
+    
+    // ========== Arcade Item 설정 ==========
+    @Value("${tetris.modes.arcade.item.linesPerItem}")
+    private int arcadeLinesPerItem;
+    
+    @Value("${tetris.modes.arcade.item.dropRate}")
+    private double arcadeItemDropRate;
+    
+    @Value("${tetris.modes.arcade.item.maxInventorySize}")
+    private int arcadeMaxInventorySize;
+    
+    @Value("${tetris.modes.arcade.item.autoUse}")
+    private boolean arcadeItemAutoUse;
+    
+    @Value("#{'${tetris.modes.arcade.item.enabledTypes}'.split(',')}")
+    private List<String> arcadeEnabledItemTypes;
+    
     /**
      * Classic 모드 설정 생성
      * 
-     * @param settings ClassicModeSettings (YML에서 로드된 설정)
      * @param difficulty 선택된 난이도
      * @return 최종 GameModeConfig
      */
-    public GameModeConfig createClassicConfig(ClassicModeSettings settings, Difficulty difficulty) {
+    public GameModeConfig createClassicConfig(Difficulty difficulty) {
         // Difficulty 배율 적용
         DifficultyMultiplier multiplier = getDifficultyMultiplier(difficulty);
         
@@ -44,24 +114,28 @@ public class GameModeConfigFactory {
             .difficulty(difficulty)
             
             // 회전 시스템
-            .srsEnabled(settings.isSrsEnabled())
-            .rotation180Enabled(settings.isRotation180Enabled())
+            .srsEnabled(classicSrsEnabled)
+            .rotation180Enabled(classicRotation180Enabled)
             
             // 기능 활성화
-            .hardDropEnabled(settings.isHardDropEnabled())
-            .holdEnabled(settings.isHoldEnabled())
-            .ghostPieceEnabled(settings.isGhostPieceEnabled())
+            .hardDropEnabled(classicHardDropEnabled)
+            .holdEnabled(classicHoldEnabled)
+            .ghostPieceEnabled(classicGhostPieceEnabled)
             
             // 속도 설정 (Difficulty 배율 적용)
-            .dropSpeedMultiplier(settings.getDropSpeedMultiplier() * multiplier.speedMultiplier)
-            .softDropSpeed(settings.getSoftDropSpeed())
+            .dropSpeedMultiplier(classicDropSpeedMultiplier * multiplier.speedMultiplier)
+            .softDropSpeed(classicSoftDropSpeed)
             
             // 락 시스템 (Difficulty 배율 적용)
-            .lockDelay((int)(settings.getLockDelay() * multiplier.lockDelayMultiplier))
-            .maxLockResets(settings.getMaxLockResets())
+            .lockDelay((int)(classicLockDelay * multiplier.lockDelayMultiplier))
+            .maxLockResets(classicMaxLockResets)
             
-            // 아이템 없음
-            .itemConfig(null)
+            // 아이템 없음 (Classic 모드)
+            .linesPerItem(0)
+            .itemDropRate(0.0)
+            .maxInventorySize(0)
+            .itemAutoUse(false)
+            .enabledItemTypes(java.util.Collections.emptySet())
             
             .build();
     }
@@ -69,87 +143,69 @@ public class GameModeConfigFactory {
     /**
      * Arcade 모드 설정 생성
      * 
-     * @param settings ArcadeModeSettings (YML에서 로드된 설정)
      * @param difficulty 선택된 난이도
      * @return 최종 GameModeConfig
      */
-    public GameModeConfig createArcadeConfig(ArcadeModeSettings settings, Difficulty difficulty) {
+    public GameModeConfig createArcadeConfig(Difficulty difficulty) {
         // Difficulty 배율 적용
         DifficultyMultiplier multiplier = getDifficultyMultiplier(difficulty);
         
-        // ItemConfig 생성
-        ItemConfig itemConfig = createItemConfig(settings);
+        System.out.println("🏭 [GameModeConfigFactory] Creating Arcade Config");
+        System.out.println("   - linesPerItem from YML: " + arcadeLinesPerItem);
+        System.out.println("   - maxInventorySize from YML: " + arcadeMaxInventorySize);
         
         return GameModeConfig.builder()
             .gameplayType(GameplayType.ARCADE)
             .difficulty(difficulty)
             
             // 회전 시스템
-            .srsEnabled(settings.isSrsEnabled())
-            .rotation180Enabled(settings.isRotation180Enabled())
+            .srsEnabled(arcadeSrsEnabled)
+            .rotation180Enabled(arcadeRotation180Enabled)
             
             // 기능 활성화
-            .hardDropEnabled(settings.isHardDropEnabled())
-            .holdEnabled(settings.isHoldEnabled())
-            .ghostPieceEnabled(settings.isGhostPieceEnabled())
+            .hardDropEnabled(arcadeHardDropEnabled)
+            .holdEnabled(arcadeHoldEnabled)
+            .ghostPieceEnabled(arcadeGhostPieceEnabled)
             
             // 속도 설정 (Difficulty 배율 적용)
-            .dropSpeedMultiplier(settings.getDropSpeedMultiplier() * multiplier.speedMultiplier)
-            .softDropSpeed(settings.getSoftDropSpeed())
+            .dropSpeedMultiplier(arcadeDropSpeedMultiplier * multiplier.speedMultiplier)
+            .softDropSpeed(arcadeSoftDropSpeed)
             
             // 락 시스템 (Difficulty 배율 적용)
-            .lockDelay((int)(settings.getLockDelay() * multiplier.lockDelayMultiplier))
-            .maxLockResets(settings.getMaxLockResets())
+            .lockDelay((int)(arcadeLockDelay * multiplier.lockDelayMultiplier))
+            .maxLockResets(arcadeMaxLockResets)
             
-            // 아이템 설정
-            .itemConfig(itemConfig)
+            // ========== 아이템 설정 ==========
+            .linesPerItem(arcadeLinesPerItem)
+            .itemDropRate(arcadeItemDropRate)  // Deprecated
+            .maxInventorySize(arcadeMaxInventorySize)
+            .itemAutoUse(arcadeItemAutoUse)
+            .enabledItemTypes(parseItemTypes(arcadeEnabledItemTypes))
             
             .build();
     }
     
     /**
-     * ClientSettings + GameplayType + Difficulty → GameModeConfig
+     * GameplayType + Difficulty → GameModeConfig
      * 
-     * @param clientSettings 전체 클라이언트 설정
      * @param gameplayType CLASSIC or ARCADE
      * @param difficulty 선택된 난이도
      * @return GameModeConfig
      */
-    public GameModeConfig create(ClientSettings clientSettings, GameplayType gameplayType, Difficulty difficulty) {
-        ClientSettings.Modes modes = clientSettings.getModes();
-        
+    public GameModeConfig create(GameplayType gameplayType, Difficulty difficulty) {
         return switch (gameplayType) {
-            case CLASSIC -> createClassicConfig(modes.getClassic(), difficulty);
-            case ARCADE -> createArcadeConfig(modes.getArcade(), difficulty);
+            case CLASSIC -> createClassicConfig(difficulty);
+            case ARCADE -> createArcadeConfig(difficulty);
         };
     }
     
     /**
-     * ArcadeModeSettings → ItemConfig 변환
+     * String 리스트를 ItemType EnumSet으로 변환
      */
-    private ItemConfig createItemConfig(ArcadeModeSettings settings) {
-        // 활성화된 아이템 타입 수집
-        Set<ItemType> enabledItems = new HashSet<>();
-        Map<String, Boolean> enabledItemsMap = settings.getEnabledItems();
-        
-        if (enabledItemsMap != null) {
-            for (Map.Entry<String, Boolean> entry : enabledItemsMap.entrySet()) {
-                if (entry.getValue()) {
-                    try {
-                        enabledItems.add(ItemType.valueOf(entry.getKey()));
-                    } catch (IllegalArgumentException e) {
-                        System.err.println("⚠️ Invalid item type: " + entry.getKey());
-                    }
-                }
-            }
-        }
-        
-        return ItemConfig.builder()
-            .dropRate(settings.getItemDropRate())
-            .enabledItems(enabledItems)
-            .maxInventorySize(settings.getMaxInventorySize())
-            .autoUse(settings.isItemAutoUse())
-            .build();
+    private Set<seoultech.se.core.engine.item.ItemType> parseItemTypes(List<String> itemTypeStrings) {
+        return itemTypeStrings.stream()
+            .map(seoultech.se.core.engine.item.ItemType::valueOf)
+            .collect(Collectors.toCollection(() -> EnumSet.noneOf(seoultech.se.core.engine.item.ItemType.class)));
     }
     
     /**

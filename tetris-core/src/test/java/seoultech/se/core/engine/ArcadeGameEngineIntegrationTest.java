@@ -37,7 +37,7 @@ public class ArcadeGameEngineIntegrationTest {
         arcadeEngine = new ArcadeGameEngine(config);
 
         // ItemManager 생성 (모든 아이템 활성화)
-        itemManager = new ItemManager(0.1, EnumSet.allOf(ItemType.class));
+        itemManager = new ItemManager(10, EnumSet.allOf(ItemType.class));
 
         // GameState 생성 (10x20 보드)
         gameState = new GameState(10, 20);

@@ -43,7 +43,7 @@ public class ClassicGameEngine implements GameEngine {
      * 기본 생성자 (Classic 기본 설정)
      */
     public ClassicGameEngine() {
-        this(GameModeConfig.classic());
+        this(GameModeConfig.createDefaultClassic());
     }
 
     /**
@@ -52,7 +52,7 @@ public class ClassicGameEngine implements GameEngine {
      * @param config 게임 모드 설정
      */
     public ClassicGameEngine(GameModeConfig config) {
-        this.config = config != null ? config : GameModeConfig.classic();
+        this.config = config != null ? config : GameModeConfig.createDefaultClassic();
         System.out.println("[Engine] ClassicGameEngine initialized");
     }
 
@@ -481,21 +481,30 @@ public class ClassicGameEngine implements GameEngine {
             }
         }
         
-        // Phase 3: 'L' 마커 추가 (아이템 블록인 경우)
-        if (state.getCurrentItemType() != null && 
-            state.getCurrentItemType() == seoultech.se.core.engine.item.ItemType.LINE_CLEAR &&
-            !blockPositions.isEmpty()) {
-            // 무작위로 하나의 블록에 'L' 마커 추가
-            java.util.Random random = new java.util.Random();
-            int randomIndex = random.nextInt(blockPositions.size());
-            int[] markerPos = blockPositions.get(randomIndex);
+        // Phase 3: 아이템 마커 추가 (아이템 블록인 경우)
+        if (state.getCurrentItemType() != null && !blockPositions.isEmpty()) {
+            seoultech.se.core.engine.item.ItemType itemType = state.getCurrentItemType();
             
-            newState.getGrid()[markerPos[0]][markerPos[1]].setItemMarker(
-                seoultech.se.core.engine.item.ItemType.LINE_CLEAR
-            );
-            
-            System.out.println("Ⓛ [ClassicGameEngine] LINE_CLEAR marker added at (" + 
-                markerPos[0] + ", " + markerPos[1] + ")");
+            // 모든 아이템 타입에 대해 마커 추가
+            if (itemType == seoultech.se.core.engine.item.ItemType.LINE_CLEAR) {
+                // LINE_CLEAR: 무작위로 하나의 블록에만 마커 추가
+                java.util.Random random = new java.util.Random();
+                int randomIndex = random.nextInt(blockPositions.size());
+                int[] markerPos = blockPositions.get(randomIndex);
+                
+                newState.getGrid()[markerPos[0]][markerPos[1]].setItemMarker(itemType);
+                
+                System.out.println("Ⓛ [ClassicGameEngine] LINE_CLEAR marker added at (" + 
+                    markerPos[0] + ", " + markerPos[1] + ")");
+            } else {
+                // 다른 아이템들 (BOMB, PLUS 등): 모든 블록에 마커 추가
+                for (int[] pos : blockPositions) {
+                    newState.getGrid()[pos[0]][pos[1]].setItemMarker(itemType);
+                }
+                
+                System.out.println("🎯 [ClassicGameEngine] " + itemType + " markers added to " + 
+                    blockPositions.size() + " blocks");
+            }
         }
 
         // 3. 라인 클리어 체크 및 실행
@@ -749,7 +758,10 @@ public class ClassicGameEngine implements GameEngine {
         int targetRow = state.getBoardHeight() - 1;
         for (Cell[] rowData : remainingRows) {
             for (int col = 0; col < state.getBoardWidth(); col++) {
-                state.getGrid()[targetRow][col] = rowData[col];
+                // 🔥 FIX: Cell 값을 복사 (참조가 아닌 값 복사)
+                state.getGrid()[targetRow][col].setColor(rowData[col].getColor());
+                state.getGrid()[targetRow][col].setOccupied(rowData[col].isOccupied());
+                state.getGrid()[targetRow][col].setItemMarker(rowData[col].getItemMarker());
             }
             targetRow--;
         }

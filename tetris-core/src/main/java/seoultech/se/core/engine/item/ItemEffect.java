@@ -36,6 +36,13 @@ public class ItemEffect {
     private final int bonusScore = 0;
     
     /**
+     * 중력 적용 후 클리어된 라인 수
+     * BOMB, PLUS 등의 아이템이 중력 적용 후 추가로 라인을 클리어할 수 있음
+     */
+    @Builder.Default
+    private final int linesCleared = 0;
+    
+    /**
      * 효과 설명 메시지
      */
     @Builder.Default
@@ -82,6 +89,28 @@ public class ItemEffect {
             .itemType(itemType)
             .blocksCleared(blocksCleared)
             .bonusScore(bonusScore)
+            .linesCleared(0)
+            .message(message)
+            .build();
+    }
+    
+    /**
+     * 성공 효과 (라인 클리어 포함)
+     * 
+     * @param itemType 아이템 타입
+     * @param blocksCleared 제거된 블록 수
+     * @param bonusScore 보너스 점수
+     * @param linesCleared 중력 적용 후 클리어된 라인 수
+     * @param message 메시지
+     * @return 성공 ItemEffect 객체
+     */
+    public static ItemEffect successWithLines(ItemType itemType, int blocksCleared, int bonusScore, int linesCleared, String message) {
+        return ItemEffect.builder()
+            .success(true)
+            .itemType(itemType)
+            .blocksCleared(blocksCleared)
+            .bonusScore(bonusScore)
+            .linesCleared(linesCleared)
             .message(message)
             .build();
     }

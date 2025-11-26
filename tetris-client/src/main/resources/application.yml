@@ -14,8 +14,7 @@
 spring:
   config:
     import: 
-      - classpath:config/client/classic.yml
-      - classpath:config/client/arcade.yml
+      - classpath:game-modes.yml
       - classpath:config/client/setting.yml
 
   application:

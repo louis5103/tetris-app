@@ -59,10 +59,10 @@ public class GameEngineFactory {
      */
     public GameEngine createGameEngine(GameplayType gameplayType) {
         if (gameplayType == GameplayType.ARCADE) {
-            GameModeConfig config = GameModeConfig.arcade();
+            GameModeConfig config = GameModeConfig.createDefaultArcade();
             return createGameEngine(config);
         } else {
-            GameModeConfig config = GameModeConfig.classic();
+            GameModeConfig config = GameModeConfig.createDefaultClassic();
             return createGameEngine(config);
         }
     }
