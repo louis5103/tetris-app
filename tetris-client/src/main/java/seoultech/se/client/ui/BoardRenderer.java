@@ -400,7 +400,9 @@ public class BoardRenderer {
     private void clearPreviewGrid(Rectangle[][] grid) {
         for (int row = 0; row < UIConstants.PREVIEW_GRID_ROWS; row++) {
             for (int col = 0; col < UIConstants.PREVIEW_GRID_COLS; col++) {
-                grid[row][col].setFill(ColorMapper.getEmptyCellColor());
+                Rectangle rect = grid[row][col];
+                rect.setFill(ColorMapper.getEmptyCellColor());
+                rect.getStyleClass().removeAll(UIConstants.ALL_TETROMINO_COLOR_CLASSES);
             }
         }
     }
