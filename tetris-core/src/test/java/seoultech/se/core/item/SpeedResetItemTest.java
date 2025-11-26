@@ -10,7 +10,9 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import seoultech.se.core.GameState;
-import seoultech.se.core.item.impl.SpeedResetItem;
+import seoultech.se.core.engine.item.ItemEffect;
+import seoultech.se.core.engine.item.ItemType;
+import seoultech.se.core.engine.item.impl.SpeedResetItem;
 
 /**
  * SpeedResetItem 테스트

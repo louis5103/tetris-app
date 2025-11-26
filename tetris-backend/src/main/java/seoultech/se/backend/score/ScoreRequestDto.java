@@ -7,6 +7,7 @@ import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
+import seoultech.se.core.model.enumType.Difficulty;
 
 @Getter
 @Setter
@@ -20,14 +21,14 @@ public class ScoreRequestDto {
     @PositiveOrZero
     private int score;
 
-    private GameMode gameMode;
+    private Difficulty difficulty;
     private boolean isItemMode;
 
     public ScoreEntity toEntity() {
         return ScoreEntity.builder()
             .name(this.name)
             .score(this.score)
-            .gameMode(this.gameMode)
+            .difficulty(this.difficulty)
             .isItemMode(this.isItemMode)
             .build();
     }

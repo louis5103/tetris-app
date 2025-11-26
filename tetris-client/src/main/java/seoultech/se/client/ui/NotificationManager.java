@@ -220,8 +220,36 @@ public class NotificationManager {
     }
     
     /**
+     * ✨ 공격 받음 알림 표시
+     *
+     * @param attackLines 받은 공격 라인 수
+     */
+    public void showAttackNotification(int attackLines) {
+        Platform.runLater(() -> {
+            // 라인 클리어 알림 레이블 사용
+            lineClearNotificationLabel.setText("⚔️ ATTACKED: +" + attackLines + " lines");
+            lineClearNotificationLabel.setStyle("-fx-text-fill: #FF4444; -fx-font-weight: bold;");
+            lineClearNotificationLabel.setVisible(true);
+            lineClearNotificationLabel.setManaged(true);
+
+            // 2초 후 숨기기
+            new Thread(() -> {
+                try {
+                    Thread.sleep(2000);
+                    Platform.runLater(() -> {
+                        lineClearNotificationLabel.setVisible(false);
+                        lineClearNotificationLabel.setManaged(false);
+                    });
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }).start();
+        });
+    }
+
+    /**
      * Combo 타이머를 정리합니다
-     * 
+     *
      * NotificationManager가 더 이상 사용되지 않을 때 호출되어야 합니다.
      */
     public void cleanup() {

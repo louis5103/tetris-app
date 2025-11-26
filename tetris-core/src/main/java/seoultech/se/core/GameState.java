@@ -1,7 +1,7 @@
 package seoultech.se.core;
 
 import lombok.Data;
-import seoultech.se.core.item.ItemType;
+import seoultech.se.core.engine.item.ItemType;
 import seoultech.se.core.model.Cell;
 import seoultech.se.core.model.Tetromino;
 import seoultech.se.core.model.enumType.TetrominoType;
@@ -37,6 +37,13 @@ public class GameState {
      * true: 좌우 이동 불가, 아래로만 이동 (바닥/블록 접촉 후)
      */
     private boolean isWeightBombLocked = false;
+
+    /**
+     * 다음 아이템까지 남은 라인 수 (Arcade 모드)
+     * 10줄 클리어마다 아이템 생성 (Req2 명세)
+     * ItemManager의 상태를 GameState로 이동 (Stateless 리팩토링)
+     */
+    private int linesUntilNextItem = 10;
 
     // Hold 기능 관련 정보
     private boolean holdUsedThisTurn;
@@ -152,6 +159,7 @@ public class GameState {
         this.currentItemType = null;
         this.nextBlockItemType = null;
         this.isWeightBombLocked = false;
+        this.linesUntilNextItem = 10;
 
         // Lock Delay 초기화
         this.isLockDelayActive = false;
@@ -201,6 +209,7 @@ public class GameState {
         copy.currentItemType = this.currentItemType;
         copy.nextBlockItemType = this.nextBlockItemType;
         copy.isWeightBombLocked = this.isWeightBombLocked;
+        copy.linesUntilNextItem = this.linesUntilNextItem;
 
         // Hold 기능 관련 정보 복사
         copy.holdUsedThisTurn = this.holdUsedThisTurn;
@@ -291,5 +300,58 @@ public class GameState {
         
         // 레벨업이 발생했는지 반환
         return this.level > previousLevel;
+    }
+
+    /**
+     * 방해 라인(Garbage Lines)을 보드 하단에 추가합니다
+     *
+     * 멀티플레이 공격 메커니즘:
+     * - 보드 전체를 위로 밀어올림
+     * - 하단에 새로운 방해 라인 추가 (랜덤 빈 칸 1개)
+     * - 상단을 벗어난 블록은 게임 오버
+     *
+     * @param lineCount 추가할 방해 라인 수
+     * @return 게임 오버 여부 (상단을 벗어나면 true)
+     */
+    public boolean addGarbageLines(int lineCount) {
+        if (lineCount <= 0) {
+            return false;
+        }
+
+        // 1. 기존 보드를 위로 이동
+        for (int i = grid.length - 1; i >= lineCount; i--) {
+            for (int j = 0; j < grid[i].length; j++) {
+                grid[i][j] = grid[i - lineCount][j];
+            }
+        }
+
+        // 2. 하단에 방해 라인 추가
+        for (int line = 0; line < lineCount; line++) {
+            // 각 라인마다 랜덤 위치에 빈 칸 1개
+            int emptyColumn = (int) (Math.random() * boardWidth);
+
+            for (int col = 0; col < boardWidth; col++) {
+                if (col == emptyColumn) {
+                    grid[line][col] = null; // 빈 칸
+                } else {
+                    // 회색 방해 블록 (GRAY 색상)
+                    grid[line][col] = Cell.of(seoultech.se.core.model.enumType.Color.GRAY, true);
+                }
+            }
+        }
+
+        // 3. 상단 확인 - 블록이 보드 밖으로 나갔는지 체크
+        for (int row = grid.length - lineCount; row < grid.length; row++) {
+            for (int col = 0; col < grid[row].length; col++) {
+                if (grid[row][col] != null) {
+                    // 상단에 블록이 있으면 게임 오버
+                    this.isGameOver = true;
+                    this.gameOverReason = "Attacked - Board overflow";
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 }

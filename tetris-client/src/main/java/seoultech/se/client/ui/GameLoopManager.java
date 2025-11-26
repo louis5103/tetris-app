@@ -71,24 +71,42 @@ public class GameLoopManager {
      */
     private void setupGameLoop() {
         gameLoop = new AnimationTimer() {
+            private long frameCount = 0;
+            private long lastLogTime = 0;
+            
             @Override
             public void handle(long now) {
-                if (callback == null) {
-                    return;
+                frameCount++;
+                
+                // 처음 5프레임과 이후 60프레임마다 로그 출력
+                if (frameCount <= 5 || (now - lastLogTime) >= 1_000_000_000L) {
+                    lastLogTime = now;
                 }
                 
+                if (callback == null) {
+                    System.err.println("❌ [GameLoopManager] Callback is null!");
+                    return;
+                }
+
                 if (now - lastUpdateTime >= dropInterval) {
-                    boolean shouldContinue = callback.onTick();
-                    
-                    if (!shouldContinue) {
+                    try {
+                        boolean shouldContinue = callback.onTick();
+
+                        if (!shouldContinue) {
+                            stop();
+                            return;
+                        }
+
+                        lastUpdateTime = now;
+                    } catch (Exception e) {
+                        System.err.println("❌ [GameLoopManager] Exception in game loop:");
+                        e.printStackTrace();
                         stop();
-                        return;
                     }
-                    
-                    lastUpdateTime = now;
                 }
             }
         };
+        System.out.println("🎮 [GameLoopManager] Game loop setup complete with interval: " + dropInterval + "ns");
     }
     
     /**
@@ -98,6 +116,8 @@ public class GameLoopManager {
         if (gameLoop != null) {
             lastUpdateTime = System.nanoTime();
             gameLoop.start();
+        } else {
+            System.err.println("❌ [GameLoopManager] Cannot start - gameLoop is null!");
         }
     }
     

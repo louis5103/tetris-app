@@ -14,7 +14,6 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import lombok.Getter;
 import seoultech.se.core.config.GameplayType;
-import seoultech.se.core.mode.PlayType;
 
 /**
  * 게임 모드 선택 팝업 컴포넌트
@@ -29,7 +28,7 @@ import seoultech.se.core.mode.PlayType;
 public class ModeSelectionPopup extends VBox {
     
     @Getter
-    private PlayType selectedPlayType = PlayType.LOCAL_SINGLE;
+    private boolean isMultiplayer = false;  // 싱글플레이/멀티플레이 구분
     
     @Getter
     private GameplayType selectedGameplayType = GameplayType.CLASSIC;
@@ -65,16 +64,16 @@ public class ModeSelectionPopup extends VBox {
         playTypeGroup = new ToggleGroup();
         
         RadioButton singleRadio = createPlayTypeRadio(
-            PlayType.LOCAL_SINGLE.getDisplayName(),
-            PlayType.LOCAL_SINGLE.getDescription(),
-            PlayType.LOCAL_SINGLE,
+            "로컬 싱글",
+            "혼자 플레이",
+            false,
             true
         );
         
         RadioButton multiRadio = createPlayTypeRadio(
-            PlayType.ONLINE_MULTI.getDisplayName(),
-            PlayType.ONLINE_MULTI.getDescription(),
-            PlayType.ONLINE_MULTI,
+            "온라인 멀티",
+            "다른 플레이어와 대결",
+            true,
             false
         );
         
@@ -153,11 +152,11 @@ public class ModeSelectionPopup extends VBox {
     /**
      * 플레이 타입 라디오 버튼 생성 헬퍼 메서드
      */
-    private RadioButton createPlayTypeRadio(String text, String tooltip, PlayType playType, boolean selected) {
+    private RadioButton createPlayTypeRadio(String text, String tooltip, boolean isMulti, boolean selected) {
         RadioButton radio = new RadioButton(text);
         radio.setToggleGroup(playTypeGroup);
         radio.setSelected(selected);
-        radio.setUserData(playType);
+        radio.setUserData(isMulti);
         radio.getStyleClass().add("play-type-radio");
         
         if (tooltip != null && !tooltip.isEmpty()) {
@@ -195,7 +194,7 @@ public class ModeSelectionPopup extends VBox {
         Toggle selectedGameplayToggle = gameplayTypeGroup.getSelectedToggle();
         
         if (selectedPlayToggle != null) {
-            selectedPlayType = (PlayType) selectedPlayToggle.getUserData();
+            isMultiplayer = (Boolean) selectedPlayToggle.getUserData();
         }
         
         if (selectedGameplayToggle != null) {
@@ -205,7 +204,7 @@ public class ModeSelectionPopup extends VBox {
         srsEnabled = srsCheckBox.isSelected();
         
         System.out.println("🎮 Mode selected: " + 
-            selectedPlayType.getDisplayName() + " / " + 
+            (isMultiplayer ? "MULTIPLAYER" : "SINGLEPLAYER") + " / " + 
             selectedGameplayType.getDisplayName() + " / SRS=" + srsEnabled);
         
         // 콜백 호출
@@ -246,14 +245,14 @@ public class ModeSelectionPopup extends VBox {
     /**
      * 마지막 선택 값으로 UI 복원
      * 
-     * @param playType 플레이 타입
+     * @param isMulti 멀티플레이 여부
      * @param gameplayType 게임플레이 타입
      * @param srsEnabled SRS 활성화 여부
      */
-    public void restoreSelection(PlayType playType, GameplayType gameplayType, boolean srsEnabled) {
+    public void restoreSelection(boolean isMulti, GameplayType gameplayType, boolean srsEnabled) {
         // 플레이 타입 복원
         for (Toggle toggle : playTypeGroup.getToggles()) {
-            if (toggle.getUserData() == playType) {
+            if (toggle.getUserData().equals(isMulti)) {
                 toggle.setSelected(true);
                 break;
             }
@@ -271,7 +270,7 @@ public class ModeSelectionPopup extends VBox {
         srsCheckBox.setSelected(srsEnabled);
         
         // 필드 업데이트
-        this.selectedPlayType = playType;
+        this.isMultiplayer = isMulti;
         this.selectedGameplayType = gameplayType;
         this.srsEnabled = srsEnabled;
     }

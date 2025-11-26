@@ -12,8 +12,8 @@ import org.junit.jupiter.api.Test;
 
 import seoultech.se.core.GameState;
 import seoultech.se.core.config.GameModeConfig;
-import seoultech.se.core.item.ItemManager;
-import seoultech.se.core.item.ItemType;
+import seoultech.se.core.engine.item.ItemManager;
+import seoultech.se.core.engine.item.ItemType;
 import seoultech.se.core.model.Tetromino;
 import seoultech.se.core.model.enumType.TetrominoType;
 
@@ -31,17 +31,14 @@ public class ArcadeGameEngineIntegrationTest {
     @BeforeEach
     public void setUp() {
         System.out.println("\n========== Setting up ArcadeGameEngine test ==========");
-        
+
+        // Stateless 리팩토링: GameModeConfig로 생성
+        GameModeConfig config = GameModeConfig.arcade();
+        arcadeEngine = new ArcadeGameEngine(config);
+
         // ItemManager 생성 (모든 아이템 활성화)
         itemManager = new ItemManager(0.1, EnumSet.allOf(ItemType.class));
-        
-        // ArcadeGameEngine 생성
-        arcadeEngine = new ArcadeGameEngine(itemManager);
-        
-        // GameModeConfig 생성 및 초기화
-        GameModeConfig config = GameModeConfig.arcade();
-        arcadeEngine.initialize(config);
-        
+
         // GameState 생성 (10x20 보드)
         gameState = new GameState(10, 20);
         
@@ -102,8 +99,8 @@ public class ArcadeGameEngineIntegrationTest {
             
             // lastLinesCleared 확인
             int linesCleared = newState.getLastLinesCleared();
-            System.out.println("Iteration " + lineCount + ": " + linesCleared + " line(s) cleared, " + 
-                "lines until next item: " + itemManager.getLinesUntilNextItem());
+            System.out.println("Iteration " + lineCount + ": " + linesCleared + " line(s) cleared, " +
+                "lines until next item: " + newState.getLinesUntilNextItem());
             
             assertEquals(1, linesCleared, "Should clear exactly 1 line per iteration");
             
@@ -203,9 +200,9 @@ public class ArcadeGameEngineIntegrationTest {
         gameState.setCurrentY(18);
         GameState newState = arcadeEngine.lockTetromino(gameState);
         assertEquals(2, newState.getLastLinesCleared());
-        assertEquals(8, itemManager.getLinesUntilNextItem(), "Counter should be at 8");
-        System.out.println("After 2 lines: Counter at " + itemManager.getLinesUntilNextItem());
-        
+        assertEquals(8, newState.getLinesUntilNextItem(), "Counter should be at 8");
+        System.out.println("After 2 lines: Counter at " + newState.getLinesUntilNextItem());
+
         // 두 번째 고정: 3줄 클리어
         gameState = newState;
         Tetromino iBlock2 = new Tetromino(TetrominoType.I);
@@ -217,9 +214,9 @@ public class ArcadeGameEngineIntegrationTest {
         gameState.setCurrentY(17);
         newState = arcadeEngine.lockTetromino(gameState);
         assertEquals(3, newState.getLastLinesCleared());
-        assertEquals(5, itemManager.getLinesUntilNextItem(), "Counter should be at 5");
-        System.out.println("After 5 lines total: Counter at " + itemManager.getLinesUntilNextItem());
-        
+        assertEquals(5, newState.getLinesUntilNextItem(), "Counter should be at 5");
+        System.out.println("After 5 lines total: Counter at " + newState.getLinesUntilNextItem());
+
         // 세 번째 고정: 5줄 클리어 → 아이템 생성, 카운터 리셋
         gameState = newState;
         Tetromino iBlock3 = new Tetromino(TetrominoType.I);
@@ -232,9 +229,9 @@ public class ArcadeGameEngineIntegrationTest {
         newState = arcadeEngine.lockTetromino(gameState);
         assertEquals(5, newState.getLastLinesCleared());
         assertNotNull(newState.getNextBlockItemType(), "Should generate item");
-        assertEquals(10, itemManager.getLinesUntilNextItem(), "Counter should reset to 10");
-        System.out.println("✅ After 10 lines total: Item generated, counter reset to " + 
-            itemManager.getLinesUntilNextItem());
+        assertEquals(10, newState.getLinesUntilNextItem(), "Counter should reset to 10");
+        System.out.println("✅ After 10 lines total: Item generated, counter reset to " +
+            newState.getLinesUntilNextItem());
         
         System.out.println("===========================================================\n");
     }

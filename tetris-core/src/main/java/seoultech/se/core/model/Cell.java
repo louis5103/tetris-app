@@ -3,7 +3,7 @@ package seoultech.se.core.model;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import seoultech.se.core.item.ItemType;
+import seoultech.se.core.engine.item.ItemType;
 import seoultech.se.core.model.enumType.Color;
 
 /**

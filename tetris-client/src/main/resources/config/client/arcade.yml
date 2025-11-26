@@ -1,17 +1,35 @@
 # Arcade Mode Settings
+# 사용자가 모드 설정 팝업에서 변경 가능한 아케이드 모드 설정
 client:
   modes:
     arcade:
+      # 회전 시스템
       srsEnabled: true
+      rotation180Enabled: false
+      
+      # 기능 활성화
       hardDropEnabled: true
       holdEnabled: true
+      ghostPieceEnabled: true
+      
+      # 속도 설정 (클래식보다 빠름)
       dropSpeedMultiplier: 1.5
+      softDropSpeed: 20.0
+      
+      # 락 시스템 (클래식보다 짧음)
       lockDelay: 300 # milliseconds
-      itemDropRate: 0.1 # 10%
+      maxLockResets: 15
+      
+      # 아이템 시스템 설정
+      itemDropRate: 0.1 # 10% 확률
       maxInventorySize: 3
       itemAutoUse: false
+      
+      # 아이템 활성화 설정
       enabledItems:
         BOMB: true
         PLUS: true
         SPEED_RESET: true
         BONUS_SCORE: true
+        LINE_CLEAR: true
+        WEIGHT_BOMB: true

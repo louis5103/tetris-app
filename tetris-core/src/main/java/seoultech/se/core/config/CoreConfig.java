@@ -8,8 +8,8 @@ import org.springframework.context.annotation.Configuration;
 import seoultech.se.core.engine.ArcadeGameEngine;
 import seoultech.se.core.engine.ClassicGameEngine;
 import seoultech.se.core.engine.GameEngine;
-import seoultech.se.core.item.ItemConfig;
-import seoultech.se.core.item.ItemManager;
+import seoultech.se.core.engine.item.ItemConfig;
+import seoultech.se.core.engine.item.ItemManager;
 
 /**
  * Core 모듈 설정 클래스
@@ -50,21 +50,20 @@ public class CoreConfig {
     
     /**
      * Arcade 게임 엔진 빈
-     * 
+     *
      * 조건: tetris.game.item.enabled = true
-     * 의존성: ItemManager
-     * 
-     * @param itemManager 아이템 관리자
+     * Stateless 리팩토링: Config를 생성자로 주입
+     *
      * @return ArcadeGameEngine 인스턴스
      */
     @Bean
     @ConditionalOnProperty(
-        name = "tetris.game.item.enabled", 
+        name = "tetris.game.item.enabled",
         havingValue = "true"
     )
-    public GameEngine arcadeGameEngine(ItemManager itemManager) {
-        System.out.println("🎮 [CoreConfig] Registering ArcadeGameEngine bean");
-        return new ArcadeGameEngine(itemManager);
+    public GameEngine arcadeGameEngine() {
+        System.out.println("🎮 [CoreConfig] Registering ArcadeGameEngine bean (Stateless)");
+        return new ArcadeGameEngine(GameModeConfig.arcade());
     }
     
     /**
@@ -117,7 +116,7 @@ public class CoreConfig {
         
         // 기본 Classic 모드 설정
         return GameModeConfig.builder()
-            .gameModeType(seoultech.se.core.mode.GameModeType.CLASSIC)
+            .gameplayType(seoultech.se.core.config.GameplayType.CLASSIC)
             .difficulty(seoultech.se.core.model.enumType.Difficulty.NORMAL)
             .itemConfig(null)  // Classic 모드는 아이템 없음
             .build();

@@ -20,9 +20,7 @@ import seoultech.se.client.TetrisApplication;
 import seoultech.se.client.config.ApplicationContextProvider;
 import seoultech.se.client.service.NavigationService;
 import seoultech.se.client.service.SettingsService;
-import seoultech.se.core.config.GameModeConfig;
 import seoultech.se.core.config.GameplayType;
-import seoultech.se.core.mode.PlayType;
 
 
 /**
@@ -99,7 +97,10 @@ public class MainController extends BaseController {
     
     @Autowired
     private SettingsService settingsService;
-    
+
+    @Autowired(required = false)
+    private seoultech.se.client.service.AuthService authService;
+
     /**
      * UI 초기화 메서드
      * FXML 파일이 로드된 후 자동으로 호출됩니다
@@ -370,20 +371,8 @@ public class MainController extends BaseController {
     public void handleClassicModeAction(ActionEvent event) {
         System.out.println("🎮 CLASSIC mode selected");
         
-        // 저장된 커스텀 설정 로드, 없으면 기본 프리셋 사용
-        GameModeConfig config = settingsService.loadCustomGameModeConfig(GameplayType.CLASSIC);
-        if (config == null) {
-            config = GameModeConfig.classic();
-            System.out.println("📋 Using default CLASSIC preset");
-        } else {
-            System.out.println("📋 Using custom CLASSIC settings");
-        }
-        
-        // 설정 저장
-        settingsService.saveGameModeSettings(PlayType.LOCAL_SINGLE, GameplayType.CLASSIC, config.isSrsEnabled());
-        
-        // 게임 시작
-        startGameWithConfig(event, config, "CLASSIC");
+        // 게임 시작 (싱글플레이) - GameController에서 설정 로드
+        startGameWithGameplayType(event, GameplayType.CLASSIC, false, "CLASSIC");
     }
     
     /**
@@ -393,20 +382,9 @@ public class MainController extends BaseController {
     public void handleArcadeModeAction(ActionEvent event) {
         System.out.println("🕹️ ARCADE mode selected");
         
-        // 저장된 커스텀 설정 로드, 없으면 기본 프리셋 사용
-        GameModeConfig config = settingsService.loadCustomGameModeConfig(GameplayType.ARCADE);
-        if (config == null) {
-            config = GameModeConfig.arcade();
-            System.out.println("📋 Using default ARCADE preset");
-        } else {
-            System.out.println("📋 Using custom ARCADE settings");
-        }
-        
-        // 설정 저장
-        settingsService.saveGameModeSettings(PlayType.LOCAL_SINGLE, GameplayType.ARCADE, config.isSrsEnabled());
-        
-        // 게임 시작
-        startGameWithConfig(event, config, "ARCADE");
+        // 게임 시작 (싱글플레이) - GameController에서 설정 로드
+        startGameWithGameplayType(event, GameplayType.ARCADE, false, "ARCADE");
+
     }
 
     public void handleSingleBackAction(ActionEvent event) {
@@ -621,210 +599,14 @@ public class MainController extends BaseController {
      */
     public void handleMultiplayerModeAction(ActionEvent event) {
         System.out.println("👥 MULTIPLAYER mode selected");
-        
-        // TODO: 온라인 연결 체크 및 로비 화면으로 전환
-        // 현재는 클래식 설정으로 시작
-        GameModeConfig config = GameModeConfig.classic();
-        
-        // 설정 저장
-        settingsService.saveGameModeSettings(PlayType.ONLINE_MULTI, GameplayType.CLASSIC, true);
-        
-        // 게임 시작 (향후 로비 화면으로 변경 예정)
-        startGameWithConfig(event, config, "MULTIPLAYER");
+
+        // 멀티플레이 모드로 게임 시작 (클래식 설정 기본 사용)
+        startGameWithGameplayType(event, GameplayType.CLASSIC, true, "MULTIPLAYER");
     }
     
-    /**
-     * CLASSIC 모드 설정 버튼 액션
-     * 클래식 모드 상세 설정을 팝업으로 표시
-     */
-    public void handleClassicSettingsAction(ActionEvent event) {
-        System.out.println("⚙️ CLASSIC settings button clicked");
-        showModeSettingsPopup("CLASSIC", GameplayType.CLASSIC, PlayType.LOCAL_SINGLE);
-    }
+
     
-    /**
-     * ARCADE 모드 설정 버튼 액션
-     * 아케이드 모드 상세 설정을 팝업으로 표시
-     */
-    public void handleArcadeSettingsAction(ActionEvent event) {
-        System.out.println("⚙️ ARCADE settings button clicked");
-        showModeSettingsPopup("ARCADE", GameplayType.ARCADE, PlayType.LOCAL_SINGLE);
-    }
-    
-    /**
-     * MULTIPLAYER 모드 설정 버튼 액션
-     * 멀티플레이 모드 상세 설정을 팝업으로 표시
-     */
-    public void handleMultiplayerSettingsAction(ActionEvent event) {
-        System.out.println("⚙️ MULTIPLAYER settings button clicked");
-        showModeSettingsPopup("MULTIPLAYER", GameplayType.CLASSIC, PlayType.ONLINE_MULTI);
-    }
-    
-    /**
-     * 모드 설정 팝업 표시
-     * 
-     * @param modeName 모드 이름
-     * @param gameplayType 게임플레이 타입
-     * @param playType 플레이 타입
-     */
-    private void showModeSettingsPopup(String modeName, GameplayType gameplayType, PlayType playType) {
-        // 저장된 커스텀 설정 로드, 없으면 기본 프리셋 사용
-        GameModeConfig currentConfig = settingsService.loadCustomGameModeConfig(gameplayType);
-        if (currentConfig == null) {
-            // 저장된 설정이 없으면 프리셋 사용
-            if (gameplayType == GameplayType.ARCADE) {
-                currentConfig = GameModeConfig.arcade();
-            } else {
-                currentConfig = GameModeConfig.classic();
-            }
-            System.out.println("📋 No custom settings found, using default preset for " + modeName);
-        } else {
-            System.out.println("📋 Loaded custom settings for " + modeName);
-        }
-        
-        // 커스텀 다이얼로그 생성
-        javafx.scene.control.Dialog<GameModeConfig> dialog = new javafx.scene.control.Dialog<>();
-        dialog.setTitle(modeName + " 모드 설정");
-        dialog.setHeaderText(modeName + " 모드 상세 설정");
-        
-        // 다이얼로그 버튼
-        javafx.scene.control.ButtonType applyButtonType = new javafx.scene.control.ButtonType("적용", javafx.scene.control.ButtonBar.ButtonData.OK_DONE);
-        dialog.getDialogPane().getButtonTypes().addAll(applyButtonType, javafx.scene.control.ButtonType.CANCEL);
-        
-        // 설정 UI 구성
-        javafx.scene.layout.GridPane grid = new javafx.scene.layout.GridPane();
-        grid.setHgap(10);
-        grid.setVgap(10);
-        grid.setPadding(new javafx.geometry.Insets(20, 150, 10, 10));
-        
-        int row = 0;
-        
-        // 기본 정보
-        grid.add(new javafx.scene.control.Label("게임플레이 타입:"), 0, row);
-        grid.add(new javafx.scene.control.Label(gameplayType.getDisplayName()), 1, row++);
-        
-        grid.add(new javafx.scene.control.Label("플레이 타입:"), 0, row);
-        grid.add(new javafx.scene.control.Label(playType.getDisplayName()), 1, row++);
-        
-        // 구분선
-        javafx.scene.control.Separator separator1 = new javafx.scene.control.Separator();
-        grid.add(separator1, 0, row++, 2, 1);
-        
-        // SRS 회전 설정
-        javafx.scene.control.CheckBox srsCheckBox = new javafx.scene.control.CheckBox();
-        srsCheckBox.setSelected(currentConfig.isSrsEnabled());
-        grid.add(new javafx.scene.control.Label("SRS 회전 시스템:"), 0, row);
-        grid.add(srsCheckBox, 1, row++);
-        
-        // 180도 회전 설정
-        javafx.scene.control.CheckBox rotation180CheckBox = new javafx.scene.control.CheckBox();
-        rotation180CheckBox.setSelected(currentConfig.isRotation180Enabled());
-        grid.add(new javafx.scene.control.Label("180도 회전:"), 0, row);
-        grid.add(rotation180CheckBox, 1, row++);
-        
-        // 하드 드롭 설정
-        javafx.scene.control.CheckBox hardDropCheckBox = new javafx.scene.control.CheckBox();
-        hardDropCheckBox.setSelected(currentConfig.isHardDropEnabled());
-        grid.add(new javafx.scene.control.Label("하드 드롭:"), 0, row);
-        grid.add(hardDropCheckBox, 1, row++);
-        
-        // 홀드 기능 설정
-        javafx.scene.control.CheckBox holdCheckBox = new javafx.scene.control.CheckBox();
-        holdCheckBox.setSelected(currentConfig.isHoldEnabled());
-        grid.add(new javafx.scene.control.Label("홀드 기능:"), 0, row);
-        grid.add(holdCheckBox, 1, row++);
-        
-        // 고스트 피스 설정
-        javafx.scene.control.CheckBox ghostCheckBox = new javafx.scene.control.CheckBox();
-        ghostCheckBox.setSelected(currentConfig.isGhostPieceEnabled());
-        grid.add(new javafx.scene.control.Label("고스트 블록:"), 0, row);
-        grid.add(ghostCheckBox, 1, row++);
-        
-        // 구분선
-        javafx.scene.control.Separator separator2 = new javafx.scene.control.Separator();
-        grid.add(separator2, 0, row++, 2, 1);
-        
-        // 드롭 속도 설정
-        javafx.scene.control.Label dropSpeedLabel = new javafx.scene.control.Label(
-            String.format("%.1fx", currentConfig.getDropSpeedMultiplier()));
-        javafx.scene.control.Slider dropSpeedSlider = new javafx.scene.control.Slider(0.5, 3.0, currentConfig.getDropSpeedMultiplier());
-        dropSpeedSlider.setShowTickMarks(true);
-        dropSpeedSlider.setShowTickLabels(true);
-        dropSpeedSlider.setMajorTickUnit(0.5);
-        dropSpeedSlider.setBlockIncrement(0.1);
-        dropSpeedSlider.valueProperty().addListener((obs, oldVal, newVal) -> {
-            dropSpeedLabel.setText(String.format("%.1fx", newVal.doubleValue()));
-        });
-        grid.add(new javafx.scene.control.Label("낙하 속도 배율:"), 0, row);
-        grid.add(dropSpeedSlider, 1, row);
-        grid.add(dropSpeedLabel, 2, row++);
-        
-        // 소프트 드롭 속도 설정
-        javafx.scene.control.Label softDropLabel = new javafx.scene.control.Label(
-            String.format("%.0f", currentConfig.getSoftDropSpeed()));
-        javafx.scene.control.Slider softDropSlider = new javafx.scene.control.Slider(1.0, 50.0, currentConfig.getSoftDropSpeed());
-        softDropSlider.setShowTickMarks(true);
-        softDropSlider.setShowTickLabels(true);
-        softDropSlider.setMajorTickUnit(10);
-        softDropSlider.setBlockIncrement(1);
-        softDropSlider.valueProperty().addListener((obs, oldVal, newVal) -> {
-            softDropLabel.setText(String.format("%.0f", newVal.doubleValue()));
-        });
-        grid.add(new javafx.scene.control.Label("소프트 드롭 속도:"), 0, row);
-        grid.add(softDropSlider, 1, row);
-        grid.add(softDropLabel, 2, row++);
-        
-        // 락 딜레이 설정
-        javafx.scene.control.Label lockDelayLabel = new javafx.scene.control.Label(
-            String.format("%dms", currentConfig.getLockDelay()));
-        javafx.scene.control.Slider lockDelaySlider = new javafx.scene.control.Slider(100, 1000, currentConfig.getLockDelay());
-        lockDelaySlider.setShowTickMarks(true);
-        lockDelaySlider.setShowTickLabels(true);
-        lockDelaySlider.setMajorTickUnit(100);
-        lockDelaySlider.setBlockIncrement(50);
-        lockDelaySlider.valueProperty().addListener((obs, oldVal, newVal) -> {
-            lockDelayLabel.setText(String.format("%dms", newVal.intValue()));
-        });
-        grid.add(new javafx.scene.control.Label("락 딜레이:"), 0, row);
-        grid.add(lockDelaySlider, 1, row);
-        grid.add(lockDelayLabel, 2, row++);
-        
-        dialog.getDialogPane().setContent(grid);
-        
-        // 결과 변환기
-        dialog.setResultConverter(dialogButton -> {
-            if (dialogButton == applyButtonType) {
-                return GameModeConfig.builder()
-                    .gameplayType(gameplayType)
-                    .srsEnabled(srsCheckBox.isSelected())
-                    .rotation180Enabled(rotation180CheckBox.isSelected())
-                    .hardDropEnabled(hardDropCheckBox.isSelected())
-                    .holdEnabled(holdCheckBox.isSelected())
-                    .ghostPieceEnabled(ghostCheckBox.isSelected())
-                    .dropSpeedMultiplier(dropSpeedSlider.getValue())
-                    .softDropSpeed(softDropSlider.getValue())
-                    .lockDelay((int) lockDelaySlider.getValue())
-                    .build();
-            }
-            return null;
-        });
-        
-        // 다이얼로그 표시 및 결과 처리
-        dialog.showAndWait().ifPresent(config -> {
-            // 커스텀 설정을 SettingsService에 저장
-            settingsService.saveCustomGameModeConfig(gameplayType, config);
-            settingsService.saveGameModeSettings(playType, gameplayType, config.isSrsEnabled());
-            System.out.println("✅ " + modeName + " mode custom settings saved");
-            System.out.println("   - SRS: " + config.isSrsEnabled());
-            System.out.println("   - 180° Rotation: " + config.isRotation180Enabled());
-            System.out.println("   - Hard Drop: " + config.isHardDropEnabled());
-            System.out.println("   - Hold: " + config.isHoldEnabled());
-            System.out.println("   - Ghost: " + config.isGhostPieceEnabled());
-            System.out.println("   - Drop Speed: " + config.getDropSpeedMultiplier() + "x");
-            System.out.println("   - Soft Drop: " + config.getSoftDropSpeed());
-            System.out.println("   - Lock Delay: " + config.getLockDelay() + "ms");
-        });
-    }
+
     
     /**
      * 게임 모드 설정을 적용하여 게임을 시작합니다
@@ -833,7 +615,17 @@ public class MainController extends BaseController {
      * @param config 게임 모드 설정
      * @param modeName 모드 이름 (로그용)
      */
-    private void startGameWithConfig(ActionEvent event, GameModeConfig config, String modeName) {
+    /**
+     * 게임 시작 (PlayType 기본값: LOCAL_SINGLE)
+     */
+    /**
+     * 게임 시작
+     * 
+     * @param event 액션 이벤트
+     * @param config 게임 모드 설정
+     * @param modeName 모드 이름 (MULTIPLAYER인 경우 멀티플레이로 판단)
+     */
+    private void startGameWithGameplayType(ActionEvent event, GameplayType gameplayType, boolean isMultiplayer, String modeName) {
         try {
             // 1단계: 현재 Stage 가져오기 (rootPane을 통해 안전하게 가져오기)
             Stage stage = (Stage) rootPane.getScene().getWindow();
@@ -841,22 +633,22 @@ public class MainController extends BaseController {
                 System.err.println("❌ Cannot get Stage from rootPane");
                 return;
             }
-            
+
             // 2단계: game-view.fxml 로드
             FXMLLoader loader = new FXMLLoader(
                 TetrisApplication.class.getResource("/view/game-view.fxml")
             );
-            
+
             // 3단계: Controller Factory 설정 (Spring DI)
             ApplicationContext context = ApplicationContextProvider.getApplicationContext();
             loader.setControllerFactory(context::getBean);
-            
+
             // 4단계: FXML 로드
             Parent gameRoot = loader.load();
-            
-            // 5단계: GameController에 설정 전달
+
+            // 5단계: GameController에 게임 모드 설정
             GameController controller = loader.getController();
-            controller.setGameModeConfig(config);
+            controller.setGameMode(gameplayType, isMultiplayer);
             
             // 창 크기 변경 전 현재 위치와 크기 저장
             double currentX = stage.getX();
@@ -883,9 +675,15 @@ public class MainController extends BaseController {
             double deltaY = (newHeight - currentHeight) / 2;
             stage.setX(currentX - deltaX);
             stage.setY(currentY - deltaY);
-            
+
             System.out.println("✅ " + modeName + " mode started successfully");
-            
+
+            // 7단계: 멀티플레이 모드인 경우 매칭 시작
+            // TODO: 멀티플레이 매칭은 별도 매칭 화면 컨트롤러에서 처리
+            if (isMultiplayer) {
+                System.out.println("⚠️ Multiplayer mode - matching should be handled in a separate screen");
+                // 매칭 기능은 나중에 별도 화면에서 구현 예정
+            }
         } catch (IOException e) {
             System.err.println("❌ Failed to load game-view.fxml");
             System.err.println("   Error: " + e.getMessage());

@@ -1,6 +1,5 @@
 package seoultech.se.client.service;
 
-import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -11,7 +10,6 @@ import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.Yaml;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import jakarta.annotation.PostConstruct;
@@ -21,43 +19,23 @@ import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
 import javafx.stage.Stage;
 import seoultech.se.client.config.ClientSettings;
-import seoultech.se.client.config.GameModeProperties;
+import seoultech.se.client.config.GeneralSettings;
 import seoultech.se.client.config.mode.ArcadeModeSettings;
-import seoultech.se.client.config.mode.ClassicModeSettings;
 import seoultech.se.client.constants.ColorBlindMode;
 import seoultech.se.core.config.GameModeConfig;
 import seoultech.se.core.config.GameplayType;
-import seoultech.se.core.mode.PlayType;
 
 @Service
 public class SettingsService {
 
     @Autowired
-    private GameModeProperties gameModeProperties;
-
-    @Autowired
     private ClientSettings clientSettings;
     
-    // ========== application.yml 기본값 주입 ==========
+    @Autowired
+    private YamlConfigPersistence yamlPersistence;
     
-    @Value("${tetris.sound.volume}")
-    private double defaultSoundVolume;
-    
-    @Value("${tetris.ui.color-mode}")
-    private String defaultColorMode;
-    
-    @Value("${tetris.ui.screen-size}")
-    private String defaultScreenSize;
-    
-    @Value("${tetris.ui.stage-width}")
-    private double defaultStageWidth;
-    
-    @Value("${tetris.ui.stage-height}")
-    private double defaultStageHeight;
-    
-    // ✨ Phase 5: 난이도 기본값 추가
-    @Value("${tetris.ui.difficulty}")
-    private String defaultDifficulty;
+    // ========== application.yml 기본값은 GeneralSettings에서 주입 ==========
+    // ClientSettings의 GeneralSettings가 기본값을 포함하고 있음
 
     private Stage primaryStage;
     private final DoubleProperty stageWidth = new SimpleDoubleProperty();
@@ -140,13 +118,16 @@ public class SettingsService {
             Map<String, Object> data = yaml.load(in);
             Map<String, Object> settings = getNestedMap(data, "client.setting");
 
-            soundVolume.set(getSetting(settings, "soundVolume", defaultSoundVolume));
-            colorMode.set(getSetting(settings, "colorMode", defaultColorMode));
-            screenSize.set(getSetting(settings, "screenSize", defaultScreenSize));
-            difficulty.set(getSetting(settings, "difficulty", defaultDifficulty));
+            // GeneralSettings null 체크 및 안전한 기본값 제공
+            GeneralSettings defaultSettings = getDefaultSettingsSafely();
+            
+            soundVolume.set(getSetting(settings, "soundVolume", defaultSettings.getSoundVolume()));
+            colorMode.set(getSetting(settings, "colorMode", defaultSettings.getColorMode()));
+            screenSize.set(getSetting(settings, "screenSize", defaultSettings.getScreenSize()));
+            difficulty.set(getSetting(settings, "difficulty", defaultSettings.getDifficulty()));
 
-            double width = getSetting(settings, "stageWidth", defaultStageWidth);
-            double height = getSetting(settings, "stageHeight", defaultStageHeight);
+            double width = getSetting(settings, "stageWidth", defaultSettings.getStageWidth());
+            double height = getSetting(settings, "stageHeight", defaultSettings.getStageHeight());
 
             applyResolution(width, height);
             applyScreenSizeClass();
@@ -158,47 +139,38 @@ public class SettingsService {
         }
     }
 
+    /**
+     * 현재 UI 설정을 YAML 파일에 저장
+     * JavaFX Property 값들을 GeneralSettings에 반영하고 저장합니다.
+     */
     public void saveSettings() {
         try {
-            // 파일을 먼저 읽어옴
-            Map<String, Object> data;
-            try (FileInputStream in = new FileInputStream(settingsFilePath)) {
-                data = yaml.load(in);
-            } catch (IOException e) {
-                // 파일이 없거나 읽을 수 없으면 새로운 맵 생성
-                data = new LinkedHashMap<>();
-            }
-
-            // client.setting 경로에 접근 (없으면 생성)
-            Map<String, Object> client = (Map<String, Object>) data.computeIfAbsent("client", k -> new LinkedHashMap<>());
-            Map<String, Object> settings = (Map<String, Object>) client.computeIfAbsent("setting", k -> new LinkedHashMap<>());
-
-            // 현재 설정 값으로 업데이트
-            settings.put("soundVolume", soundVolume.get());
-            settings.put("colorMode", colorMode.get());
-            settings.put("screenSize", screenSize.get());
-            settings.put("stageWidth", stageWidth.get());
-            settings.put("stageHeight", stageHeight.get());
-            settings.put("difficulty", difficulty.get());
+            // JavaFX Property 값을 GeneralSettings에 반영
+            GeneralSettings generalSettings = clientSettings.getSetting();
+            generalSettings.setSoundVolume(soundVolume.get());
+            generalSettings.setColorMode(colorMode.get());
+            generalSettings.setScreenSize(screenSize.get());
+            generalSettings.setStageWidth(stageWidth.get());
+            generalSettings.setStageHeight(stageHeight.get());
+            generalSettings.setDifficulty(difficulty.get());
             
-            // 파일에 다시 씀
-            try (FileWriter writer = new FileWriter(settingsFilePath)) {
-                yaml.dump(data, writer);
-                System.out.println("✅ Settings saved successfully to " + settingsFilePath);
-            }
+            // YamlConfigPersistence를 통해 저장
+            yamlPersistence.saveGeneralSettings(generalSettings);
         } catch (IOException e) {
-            System.err.println("❗ Failed to save settings to " + settingsFilePath + ": " + e.getMessage());
+            System.err.println("❗ Failed to save settings: " + e.getMessage());
         }
     }
 
     public void restoreDefaults() {
-        // application.yml의 기본값 사용
-        soundVolume.set(defaultSoundVolume);
-        colorMode.set(defaultColorMode);
-        screenSize.set(defaultScreenSize);
-        difficulty.set(defaultDifficulty);
+        // application.yml의 기본값 사용 (ClientSettings의 GeneralSettings에서)
+        GeneralSettings defaultSettings = getDefaultSettingsSafely();
         
-        applyResolution(defaultStageWidth, defaultStageHeight);
+        soundVolume.set(defaultSettings.getSoundVolume());
+        colorMode.set(defaultSettings.getColorMode());
+        screenSize.set(defaultSettings.getScreenSize());
+        difficulty.set(defaultSettings.getDifficulty());
+        
+        applyResolution(defaultSettings.getStageWidth(), defaultSettings.getStageHeight());
         saveSettings(); // 기본값을 YAML 파일에 저장
         
         System.out.println("✅ Settings restored to defaults and saved to " + settingsFilePath);
@@ -209,10 +181,15 @@ public class SettingsService {
         String[] keys = path.split("\\.");
         Map<String, Object> current = map;
         for (String key : keys) {
-            current = (Map<String, Object>) current.get(key);
-            if (current == null) {
+            Object next = current.get(key);
+            if (next == null) {
                 return new HashMap<>(); // Return empty map if path is invalid
             }
+            if (!(next instanceof Map)) {
+                System.err.println("⚠️ Expected Map at key '" + key + "' but got " + next.getClass().getSimpleName());
+                return new HashMap<>();
+            }
+            current = (Map<String, Object>) next;
         }
         return current;
     }
@@ -220,12 +197,33 @@ public class SettingsService {
     // Helper method to get a setting with a default value
     private <T> T getSetting(Map<String, Object> settings, String key, T defaultValue) {
         Object value = settings.get(key);
-        if (value != null && defaultValue.getClass().isInstance(value)) {
-            if (defaultValue instanceof Double && value instanceof Integer) {
-                return (T) Double.valueOf((Integer) value);
-            }
-            return (T) value;
+        if (value == null) {
+            return defaultValue;
         }
+        
+        try {
+            // 타입별 안전한 변환
+            if (defaultValue instanceof Double) {
+                if (value instanceof Number) {
+                    return (T) Double.valueOf(((Number) value).doubleValue());
+                } else if (value instanceof String) {
+                    return (T) Double.valueOf(Double.parseDouble((String) value));
+                }
+            } else if (defaultValue instanceof Integer) {
+                if (value instanceof Number) {
+                    return (T) Integer.valueOf(((Number) value).intValue());
+                } else if (value instanceof String) {
+                    return (T) Integer.valueOf(Integer.parseInt((String) value));
+                }
+            } else if (defaultValue instanceof String) {
+                return (T) String.valueOf(value);
+            } else if (defaultValue.getClass().isInstance(value)) {
+                return (T) value;
+            }
+        } catch (NumberFormatException | ClassCastException e) {
+            System.err.println("⚠️ Failed to convert setting '" + key + "' value '" + value + "' to " + defaultValue.getClass().getSimpleName() + ": " + e.getMessage());
+        }
+        
         return defaultValue;
     }
     
@@ -347,33 +345,21 @@ public class SettingsService {
     // ========== Game Mode Configuration ==========
     
     /**
-     * GameModeConfig 빌드
-     * GameModeProperties의 설정을 기반으로 GameModeConfig 객체를 생성합니다.
-     * 
-     * @return GameModeConfig 객체
+     * @deprecated GameModeConfigFactory 사용 권장
      */
-    public GameModeConfig buildGameModeConfig() {
+    @Deprecated
+    public GameModeConfig buildGameModeConfig(GameplayType gameplayType) {
         try {
-            // 유효성 검증
-            if (!validateGameModeSettings()) {
-                System.err.println("⚠️ Invalid game mode settings detected, using defaults");
-            }
-            
-            GameplayType gameplayType = gameModeProperties.getGameplayType();
-            
             // 게임플레이 타입에 따라 프리셋 사용
             if (gameplayType == GameplayType.ARCADE) {
-                // 아케이드 모드는 아이템 설정 포함
-                return buildArcadeConfig();
+                return GameModeConfig.arcade();
             } else {
-                ClassicModeSettings classicSettings = clientSettings.getModes().getClassic();
-                return GameModeConfig.classic(classicSettings.isSrsEnabled());
+                return GameModeConfig.classic();
             }
         } catch (Exception e) {
             System.err.println("❗ Failed to build game mode config: " + e.getMessage());
             e.printStackTrace();
-            // 기본값 반환
-            return GameModeConfig.classic(true);
+            return GameModeConfig.classic();
         }
     }
     
@@ -387,7 +373,7 @@ public class SettingsService {
         ArcadeModeSettings arcadeSettings = clientSettings.getModes().getArcade();
 
         // ItemConfig 생성
-        seoultech.se.core.item.ItemConfig itemConfig = buildItemConfig();
+        seoultech.se.core.engine.item.ItemConfig itemConfig = buildItemConfig();
         
         System.out.println("✅ ItemConfig created - isEnabled: " + itemConfig.isEnabled());
         
@@ -403,63 +389,41 @@ public class SettingsService {
     
     /**
      * ItemConfig 생성
-     * GameModeProperties 설정을 기반으로 ItemConfig를 빌드합니다.
+     * ArcadeModeSettings 설정을 기반으로 ItemConfig를 빌드합니다.
      * 
      * @return ItemConfig 객체
      */
-    private seoultech.se.core.item.ItemConfig buildItemConfig() {
+    private seoultech.se.core.engine.item.ItemConfig buildItemConfig() {
+        ArcadeModeSettings arcadeSettings = clientSettings.getModes().getArcade();
+        
         // 활성화된 아이템 타입 수집
-        java.util.Set<seoultech.se.core.item.ItemType> enabledItems = 
+        java.util.Set<seoultech.se.core.engine.item.ItemType> enabledItems = 
             new java.util.HashSet<>();
         
-        for (seoultech.se.core.item.ItemType itemType : 
-             seoultech.se.core.item.ItemType.values()) {
-            if (gameModeProperties.isItemEnabled(itemType.name())) {
-                enabledItems.add(itemType);
+        Map<String, Boolean> enabledItemsMap = arcadeSettings.getEnabledItems();
+        if (enabledItemsMap != null) {
+            for (Map.Entry<String, Boolean> entry : enabledItemsMap.entrySet()) {
+                if (entry.getValue()) {
+                    try {
+                        enabledItems.add(seoultech.se.core.engine.item.ItemType.valueOf(entry.getKey()));
+                    } catch (IllegalArgumentException e) {
+                        System.err.println("⚠️ Invalid item type: " + entry.getKey());
+                    }
+                }
             }
         }
         
-        System.out.println("📊 Item drop rate: " + (int)(gameModeProperties.getItemDropRate() * 100) + "%");
+        System.out.println("📊 Item drop rate: " + (int)(arcadeSettings.getItemDropRate() * 100) + "%");
         System.out.println("📊 Enabled items: " + enabledItems);
         
-        return seoultech.se.core.item.ItemConfig.builder()
-            .dropRate(gameModeProperties.getItemDropRate())
+        return seoultech.se.core.engine.item.ItemConfig.builder()
+            .dropRate(arcadeSettings.getItemDropRate())
             .enabledItems(enabledItems)
-            .maxInventorySize(gameModeProperties.getMaxInventorySize())
-            .autoUse(gameModeProperties.isItemAutoUse())
+            .maxInventorySize(arcadeSettings.getMaxInventorySize())
+            .autoUse(arcadeSettings.isItemAutoUse())
             .build();
     }
     
-    /**
-     * 게임 모드 설정 저장
-     * 
-     * @param playType 플레이 타입
-     * @param gameplayType 게임플레이 타입
-     * @param srsEnabled SRS 활성화 여부
-     */
-    public void saveGameModeSettings(PlayType playType, GameplayType gameplayType, boolean srsEnabled) {
-        try {
-            // GameModeProperties 업데이트
-            gameModeProperties.setPlayType(playType);
-            gameModeProperties.setGameplayType(gameplayType);
-            gameModeProperties.setSrsEnabled(srsEnabled);
-            
-            // 마지막 선택 저장
-            gameModeProperties.setLastPlayType(playType);
-            gameModeProperties.setLastGameplayType(gameplayType);
-            gameModeProperties.setLastSrsEnabled(srsEnabled);
-            
-            // 기존 설정 저장 메서드 호출
-            saveSettings();
-            
-            System.out.println("✅ Game mode settings saved: " + 
-                playType.getDisplayName() + " / " + 
-                gameplayType.getDisplayName() + " / SRS=" + srsEnabled);
-        } catch (Exception e) {
-            System.err.println("❗ Failed to save game mode settings: " + e.getMessage());
-            e.printStackTrace();
-        }
-    }
     
     /**
      * 커스텀 게임 모드 설정 저장 (모든 설정 포함)
@@ -500,13 +464,13 @@ public class SettingsService {
             modeSettings.put("lockDelay", config.getLockDelay());
 
             if (gameplayType == GameplayType.ARCADE && config.getItemConfig() != null) {
-                seoultech.se.core.item.ItemConfig itemConfig = config.getItemConfig();
+                seoultech.se.core.engine.item.ItemConfig itemConfig = config.getItemConfig();
                 modeSettings.put("itemDropRate", itemConfig.getDropRate());
                 modeSettings.put("maxInventorySize", itemConfig.getMaxInventorySize());
                 modeSettings.put("itemAutoUse", itemConfig.isAutoUse());
                 
                 Map<String, Boolean> enabledItems = new LinkedHashMap<>();
-                for (seoultech.se.core.item.ItemType itemType : seoultech.se.core.item.ItemType.values()) {
+                for (seoultech.se.core.engine.item.ItemType itemType : seoultech.se.core.engine.item.ItemType.values()) {
                     enabledItems.put(itemType.name(), itemConfig.getEnabledItems().contains(itemType));
                 }
                 modeSettings.put("enabledItems", enabledItems);
@@ -557,7 +521,7 @@ public class SettingsService {
                 .lockDelay(getSetting(modeSettings, "lockDelay", 500));
 
             if (gameplayType == GameplayType.ARCADE) {
-                seoultech.se.core.item.ItemConfig itemConfig = buildItemConfigFromMap(modeSettings);
+                seoultech.se.core.engine.item.ItemConfig itemConfig = buildItemConfigFromMap(modeSettings);
                 builder.itemConfig(itemConfig);
             }
             
@@ -572,20 +536,20 @@ public class SettingsService {
         }
     }
 
-    private seoultech.se.core.item.ItemConfig buildItemConfigFromMap(Map<String, Object> modeSettings) {
-        java.util.Set<seoultech.se.core.item.ItemType> enabledItems = new java.util.HashSet<>();
+    private seoultech.se.core.engine.item.ItemConfig buildItemConfigFromMap(Map<String, Object> modeSettings) {
+        java.util.Set<seoultech.se.core.engine.item.ItemType> enabledItems = new java.util.HashSet<>();
         Map<String, Boolean> enabledItemsMap = getSetting(modeSettings, "enabledItems", new HashMap<>());
         for (Map.Entry<String, Boolean> entry : enabledItemsMap.entrySet()) {
             if (entry.getValue()) {
                 try {
-                    enabledItems.add(seoultech.se.core.item.ItemType.valueOf(entry.getKey()));
+                    enabledItems.add(seoultech.se.core.engine.item.ItemType.valueOf(entry.getKey()));
                 } catch (IllegalArgumentException e) {
                     System.err.println("⚠️ Invalid item type in config: " + entry.getKey());
                 }
             }
         }
 
-        return seoultech.se.core.item.ItemConfig.builder()
+        return seoultech.se.core.engine.item.ItemConfig.builder()
             .dropRate(getSetting(modeSettings, "itemDropRate", 0.1))
             .enabledItems(enabledItems)
             .maxInventorySize(getSetting(modeSettings, "maxInventorySize", 3))
@@ -594,58 +558,12 @@ public class SettingsService {
     }
     
     /**
-     * 게임 모드 설정 유효성 검증
+     * ClientSettings 반환 (외부 접근용)
      * 
-     * @return 유효하면 true, 그렇지 않으면 false
+     * @return ClientSettings
      */
-    public boolean validateGameModeSettings() {
-        boolean isValid = true;
-        
-        if (gameModeProperties.getPlayType() == null) {
-            System.err.println("❗ PlayType is null, setting to default: LOCAL_SINGLE");
-            gameModeProperties.setPlayType(PlayType.LOCAL_SINGLE);
-            isValid = false;
-        }
-        
-        if (gameModeProperties.getGameplayType() == null) {
-            System.err.println("❗ GameplayType is null, setting to default: CLASSIC");
-            gameModeProperties.setGameplayType(GameplayType.CLASSIC);
-            isValid = false;
-        }
-        
-        return isValid;
-    }
-    
-    /**
-     * 마지막 선택 설정 복원
-     */
-    public void restoreLastGameModeSettings() {
-        try {
-            PlayType lastPlayType = gameModeProperties.getLastPlayType();
-            GameplayType lastGameplayType = gameModeProperties.getLastGameplayType();
-            boolean lastSrsEnabled = gameModeProperties.isLastSrsEnabled();
-            
-            if (lastPlayType != null && lastGameplayType != null) {
-                gameModeProperties.setPlayType(lastPlayType);
-                gameModeProperties.setGameplayType(lastGameplayType);
-                gameModeProperties.setSrsEnabled(lastSrsEnabled);
-                
-                System.out.println("✅ Last game mode settings restored: " + 
-                    lastPlayType.getDisplayName() + " / " + 
-                    lastGameplayType.getDisplayName());
-            }
-        } catch (Exception e) {
-            System.err.println("❗ Failed to restore last game mode settings: " + e.getMessage());
-        }
-    }
-    
-    /**
-     * GameModeProperties 반환 (외부 접근용)
-     * 
-     * @return GameModeProperties
-     */
-    public GameModeProperties getGameModeProperties() {
-        return gameModeProperties;
+    public ClientSettings getClientSettings() {
+        return clientSettings;
     }
     
     // =========================================================================
@@ -661,7 +579,8 @@ public class SettingsService {
         String difficultyId = difficulty.get();
         
         if (difficultyId == null || difficultyId.isEmpty()) {
-            difficultyId = defaultDifficulty;
+            GeneralSettings defaultSettings = getDefaultSettingsSafely();
+            difficultyId = defaultSettings.getDifficulty();
         }
         
         switch (difficultyId) {
@@ -673,6 +592,33 @@ public class SettingsService {
             default:
                 return seoultech.se.core.model.enumType.Difficulty.NORMAL;
         }
+    }
+    
+    /**
+     * GeneralSettings를 안전하게 가져오는 헬퍼 메서드
+     * null일 경우 하드코딩된 기본값 반환
+     * 
+     * @return GeneralSettings (null이 아님을 보장)
+     */
+    private GeneralSettings getDefaultSettingsSafely() {
+        GeneralSettings settings = clientSettings.getSetting();
+        
+        if (settings == null) {
+            System.err.println("⚠️ ClientSettings.setting is null! Using hardcoded fallback defaults.");
+            
+            // 하드코딩된 폴백 기본값
+            GeneralSettings fallback = new GeneralSettings();
+            fallback.setSoundVolume(80.0);
+            fallback.setColorMode("colorModeDefault");
+            fallback.setScreenSize("screenSizeM");
+            fallback.setStageWidth(500.0);
+            fallback.setStageHeight(700.0);
+            fallback.setDifficulty("difficultyNormal");
+            
+            return fallback;
+        }
+        
+        return settings;
     }
 }
 

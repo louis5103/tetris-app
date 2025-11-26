@@ -180,12 +180,20 @@
                 </HBox>
             </VBox>
             
+            <!-- 상대방 보드 컨테이너 (멀티플레이만, 기본 숨김) -->
+            <HBox fx:id="opponentContainer"
+                  alignment="CENTER"
+                  visible="false"
+                  managed="false">
+                <!-- OpponentBoardView가 동적으로 여기에 추가됨 -->
+            </HBox>
+
             <!-- 오른쪽: 게임 정보 -->
             <VBox styleClass="info-panel" alignment="TOP_CENTER">
                 <!-- Next 영역 -->
                 <VBox styleClass="info-section" alignment="CENTER">
                     <Label text="NEXT" styleClass="info-label-title" alignment="CENTER"/>
-                    <GridPane fx:id="nextGridPane" 
+                    <GridPane fx:id="nextGridPane"
                              styleClass="preview-board"
                              alignment="CENTER">
                     </GridPane>

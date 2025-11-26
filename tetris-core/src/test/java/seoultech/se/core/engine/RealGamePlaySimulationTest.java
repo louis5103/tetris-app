@@ -12,8 +12,8 @@ import org.junit.jupiter.api.Test;
 
 import seoultech.se.core.GameState;
 import seoultech.se.core.config.GameModeConfig;
-import seoultech.se.core.item.ItemManager;
-import seoultech.se.core.item.ItemType;
+import seoultech.se.core.engine.item.ItemManager;
+import seoultech.se.core.engine.item.ItemType;
 import seoultech.se.core.model.Tetromino;
 import seoultech.se.core.model.enumType.Color;
 import seoultech.se.core.model.enumType.TetrominoType;
@@ -30,13 +30,12 @@ public class RealGamePlaySimulationTest {
     @BeforeEach
     public void setUp() {
         System.out.println("\n========== Real Game Play Simulation Setup ==========");
-        
-        itemManager = new ItemManager(0.1, EnumSet.allOf(ItemType.class));
-        arcadeEngine = new ArcadeGameEngine(itemManager);
-        
+
+        // Stateless 리팩토링: GameModeConfig로 생성
         GameModeConfig config = GameModeConfig.arcade();
-        arcadeEngine.initialize(config);
-        
+        arcadeEngine = new ArcadeGameEngine(config);
+        itemManager = new ItemManager(0.1, EnumSet.allOf(ItemType.class));
+
         gameState = new GameState(10, 20);
         
         TetrominoType[] nextQueue = new TetrominoType[7];
@@ -84,10 +83,10 @@ public class RealGamePlaySimulationTest {
             // 이번 turn에 클리어된 줄 수
             int thisRoundCleared = newState.getLastLinesCleared();
             linesCleared += thisRoundCleared;
-            
+
             System.out.println("   → Lines cleared this round: " + thisRoundCleared);
             System.out.println("   → Total lines cleared: " + linesCleared);
-            System.out.println("   → Lines until next item: " + itemManager.getLinesUntilNextItem());
+            System.out.println("   → Lines until next item: " + newState.getLinesUntilNextItem());
             
             if (thisRoundCleared > 0) {
                 System.out.println("   ✅ Line(s) cleared!");

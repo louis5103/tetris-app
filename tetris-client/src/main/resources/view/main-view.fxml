@@ -28,9 +28,7 @@
                     <Button fx:id="singlePlayButton" onAction="#handleSinglePlayModeAction" styleClass="menu-button" text="SINGLE PLAY" />
                     <HBox fx:id="singlePlayMenuBox"  styleClass="mode-button-container" alignment="CENTER" visible="false" managed="false">
                         <Button fx:id="classicButton" onAction="#handleClassicModeAction" styleClass="menu-button" text="CLASSIC" />
-                        <Button fx:id="classicSettingsButton" onAction="#handleClassicSettingsAction" styleClass="mode-settings-icon" text="⚙" />
                         <Button fx:id="arcadeButton" onAction="#handleArcadeModeAction" styleClass="menu-button" text="ARCADE" />
-                        <Button fx:id="arcadeSettingsButton" onAction="#handleArcadeSettingsAction" styleClass="mode-settings-icon" text="⚙" />
                         <Button fx:id="singleBackButton" onAction="#handleSingleBackAction" styleClass="menu-button" text="←" /> 
                     </HBox>
                 </StackPane>
@@ -57,10 +55,7 @@
                 </StackPane>
 
                 <!-- 상우 개발용 버튼 남겨둠 개발 끝나면 만들어둔 버튼에 합쳐주세요~ -->
-                <HBox styleClass="mode-button-container" alignment="CENTER">
-                    <Button fx:id="multiplayerButton" onAction="#handleMultiplayerModeAction" styleClass="menu-button" text="MULTIPLAYER" />
-                    <Button fx:id="multiplayerSettingsButton" onAction="#handleMultiplayerSettingsAction" styleClass="mode-settings-icon" text="⚙" />
-                </HBox>
+                <Button fx:id="multiplayerButton" onAction="#handleMultiplayerModeAction" styleClass="menu-button" text="MULTIPLAYER" />
                 
                 <Button fx:id="scoreButton" onAction="#handleScoreButtonAction" styleClass="menu-button" text="SCORE" />
                 <Button fx:id="endButton" onAction="#handleEndButtonAction" styleClass="menu-button" text="END" />

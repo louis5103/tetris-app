@@ -13,6 +13,11 @@ import org.junit.jupiter.api.Test;
 import seoultech.se.core.GameState;
 import seoultech.se.core.config.GameModeConfig;
 import seoultech.se.core.engine.ArcadeGameEngine;
+import seoultech.se.core.engine.item.Item;
+import seoultech.se.core.engine.item.ItemConfig;
+import seoultech.se.core.engine.item.ItemEffect;
+import seoultech.se.core.engine.item.ItemManager;
+import seoultech.se.core.engine.item.ItemType;
 import seoultech.se.core.model.Cell;
 import seoultech.se.core.model.Tetromino;
 import seoultech.se.core.model.enumType.Color;
@@ -44,19 +49,24 @@ class StrictItemSystemQATest {
         ItemConfig itemConfig = ItemConfig.builder()
             .dropRate(1.0)
             .enabledItems(Set.of(
-                ItemType.BOMB, 
-                ItemType.PLUS, 
+                ItemType.BOMB,
+                ItemType.PLUS,
                 ItemType.LINE_CLEAR,
                 ItemType.SPEED_RESET,
                 ItemType.BONUS_SCORE
             ))
             .build();
-        
+
+        // Stateless 리팩토링: GameModeConfig로 생성
+        GameModeConfig config = GameModeConfig.builder()
+            .gameplayType(seoultech.se.core.config.GameplayType.ARCADE)
+            .gameModeType(seoultech.se.core.engine.mode.GameModeType.ITEM)
+            .difficulty(seoultech.se.core.model.enumType.Difficulty.NORMAL)
+            .itemConfig(itemConfig)
+            .build();
+
+        engine = new ArcadeGameEngine(config);
         itemManager = new ItemManager(itemConfig.getDropRate(), itemConfig.getEnabledItems());
-        engine = new ArcadeGameEngine(itemManager);
-        
-        GameModeConfig config = GameModeConfig.arcade();
-        engine.initialize(config);
     }
 
     // ============================================================

@@ -13,6 +13,8 @@ import org.junit.jupiter.api.Test;
 import seoultech.se.core.GameEngine;
 import seoultech.se.core.GameState;
 import seoultech.se.core.config.GameModeConfig;
+import seoultech.se.core.engine.item.ItemEffect;
+import seoultech.se.core.engine.item.ItemType;
 import seoultech.se.core.model.Cell;
 import seoultech.se.core.model.Tetromino;
 import seoultech.se.core.model.enumType.TetrominoType;

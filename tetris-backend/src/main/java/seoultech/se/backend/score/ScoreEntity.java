@@ -13,6 +13,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import seoultech.se.backend.BaseTimeEntity;
+import seoultech.se.core.model.enumType.Difficulty;
 
 /*
  * 작성자: 문주성
@@ -39,7 +40,7 @@ public class ScoreEntity extends BaseTimeEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private GameMode gameMode;
+    private Difficulty difficulty;
 
     private boolean isItemMode;
 }

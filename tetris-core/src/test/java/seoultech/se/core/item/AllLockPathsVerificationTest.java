@@ -15,6 +15,9 @@ import seoultech.se.core.config.GameModeConfig;
 import seoultech.se.core.engine.ArcadeGameEngine;
 import seoultech.se.core.engine.ClassicGameEngine;
 import seoultech.se.core.engine.GameEngine;
+import seoultech.se.core.engine.item.ItemEffect;
+import seoultech.se.core.engine.item.ItemManager;
+import seoultech.se.core.engine.item.ItemType;
 import seoultech.se.core.model.Tetromino;
 import seoultech.se.core.model.enumType.TetrominoType;
 
@@ -39,15 +42,13 @@ class AllLockPathsVerificationTest {
     @BeforeEach
     void setUp() {
         gameState = new GameState(10, 20);
-        
-        // Classic Engine
-        classicEngine = new ClassicGameEngine();
-        classicEngine.initialize(GameModeConfig.classic());
-        
-        // Arcade Engine with ItemManager
+
+        // Classic Engine (Stateless)
+        classicEngine = new ClassicGameEngine(GameModeConfig.classic());
+
+        // Arcade Engine (Stateless 리팩토링)
+        arcadeEngine = new ArcadeGameEngine(GameModeConfig.arcade());
         itemManager = new ItemManager(0.1, java.util.EnumSet.allOf(ItemType.class));
-        arcadeEngine = new ArcadeGameEngine(itemManager);
-        arcadeEngine.initialize(GameModeConfig.arcade());
     }
     
     // ========== Hard Drop 경로 검증 ==========
@@ -123,7 +124,7 @@ class AllLockPathsVerificationTest {
         assertTrue(pivotX >= 0, "Pivot X should be valid");
         
         // BOMB 아이템 효과 적용 가능
-        seoultech.se.core.item.impl.BombItem bombItem = new seoultech.se.core.item.impl.BombItem();
+        seoultech.se.core.engine.item.impl.BombItem bombItem = new seoultech.se.core.engine.item.impl.BombItem();
         ItemEffect effect = bombItem.apply(result, pivotY, pivotX);
         
         assertTrue(effect.isSuccess(), "BOMB effect should apply successfully at pivot position");
@@ -263,7 +264,7 @@ class AllLockPathsVerificationTest {
         assertTrue(pivotX >= 0, "Pivot X should be valid for PLUS");
         
         // PLUS 아이템 효과 적용 가능
-        seoultech.se.core.item.impl.PlusItem plusItem = new seoultech.se.core.item.impl.PlusItem();
+        seoultech.se.core.engine.item.impl.PlusItem plusItem = new seoultech.se.core.engine.item.impl.PlusItem();
         ItemEffect effect = plusItem.apply(result, pivotY, pivotX);
         
         assertTrue(effect.isSuccess(), "PLUS effect should apply successfully at pivot position");
@@ -378,7 +379,7 @@ class AllLockPathsVerificationTest {
         }
         
         GameState result1 = arcadeEngine.hardDrop(state1);
-        seoultech.se.core.item.impl.BombItem bombItem = new seoultech.se.core.item.impl.BombItem();
+        seoultech.se.core.engine.item.impl.BombItem bombItem = new seoultech.se.core.engine.item.impl.BombItem();
         ItemEffect effect1 = bombItem.apply(result1, result1.getLastLockedPivotY(), result1.getLastLockedPivotX());
         assertTrue(effect1.isSuccess(), "BOMB should work after Hard Drop");
         
@@ -394,7 +395,7 @@ class AllLockPathsVerificationTest {
         }
         
         GameState result2 = arcadeEngine.lockTetromino(state2);
-        seoultech.se.core.item.impl.PlusItem plusItem = new seoultech.se.core.item.impl.PlusItem();
+        seoultech.se.core.engine.item.impl.PlusItem plusItem = new seoultech.se.core.engine.item.impl.PlusItem();
         ItemEffect effect2 = plusItem.apply(result2, result2.getLastLockedPivotY(), result2.getLastLockedPivotX());
         assertTrue(effect2.isSuccess(), "PLUS should work after Soft Drop Lock");
         
@@ -406,7 +407,7 @@ class AllLockPathsVerificationTest {
         state3.setCurrentItemType(ItemType.SPEED_RESET);
         
         GameState result3 = arcadeEngine.lockTetromino(state3);
-        seoultech.se.core.item.impl.SpeedResetItem speedResetItem = new seoultech.se.core.item.impl.SpeedResetItem();
+        seoultech.se.core.engine.item.impl.SpeedResetItem speedResetItem = new seoultech.se.core.engine.item.impl.SpeedResetItem();
         ItemEffect effect3 = speedResetItem.apply(result3, result3.getLastLockedPivotY(), result3.getLastLockedPivotX());
         assertTrue(effect3.isSuccess(), "SPEED_RESET should work after Auto Lock");
     }

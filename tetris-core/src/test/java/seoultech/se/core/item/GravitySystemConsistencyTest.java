@@ -9,12 +9,14 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import seoultech.se.core.GameState;
-import seoultech.se.core.item.impl.BombItem;
-import seoultech.se.core.item.impl.BonusScoreItem;
-import seoultech.se.core.item.impl.LineClearItem;
-import seoultech.se.core.item.impl.PlusItem;
-import seoultech.se.core.item.impl.SpeedResetItem;
-import seoultech.se.core.item.impl.WeightBombItem;
+import seoultech.se.core.engine.item.ItemEffect;
+import seoultech.se.core.engine.item.ItemType;
+import seoultech.se.core.engine.item.impl.BombItem;
+import seoultech.se.core.engine.item.impl.BonusScoreItem;
+import seoultech.se.core.engine.item.impl.LineClearItem;
+import seoultech.se.core.engine.item.impl.PlusItem;
+import seoultech.se.core.engine.item.impl.SpeedResetItem;
+import seoultech.se.core.engine.item.impl.WeightBombItem;
 import seoultech.se.core.model.enumType.TetrominoType;
 
 /**

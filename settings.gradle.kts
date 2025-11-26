@@ -12,7 +12,8 @@ plugins {
 // 루트 프로젝트 이름
 rootProject.name = "tetris-app"
 
-// 3개의 핵심 모듈 포함
+// 4개의 핵심 모듈 포함
 include("tetris-core")     // 🎯 핵심 데이터 및 알고리즘
-include("tetris-backend")  // ⚙️ Spring Boot 서비스 레이어  
+include("tetris-backend")  // ⚙️ Spring Boot 서비스 레이어
+include("tetris-server")   // 🎮 WebSocket 기반 멀티플레이 게임 서버
 include("tetris-client")   // 🖥️ JavaFX + Spring Boot 메인 애플리케이션

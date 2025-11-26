@@ -2,8 +2,7 @@ package seoultech.se.core.engine;
 
 import seoultech.se.core.GameState;
 import seoultech.se.core.config.GameModeConfig;
-import seoultech.se.core.item.ItemManager;
-import seoultech.se.core.item.ItemType;
+import seoultech.se.core.engine.item.ItemManager;
 import seoultech.se.core.model.enumType.TetrominoType;
 
 /**
@@ -24,62 +23,51 @@ import seoultech.se.core.model.enumType.TetrominoType;
 public class ArcadeGameEngine extends ClassicGameEngine {
     
     /**
-     * 아이템 관리자
+     * 아이템 관리자 (불변)
      */
-    private ItemManager itemManager;
-    
-    /**
-     * 게임 모드 설정
-     */
-    private GameModeConfig config;
-    
+    private final ItemManager itemManager;
+
     // ========== 생성자 및 초기화 ==========
-    
+
     /**
-     * 기본 생성자
+     * 기본 생성자 (Arcade 기본 설정)
      */
     public ArcadeGameEngine() {
-        super();
-        this.itemManager = null;
-        this.config = null;
+        this(GameModeConfig.arcade());
     }
-    
+
     /**
-     * ItemManager를 주입받는 생성자
-     * 
-     * @param itemManager 아이템 관리자
-     */
-    public ArcadeGameEngine(ItemManager itemManager) {
-        super();
-        this.itemManager = itemManager;
-        this.config = null;
-    }
-    
-    /**
-     * 게임 엔진 초기화
-     * 
+     * 생성자 (Config 주입)
+     *
      * @param config 게임 모드 설정
      */
-    @Override
-    public void initialize(GameModeConfig config) {
-        super.initialize(config);
-        this.config = config;
-        
-        // ItemManager가 이미 주입되었으면 초기화하지 않음
-        if (itemManager == null && config != null && config.getItemConfig() != null) {
+    public ArcadeGameEngine(GameModeConfig config) {
+        super(config);
+
+        // ItemConfig에서 ItemManager 생성
+        if (config != null && config.getItemConfig() != null) {
             this.itemManager = new ItemManager(
                 config.getItemConfig().getDropRate(),
                 config.getItemConfig().getEnabledItems()
             );
-        }
-        
-        if (itemManager != null) {
-            System.out.println("✅ [ArcadeGameEngine] Initialized (Arcade Mode - Items Enabled)");
-            System.out.println("   - Item drop rate: " + (int)(itemManager.getItemDropRate() * 100) + "%");
-            System.out.println("   - Enabled items: " + itemManager.getEnabledItems());
+            System.out.println("[Engine] ArcadeGameEngine initialized - Items enabled (" + 
+                itemManager.getEnabledItems().size() + " types)");
         } else {
-            System.out.println("⚠️ [ArcadeGameEngine] Initialized but ItemManager is null!");
+            this.itemManager = new ItemManager();
+            System.out.println("[Engine] ArcadeGameEngine initialized - Default item config");
         }
+    }
+
+    /**
+     * 게임 엔진 초기화
+     *
+     * @deprecated Stateless 리팩토링으로 생성자 주입 방식으로 변경됨
+     * @param config 게임 모드 설정
+     */
+    @Override
+    @Deprecated
+    public void initialize(GameModeConfig config) {
+        System.out.println("⚠️ [ArcadeGameEngine] initialize() is deprecated - use constructor injection");
     }
     
     /**
@@ -132,11 +120,11 @@ public class ArcadeGameEngine extends ClassicGameEngine {
         TetrominoType previousHeld = newState.getHeldPiece();
         
         // Phase 5: 현재 블록의 아이템 정보 저장
-        seoultech.se.core.item.ItemType currentItemType = newState.getCurrentItemType();
+        seoultech.se.core.engine.item.ItemType currentItemType = newState.getCurrentItemType();
         boolean currentWeightBombLocked = newState.isWeightBombLocked();
         
         // Phase 5: Hold된 블록의 아이템 정보 가져오기
-        seoultech.se.core.item.ItemType previousItemType = newState.getHeldItemType();
+        seoultech.se.core.engine.item.ItemType previousItemType = newState.getHeldItemType();
         boolean previousWeightBombLocked = newState.isHeldWeightBombLocked();
         
         if (previousHeld == null) {
@@ -283,7 +271,7 @@ public class ArcadeGameEngine extends ClassicGameEngine {
         // Phase 4: 무게추 낙하 중 블록 제거
         if (state.getCurrentTetromino().getType() == seoultech.se.core.model.enumType.TetrominoType.WEIGHT_BOMB) {
             // 이동 전에 아래 블록 제거
-            int blocksCleared = seoultech.se.core.item.impl.WeightBombItem.processWeightBombFall(state);
+            int blocksCleared = seoultech.se.core.engine.item.impl.WeightBombItem.processWeightBombFall(state);
             
             if (blocksCleared > 0) {
                 // 점수 추가 (블록당 10점)
@@ -317,14 +305,14 @@ public class ArcadeGameEngine extends ClassicGameEngine {
         
         if (state.getCurrentTetromino().getType() == seoultech.se.core.model.enumType.TetrominoType.WEIGHT_BOMB) {
             // 무게추 위치 계산
-            int[] weightBombX = seoultech.se.core.item.impl.WeightBombItem.getWeightBombXPositions(state);
+            int[] weightBombX = seoultech.se.core.engine.item.impl.WeightBombItem.getWeightBombXPositions(state);
             int weightBombY = state.getCurrentY();
             
             // 🔥 CRITICAL FIX: deepCopy 후 블록 제거
             stateAfterWeightBomb = state.deepCopy();
             
             // 수직 경로의 모든 블록 제거
-            int blocksCleared = seoultech.se.core.item.impl.WeightBombItem.clearVerticalPath(
+            int blocksCleared = seoultech.se.core.engine.item.impl.WeightBombItem.clearVerticalPath(
                 stateAfterWeightBomb, weightBombX, weightBombY
             );
             
@@ -381,14 +369,14 @@ public class ArcadeGameEngine extends ClassicGameEngine {
         int lineClearMarkerLines = 0;
         if (itemManager != null) {
             java.util.List<Integer> markedLines = 
-                seoultech.se.core.item.impl.LineClearItem.findAndClearMarkedLines(newState);
+                seoultech.se.core.engine.item.impl.LineClearItem.findAndClearMarkedLines(newState);
             
             if (!markedLines.isEmpty()) {
                 lineClearMarkerLines = markedLines.size();
                 
                 // 'L' 마커 줄 삭제
                 int blocksCleared = 
-                    seoultech.se.core.item.impl.LineClearItem.clearLines(newState, markedLines);
+                    seoultech.se.core.engine.item.impl.LineClearItem.clearLines(newState, markedLines);
                 
                 // 점수 추가 (줄당 100점 기본 + 블록당 10점)
                 long lineBonus = markedLines.size() * 100 * newState.getLevel();
@@ -416,13 +404,8 @@ public class ArcadeGameEngine extends ClassicGameEngine {
             ", totalLinesCleared: " + totalLinesCleared);
         
         if (itemManager != null && totalLinesCleared > 0) {
-            ItemType droppedItem = itemManager.checkAndGenerateItem(totalLinesCleared);
-            
-            if (droppedItem != null) {
-                // 다음 블록에 아이템 타입 설정
-                newState.setNextBlockItemType(droppedItem);
-                System.out.println("🎁 [ArcadeGameEngine] Item dropped: " + droppedItem);
-            }
+            // Stateless API: GameState를 받아 업데이트된 GameState 반환
+            newState = itemManager.checkAndGenerateItem(newState, totalLinesCleared);
         }
         
         // Phase 4: 무게추 상태 초기화
