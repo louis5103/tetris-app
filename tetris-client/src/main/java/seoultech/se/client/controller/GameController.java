@@ -86,6 +86,9 @@ public class GameController {
     // 아이템 인벤토리 UI
     @FXML private javafx.scene.layout.HBox itemInventoryContainer;
 
+    // ✨ 상대방 보드 컨테이너 (멀티플레이)
+    @FXML private HBox opponentContainer;
+
     @Autowired
     private KeyMappingService keyMappingService;
 
@@ -122,6 +125,9 @@ public class GameController {
     private InputHandler inputHandler;
     private GameInfoManager gameInfoManager;
     private ItemInventoryPanel itemInventoryPanel;
+
+    // ✨ 상대방 보드 뷰 (멀티플레이)
+    private seoultech.se.client.ui.OpponentBoardView opponentBoardView;
 
     // Rectangle 배열들
     private Rectangle[][] cellRectangles;
@@ -254,10 +260,12 @@ public class GameController {
         }
 
         if (playType == seoultech.se.core.engine.mode.PlayType.ONLINE_MULTI) {
-            // 멀티플레이는 세션 생성 후 setupMultiplayMode() 호출 필요
+            // 멀티플레이: 상대방 보드 활성화
+            enableOpponentBoard();
             System.out.println("ℹ️ Multiplay mode - Strategy will be set after session creation");
         } else {
-            // 싱글플레이 모드
+            // 싱글플레이: 상대방 보드 비활성화
+            disableOpponentBoard();
             setupSingleplayMode();
         }
     }
@@ -308,26 +316,51 @@ public class GameController {
 
         System.out.println("✅ Multi-play mode initialized - Session: " + sessionId);
     }
+    private void enableOpponentBoard() {
+        if (opponentContainer != null) {
+            // OpponentBoardView 생성
+            opponentBoardView = new seoultech.se.client.ui.OpponentBoardView();
+
+            // 컨테이너에 추가
+            opponentContainer.getChildren().clear();
+            opponentContainer.getChildren().add(opponentBoardView);
+            opponentContainer.setVisible(true);
+            opponentContainer.setManaged(true);
+
+            System.out.println("✅ Opponent board enabled");
+        } else {
+            System.out.println("⚠️ opponentContainer is null - cannot enable opponent board");
+        }
+    }
+
+    /**
+     * ✨ 상대방 보드 비활성화 (싱글플레이)
+     */
+    private void disableOpponentBoard() {
+        if (opponentContainer != null) {
+            opponentContainer.setVisible(false);
+            opponentContainer.setManaged(false);
+            opponentContainer.getChildren().clear();
+        }
+        opponentBoardView = null;
+        System.out.println("✅ Opponent board disabled");
+    }
 
     /**
      * ✨ 상대방 상태 업데이트 처리
      *
-     * MultiPlayStrategies가 서버로부터 상대방 GameState를 받으면 호출됩니다.
+     * NetworkGameClient가 서버로부터 상대방 GameState를 받으면 호출됩니다.
      *
      * @param opponentState 상대방의 GameState
      */
     private void onOpponentStateUpdate(GameState opponentState) {
-        // TODO: 상대방 보드를 UI에 렌더링
-        // 예: 화면 분할 또는 작은 미리보기로 상대방 보드 표시
-        Platform.runLater(() -> {
-            System.out.println("👥 [GameController] Opponent state received:");
-            System.out.println("   - Score: " + opponentState.getScore());
-            System.out.println("   - Level: " + opponentState.getLevel());
-            System.out.println("   - Lines: " + opponentState.getLinesCleared());
-            // TODO: 실제 UI 업데이트 로직 구현
-        });
+        if (opponentBoardView != null) {
+            Platform.runLater(() -> {
+                opponentBoardView.update(opponentState);
+            });
+        }
     }
-    
+
     /**
      * 아이템 인벤토리 초기화
      * 아케이드 모드일 때만 활성화됩니다
