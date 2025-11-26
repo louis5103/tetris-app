@@ -18,4 +18,5 @@ public class ServerStateDto {
     private GameState myGameState;      // 서버가 확정한 나의 상태 (보정용)
     private GameState opponentGameState;// 상대방 상태 (렌더링용)
     private List<String> events;        // 발생한 이벤트 (LINE_CLEAR, ATTACK 등)
+    private int attackLinesReceived;    // 받은 공격 라인 수 (상대방이 나를 공격한 라인)
 }

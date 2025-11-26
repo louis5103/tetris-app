@@ -99,7 +99,10 @@ public class MainController extends BaseController {
     
     @Autowired
     private SettingsService settingsService;
-    
+
+    @Autowired(required = false)
+    private seoultech.se.client.service.AuthService authService;
+
     /**
      * UI 초기화 메서드
      * FXML 파일이 로드된 후 자동으로 호출됩니다
@@ -900,8 +903,8 @@ public class MainController extends BaseController {
                 System.out.println("🔍 Initiating multiplayer matching...");
                 // 서버 기본 URL (HTTP)
                 String serverBaseUrl = "http://localhost:8080";
-                // TODO: 실제 인증 토큰 획득 (현재는 임시로 빈 문자열)
-                String jwtToken = "";
+                // JWT 토큰 획득
+                String jwtToken = authService != null ? authService.getCurrentToken() : "";
 
                 controller.startMultiplayerMatching(serverBaseUrl, jwtToken);
             }

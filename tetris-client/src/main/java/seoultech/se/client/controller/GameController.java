@@ -313,7 +313,10 @@ public class GameController {
         // 2. 상대방 상태 업데이트 콜백 설정
         multiPlayStrategies.setOpponentStateCallback(this::onOpponentStateUpdate);
 
-        // 3. NetworkExecutionStrategy 생성 및 설정
+        // 3. 공격 라인 수신 콜백 설정
+        multiPlayStrategies.setAttackLinesCallback(this::onAttackLinesReceived);
+
+        // 4. NetworkExecutionStrategy 생성 및 설정
         executionStrategy = new seoultech.se.client.strategy.NetworkExecutionStrategy(multiPlayStrategies);
         boardController.setExecutionStrategy(executionStrategy);
 
@@ -411,6 +414,32 @@ public class GameController {
                 opponentBoardView.update(opponentState);
             });
         }
+    }
+
+    /**
+     * ✨ 공격 라인 수신 처리
+     *
+     * NetworkGameClient가 서버로부터 공격 라인 정보를 받으면 호출됩니다.
+     *
+     * @param attackLines 받은 공격 라인 수
+     */
+    private void onAttackLinesReceived(int attackLines) {
+        Platform.runLater(() -> {
+            System.out.println("🛡️ [GameController] Received " + attackLines + " attack lines from opponent");
+
+            // 보드에 방해 라인 추가
+            GameState currentState = boardController.getGameState();
+            boolean gameOver = currentState.addGarbageLines(attackLines);
+
+            if (gameOver) {
+                System.out.println("💀 [GameController] Game Over by attack!");
+                processGameOver(currentState.getScore());
+            } else {
+                // 화면 갱신
+                boardRenderer.drawBoard(currentState);
+                notificationManager.showAttackNotification(attackLines);
+            }
+        });
     }
 
     /**

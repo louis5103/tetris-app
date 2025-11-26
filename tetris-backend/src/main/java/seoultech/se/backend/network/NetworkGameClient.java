@@ -23,6 +23,7 @@ public class NetworkGameClient {
     private GameState clientState;
     private String sessionId;
     private Consumer<GameState> opponentStateCallback;
+    private Consumer<Integer> attackLinesCallback;
 
     /**
      * 세션 초기화
@@ -103,6 +104,13 @@ public class NetworkGameClient {
         // 4. 조정된 상태 저장
         this.clientState = predictedState;
 
+        // 5. 공격 라인 처리
+        if (serverState.getAttackLinesReceived() > 0 && attackLinesCallback != null) {
+            attackLinesCallback.accept(serverState.getAttackLinesReceived());
+            System.out.println("⚔️ [NetworkGameClient] Attack lines received: " +
+                serverState.getAttackLinesReceived());
+        }
+
         // 렌더링은 GameController가 담당
         // 상대방 상태는 콜백으로 전달
         if(serverState.getOpponentGameState() != null && opponentStateCallback != null) {
@@ -121,6 +129,15 @@ public class NetworkGameClient {
     }
 
     /**
+     * ✨ 공격 라인 수신 콜백 설정
+     *
+     * @param callback 공격 라인 수를 받을 콜백 함수
+     */
+    public void setAttackLinesCallback(Consumer<Integer> callback) {
+        this.attackLinesCallback = callback;
+    }
+
+    /**
      * ✨ 네트워크 연결 정리
      *
      * 게임 종료 또는 재시작 시 호출됩니다.
@@ -133,6 +150,7 @@ public class NetworkGameClient {
         clientState = null;
         sessionId = null;
         opponentStateCallback = null;
+        attackLinesCallback = null;
         System.out.println("✅ MultiPlayStrategies disconnected and cleaned up");
     }
 }

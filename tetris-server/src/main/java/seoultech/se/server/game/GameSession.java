@@ -30,6 +30,7 @@ public class GameSession {
     private final String sessionId;
     private final Map<String, GameState> playerStates = new ConcurrentHashMap<>();
     private final Map<String, Long> lastSequences = new ConcurrentHashMap<>();
+    private final Map<String, Integer> pendingAttackLines = new ConcurrentHashMap<>(); // 대기 중인 공격 라인
     private final GameEngine gameEngine; // 싱글톤 공유
 
     private final Object lock = new Object(); // 동기화를 위한 락 객체
@@ -50,6 +51,7 @@ public class GameSession {
     public void joinPlayer(String playerId) {
         playerStates.put(playerId, new GameState(10, 20)); // 초기 상태
         lastSequences.put(playerId, 0L); // 초기 시퀀스 번호
+        pendingAttackLines.put(playerId, 0); // 대기 중인 공격 라인 초기화
     }
 
     public ServerStateDto processInput(String playerId, PlayerInputDto input){
@@ -69,24 +71,47 @@ public class GameSession {
             playerStates.put(playerId, nextState);
             lastSequences.put(playerId, input.getSequenceId());
 
-            // 4. 이벤트 감지 (예: 라인 클리어)
-            List<String> events = new ArrayList<>();
-            if (nextState.getLastLinesCleared() > 0) {
-                events.add("LINE_CLEAR");
-                // TODO: 상대방에게 공격(Garbage Lines) 로직 추가
-            }
-
-            // 5. 상대방 ID 찾기
+            // 4. 상대방 ID 찾기
             String opponentId = playerStates.keySet().stream()
                     .filter(id -> !id.equals(playerId))
                     .findFirst()
                     .orElse(null);
+
+            // 5. 이벤트 감지 및 공격 로직
+            List<String> events = new ArrayList<>();
+            int linesCleared = nextState.getLastLinesCleared();
+
+            if (linesCleared > 0) {
+                events.add("LINE_CLEAR");
+
+                // 6. 상대방에게 공격 라인 추가 (라인 수 - 1)
+                if (opponentId != null && linesCleared > 1) {
+                    int attackLines = linesCleared - 1; // 2줄 → 1줄, 3줄 → 2줄, 4줄 → 3줄
+
+                    // 상대방의 대기 중인 공격 라인에 누적
+                    int currentPending = pendingAttackLines.getOrDefault(opponentId, 0);
+                    pendingAttackLines.put(opponentId, currentPending + attackLines);
+
+                    events.add("ATTACK_SENT:" + attackLines);
+                    System.out.println("⚔️ [GameSession] Attack: " + playerId +
+                        " → " + opponentId + " (" + attackLines + " lines, total pending: " +
+                        (currentPending + attackLines) + ")");
+                }
+            }
+
+            // 7. 나에게 대기 중인 공격 라인 가져오기 및 초기화
+            int attackReceived = pendingAttackLines.getOrDefault(playerId, 0);
+            if (attackReceived > 0) {
+                pendingAttackLines.put(playerId, 0); // 처리했으므로 초기화
+                System.out.println("🛡️ [GameSession] " + playerId + " received " + attackReceived + " attack lines");
+            }
 
             return ServerStateDto.builder()
                     .lastProcessedSequence(input.getSequenceId())
                     .myGameState(nextState)
                     .opponentGameState(opponentId != null ? playerStates.get(opponentId) : null)
                     .events(events)
+                    .attackLinesReceived(attackReceived)
                     .build();
         }
     }
