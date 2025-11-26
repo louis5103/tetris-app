@@ -206,8 +206,8 @@ public class BoardController {
 
     private void initializeNextQueue() {
         // ✨ Phase 4: TetrominoGenerator가 자동으로 관리
-        updateNextQueue(gameState);
         spawnNewTetromino(gameState);
+        updateNextQueue(gameState);
     }
 
     private void updateNextQueue(GameState state) {
