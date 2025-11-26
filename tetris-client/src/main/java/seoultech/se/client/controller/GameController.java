@@ -102,10 +102,13 @@ public class GameController {
     private ScoreService scoreService;
 
     @Autowired(required = false)
-    private seoultech.se.backend.network.NetworkClient networkClient;
+    private seoultech.se.backend.network.NetworkTemplate networkClient;
 
     @Autowired(required = false)
-    private seoultech.se.backend.network.MultiPlayStrategies multiPlayStrategies;
+    private seoultech.se.backend.network.NetworkGameClient multiPlayStrategies;
+
+    @Autowired(required = false)
+    private seoultech.se.client.service.MultiplayerMatchingService matchingService;
 
     // 게임 로직 컨트롤러
     private BoardController boardController;
@@ -316,6 +319,55 @@ public class GameController {
 
         System.out.println("✅ Multi-play mode initialized - Session: " + sessionId);
     }
+
+    /**
+     * ✨ 멀티플레이 매칭 시작
+     *
+     * 매칭 서비스를 통해 서버 연결 및 세션 생성을 수행합니다.
+     * 성공 시 setupMultiplayMode()가 자동으로 호출됩니다.
+     *
+     * @param serverUrl 서버 URL (예: "ws://localhost:8080/game")
+     * @param jwtToken JWT 인증 토큰
+     */
+    public void startMultiplayerMatching(String serverUrl, String jwtToken) {
+        if (matchingService == null) {
+            showError("Matching service not available",
+                "MultiplayerMatchingService is not configured. Check backend dependencies.");
+            return;
+        }
+
+        System.out.println("🔍 [GameController] Starting multiplayer matching...");
+
+        matchingService.startMatching(
+            serverUrl,
+            jwtToken,
+            // 성공 콜백: 세션 ID를 받아서 setupMultiplayMode 호출
+            sessionId -> {
+                System.out.println("✅ [GameController] Matching successful - SessionID: " + sessionId);
+                Platform.runLater(() -> {
+                    try {
+                        setupMultiplayMode(sessionId);
+                        System.out.println("✅ [GameController] Multiplayer mode setup complete");
+                    } catch (Exception e) {
+                        System.err.println("❌ [GameController] Failed to setup multiplayer mode: " + e.getMessage());
+                        e.printStackTrace();
+                        showError("Setup Failed", "Failed to initialize multiplayer mode: " + e.getMessage());
+                    }
+                });
+            },
+            // 실패 콜백: 에러 메시지 표시
+            errorMessage -> {
+                System.err.println("❌ [GameController] Matching failed: " + errorMessage);
+                Platform.runLater(() -> {
+                    showError("Matching Failed", errorMessage);
+                });
+            }
+        );
+    }
+
+    /**
+     * ✨ 상대방 보드 활성화 (멀티플레이)
+     */
     private void enableOpponentBoard() {
         if (opponentContainer != null) {
             // OpponentBoardView 생성
@@ -1109,6 +1161,7 @@ public class GameController {
             }
         }
         executionStrategy = null;
+        opponentBoardView = null; // 상대방 보드 뷰 정리
         System.out.println("   ✓ ExecutionStrategy cleaned up");
     }
 }

@@ -621,16 +621,15 @@ public class MainController extends BaseController {
      */
     public void handleMultiplayerModeAction(ActionEvent event) {
         System.out.println("👥 MULTIPLAYER mode selected");
-        
-        // TODO: 온라인 연결 체크 및 로비 화면으로 전환
-        // 현재는 클래식 설정으로 시작
+
+        // 클래식 설정으로 시작
         GameModeConfig config = GameModeConfig.classic();
-        
+
         // 설정 저장
         settingsService.saveGameModeSettings(PlayType.ONLINE_MULTI, GameplayType.CLASSIC, true);
-        
-        // 게임 시작 (향후 로비 화면으로 변경 예정)
-        startGameWithConfig(event, config, "MULTIPLAYER");
+
+        // 멀티플레이 모드로 게임 시작 (매칭 서비스 호출)
+        startGameWithConfig(event, config, "MULTIPLAYER", PlayType.ONLINE_MULTI);
     }
     
     /**
@@ -833,7 +832,17 @@ public class MainController extends BaseController {
      * @param config 게임 모드 설정
      * @param modeName 모드 이름 (로그용)
      */
+    /**
+     * 게임 시작 (PlayType 기본값: LOCAL_SINGLE)
+     */
     private void startGameWithConfig(ActionEvent event, GameModeConfig config, String modeName) {
+        startGameWithConfig(event, config, modeName, PlayType.LOCAL_SINGLE);
+    }
+
+    /**
+     * 게임 시작 (PlayType 지정 가능)
+     */
+    private void startGameWithConfig(ActionEvent event, GameModeConfig config, String modeName, PlayType playType) {
         try {
             // 1단계: 현재 Stage 가져오기 (rootPane을 통해 안전하게 가져오기)
             Stage stage = (Stage) rootPane.getScene().getWindow();
@@ -841,22 +850,22 @@ public class MainController extends BaseController {
                 System.err.println("❌ Cannot get Stage from rootPane");
                 return;
             }
-            
+
             // 2단계: game-view.fxml 로드
             FXMLLoader loader = new FXMLLoader(
                 TetrisApplication.class.getResource("/view/game-view.fxml")
             );
-            
+
             // 3단계: Controller Factory 설정 (Spring DI)
             ApplicationContext context = ApplicationContextProvider.getApplicationContext();
             loader.setControllerFactory(context::getBean);
-            
+
             // 4단계: FXML 로드
             Parent gameRoot = loader.load();
-            
-            // 5단계: GameController에 설정 전달
+
+            // 5단계: GameController에 설정 전달 (PlayType 포함)
             GameController controller = loader.getController();
-            controller.setGameModeConfig(config);
+            controller.setGameModeConfig(config, playType);
             
             // 창 크기 변경 전 현재 위치와 크기 저장
             double currentX = stage.getX();
@@ -883,9 +892,20 @@ public class MainController extends BaseController {
             double deltaY = (newHeight - currentHeight) / 2;
             stage.setX(currentX - deltaX);
             stage.setY(currentY - deltaY);
-            
+
             System.out.println("✅ " + modeName + " mode started successfully");
-            
+
+            // 7단계: 멀티플레이 모드인 경우 매칭 시작
+            if (playType == PlayType.ONLINE_MULTI) {
+                System.out.println("🔍 Initiating multiplayer matching...");
+                // 서버 기본 URL (HTTP)
+                String serverBaseUrl = "http://localhost:8080";
+                // TODO: 실제 인증 토큰 획득 (현재는 임시로 빈 문자열)
+                String jwtToken = "";
+
+                controller.startMultiplayerMatching(serverBaseUrl, jwtToken);
+            }
+
         } catch (IOException e) {
             System.err.println("❌ Failed to load game-view.fxml");
             System.err.println("   Error: " + e.getMessage());
