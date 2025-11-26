@@ -64,24 +64,30 @@ public class PlusItem extends AbstractItem {
         System.out.println("➕ [PlusItem] Applying PLUS effect at (" + row + ", " + col + ")");
         System.out.println("   - Board size: " + boardHeight + "x" + boardWidth);
         
-        // 행 제거
+        // 행 제거 - 지정된 행의 모든 블록 제거
         System.out.println("   - Clearing row " + row);
         for (int c = 0; c < boardWidth; c++) {
             if (grid[row][c] != null && grid[row][c].isOccupied()) {
-                System.out.println("     * Clearing block at (" + row + ", " + c + ")");
                 grid[row][c].clear();
                 blocksCleared++;
             }
         }
         
-        // 열 제거 (교차점 제외)
+        // 열 제거 (교차점 제외) - 지정된 열의 모든 블록 제거
         System.out.println("   - Clearing column " + col);
         for (int r = 0; r < boardHeight; r++) {
             if (r != row && grid[r][col] != null && grid[r][col].isOccupied()) {
-                System.out.println("     * Clearing block at (" + r + ", " + col + ")");
                 grid[r][col].clear();
                 blocksCleared++;
             }
+        }
+        
+        int linesCleared = 0;
+        
+        // 🎮 중력 적용 및 라인 클리어
+        if (blocksCleared > 0) {
+            linesCleared = applyGravity(gameState);
+            System.out.println("   - Gravity applied, " + linesCleared + " line(s) cleared");
         }
         
         int bonusScore = blocksCleared * SCORE_PER_BLOCK;
@@ -91,15 +97,8 @@ public class PlusItem extends AbstractItem {
         
         System.out.println("✅ [PlusItem] " + message);
         
-        // 🎮 GAME UX: 중력 적용 (라인 클리어는 제거)
-        // 십자 영역 삭제 후 위의 블록이 아래로 떨어지도록 하여 자연스러운 게임 경험 제공
-        // 단, 라인 클리어는 하지 않음 (연쇄 효과 방지, 예측 가능성 확보)
-        if (blocksCleared > 0) {
-            applyGravity(gameState);
-            System.out.println("   - Gravity applied (no line clear)");
-        }
-        
-        return ItemEffect.success(ItemType.PLUS, blocksCleared, bonusScore, message);
+        // 🔥 FIX: 라인 클리어 수를 ItemEffect에 포함
+        return ItemEffect.successWithLines(ItemType.PLUS, blocksCleared, bonusScore, linesCleared, message);
     }
     
     /**
@@ -109,8 +108,9 @@ public class PlusItem extends AbstractItem {
      * 자연스러운 게임 경험 제공
      * 
      * @param gameState 게임 상태
+     * @return 중력 적용 후 새로 채워진 라인 수
      */
-    private void applyGravity(GameState gameState) {
+    private int applyGravity(GameState gameState) {
         Cell[][] grid = gameState.getGrid();
         int boardHeight = gameState.getBoardHeight();
         int boardWidth = gameState.getBoardWidth();
@@ -136,19 +136,92 @@ public class PlusItem extends AbstractItem {
                 }
             }
         }
+        
+        // 중력 적용 후 라인 클리어 체크
+        return checkAndClearLines(gameState);
     }
     
     /**
      * 라인 클리어 체크 및 처리
      * 
-     * ⚠️ 현재 사용하지 않음 (QA 버그 수정으로 제거됨)
-     * 기획 팀 결정 후 복원 가능
-     * 
      * @param gameState 게임 상태
      * @return 제거된 줄 수
      */
-    @SuppressWarnings("unused")
     private int checkAndClearLines(GameState gameState) {
+        Cell[][] grid = gameState.getGrid();
+        int boardHeight = gameState.getBoardHeight();
+        int boardWidth = gameState.getBoardWidth();
+        
+        java.util.List<Integer> linesToClear = new java.util.ArrayList<>();
+        
+        // 꽉 찬 줄 찾기
+        for (int row = 0; row < boardHeight; row++) {
+            boolean isFullLine = true;
+            
+            for (int col = 0; col < boardWidth; col++) {
+                if (grid[row][col] == null || !grid[row][col].isOccupied()) {
+                    isFullLine = false;
+                    break;
+                }
+            }
+            
+            if (isFullLine) {
+                linesToClear.add(row);
+            }
+        }
+        
+        // 줄 제거 및 위의 블록 내리기
+        if (!linesToClear.isEmpty()) {
+            System.out.println("➕ [PlusItem] Clearing " + linesToClear.size() + " filled line(s) after gravity");
+            
+            // 🔥 FIX: 제거할 줄들을 Set으로 변환하여 한번에 처리
+            java.util.Set<Integer> rowsToRemove = new java.util.HashSet<>(linesToClear);
+            
+            // 남아있는 줄들만 수집 (아래에서 위로)
+            java.util.List<Cell[]> remainingRows = new java.util.ArrayList<>();
+            for (int row = boardHeight - 1; row >= 0; row--) {
+                if (!rowsToRemove.contains(row)) {
+                    Cell[] rowCopy = new Cell[boardWidth];
+                    for (int col = 0; col < boardWidth; col++) {
+                        rowCopy[col] = grid[row][col].copy();
+                    }
+                    remainingRows.add(rowCopy);
+                }
+            }
+            
+            // 보드를 아래에서부터 다시 채우기
+            int targetRow = boardHeight - 1;
+            for (Cell[] rowData : remainingRows) {
+                for (int col = 0; col < boardWidth; col++) {
+                    grid[targetRow][col].setColor(rowData[col].getColor());
+                    grid[targetRow][col].setOccupied(rowData[col].isOccupied());
+                    grid[targetRow][col].setItemMarker(rowData[col].getItemMarker());
+                }
+                targetRow--;
+            }
+            
+            // 남은 위쪽 줄들을 빈 칸으로 초기화
+            while (targetRow >= 0) {
+                for (int col = 0; col < boardWidth; col++) {
+                    grid[targetRow][col].clear();
+                }
+                targetRow--;
+            }
+        }
+        
+        return linesToClear.size();
+    }
+    
+    /**
+     * 라인 클리어 체크 및 처리 (OLD - DEPRECATED)
+     * 
+     * @deprecated 위의 새로운 checkAndClearLines() 메서드 사용
+     * @param gameState 게임 상태
+     * @return 제거된 줄 수
+     */
+    @Deprecated
+    @SuppressWarnings("unused")
+    private int checkAndClearLinesOld(GameState gameState) {
         Cell[][] grid = gameState.getGrid();
         int boardHeight = gameState.getBoardHeight();
         int boardWidth = gameState.getBoardWidth();

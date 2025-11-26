@@ -34,7 +34,7 @@ public class BoardController {
      * 기본 생성자 (Classic 모드, Normal 난이도)
      */
     public BoardController() {
-        this(GameModeConfig.classic(), Difficulty.NORMAL);
+        this(GameModeConfig.createDefaultClassic(), Difficulty.NORMAL);
     }
     
     /**

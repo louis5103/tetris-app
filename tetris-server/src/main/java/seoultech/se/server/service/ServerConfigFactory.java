@@ -3,7 +3,7 @@ package seoultech.se.server.service;
 import org.springframework.stereotype.Service;
 import seoultech.se.core.config.GameModeConfig;
 import seoultech.se.core.config.GameplayType;
-import seoultech.se.core.engine.item.ItemConfig;
+import seoultech.se.core.engine.item.ItemType;
 import seoultech.se.core.model.enumType.Difficulty;
 
 /**
@@ -82,8 +82,12 @@ public class ServerConfigFactory {
             .lockDelay((int)(CLASSIC_LOCK_DELAY * multiplier.lockDelayMultiplier))
             .maxLockResets(CLASSIC_MAX_LOCK_RESETS)
             
-            // 아이템 없음
-            .itemConfig(null)
+            // 아이템 없음 (Classic 모드)
+            .linesPerItem(0)
+            .itemDropRate(0.0)  // Deprecated
+            .maxInventorySize(0)
+            .itemAutoUse(false)
+            .enabledItemTypes(java.util.Collections.emptySet())
             
             .build();
     }
@@ -118,8 +122,12 @@ public class ServerConfigFactory {
             .lockDelay((int)(ARCADE_LOCK_DELAY * multiplier.lockDelayMultiplier))
             .maxLockResets(ARCADE_MAX_LOCK_RESETS)
             
-            // 아이템 설정 (기본 Arcade 아이템)
-            .itemConfig(ItemConfig.arcadeDefault())
+            // 아이템 설정 (기본 Arcade 아이템 - ItemConfig 제거)
+            .linesPerItem(10)
+            .itemDropRate(0.1)  // Deprecated
+            .maxInventorySize(3)
+            .itemAutoUse(false)
+            .enabledItemTypes(java.util.EnumSet.allOf(ItemType.class))
             
             .build();
     }

@@ -154,7 +154,7 @@ public class GameSession {
             
             // Config가 없으면 기본값 사용
             if (gameModeConfig == null) {
-                gameModeConfig = GameModeConfig.classic();
+                gameModeConfig = GameModeConfig.createDefaultClassic();
                 System.out.println("⚙️ [GameSession] No config set, using default: " +
                     gameModeConfig.getGameplayType() + " / " + gameModeConfig.getDifficulty());
             }

@@ -188,7 +188,10 @@ public class LineClearItem extends AbstractItem {
         int targetRow = boardHeight - 1;
         for (Cell[] rowData : remainingRows) {
             for (int col = 0; col < boardWidth; col++) {
-                grid[targetRow][col] = rowData[col];
+                // 🔥 FIX: 셀 값을 복사 (참조가 아닌 값 복사)
+                grid[targetRow][col].setColor(rowData[col].getColor());
+                grid[targetRow][col].setOccupied(rowData[col].isOccupied());
+                grid[targetRow][col].setItemMarker(rowData[col].getItemMarker());
             }
             targetRow--;
         }
@@ -196,7 +199,7 @@ public class LineClearItem extends AbstractItem {
         // 남은 위쪽 줄들을 빈 칸으로 초기화
         while (targetRow >= 0) {
             for (int col = 0; col < boardWidth; col++) {
-                grid[targetRow][col] = Cell.empty();
+                grid[targetRow][col].clear();
             }
             targetRow--;
         }

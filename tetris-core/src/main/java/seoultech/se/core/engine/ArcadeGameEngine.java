@@ -33,7 +33,7 @@ public class ArcadeGameEngine extends ClassicGameEngine {
      * 기본 생성자 (Arcade 기본 설정)
      */
     public ArcadeGameEngine() {
-        this(GameModeConfig.arcade());
+        this(GameModeConfig.createDefaultArcade());
     }
 
     /**
@@ -44,14 +44,15 @@ public class ArcadeGameEngine extends ClassicGameEngine {
     public ArcadeGameEngine(GameModeConfig config) {
         super(config);
 
-        // ItemConfig에서 ItemManager 생성
-        if (config != null && config.getItemConfig() != null) {
+        // GameModeConfig에서 직접 ItemManager 생성 (ItemConfig 제거)
+        if (config != null && config.isItemSystemEnabled()) {
             this.itemManager = new ItemManager(
-                config.getItemConfig().getDropRate(),
-                config.getItemConfig().getEnabledItems()
+                config.getLinesPerItem(),
+                config.getEnabledItemTypes()
             );
             System.out.println("[Engine] ArcadeGameEngine initialized - Items enabled (" + 
-                itemManager.getEnabledItems().size() + " types)");
+                itemManager.getEnabledItems().size() + " types, " +
+                config.getLinesPerItem() + " lines per item)");
         } else {
             this.itemManager = new ItemManager();
             System.out.println("[Engine] ArcadeGameEngine initialized - Default item config");
@@ -299,6 +300,11 @@ public class ArcadeGameEngine extends ClassicGameEngine {
     public GameState lockTetromino(GameState state) {
         System.out.println("🚀 [ArcadeGameEngine] lockTetromino() CALLED - Class: " + this.getClass().getSimpleName());
         
+        // 🔥 CRITICAL: Pivot 위치를 미리 저장 (lockTetromino 후 currentTetromino가 null이 되기 때문)
+        int originalPivotX = state.getCurrentX();
+        int originalPivotY = state.getCurrentY();
+        seoultech.se.core.engine.item.ItemType originalItemType = state.getCurrentItemType();
+        
         // 1. Phase 4: 무게추 최종 처리 (고정 전)
         int weightBombScore = 0;
         GameState stateAfterWeightBomb = state;
@@ -352,6 +358,7 @@ public class ArcadeGameEngine extends ClassicGameEngine {
         }
         
         // 2. 기본 고정 처리 (부모 클래스)
+        // 🔥 IMPORTANT: super.lockTetromino()가 먼저 호출되어야 Grid에 블록과 마커가 추가됨
         GameState newState = super.lockTetromino(stateAfterWeightBomb);
         
         // 게임 오버 시 early return
@@ -360,13 +367,11 @@ public class ArcadeGameEngine extends ClassicGameEngine {
             return newState;
         }
         
-        // Phase 4: 무게추 점수 추가
-        if (weightBombScore > 0) {
-            newState.addScore(weightBombScore);
-        }
-        
-        // 3. 'L' 마커 줄 삭제 처리 (Phase 3)
+        // 2.5. LINE_CLEAR 마커 처리 (블록 고정 후)
+        // 🔥 FIX: super.lockTetromino() 후에 마커가 Grid에 추가되므로 이제 처리 가능
         int lineClearMarkerLines = 0;
+        long lineClearScore = 0;
+        
         if (itemManager != null) {
             java.util.List<Integer> markedLines = 
                 seoultech.se.core.engine.item.impl.LineClearItem.findAndClearMarkedLines(newState);
@@ -378,24 +383,71 @@ public class ArcadeGameEngine extends ClassicGameEngine {
                 int blocksCleared = 
                     seoultech.se.core.engine.item.impl.LineClearItem.clearLines(newState, markedLines);
                 
-                // 점수 추가 (줄당 100점 기본 + 블록당 10점)
+                // 점수 계산
                 long lineBonus = markedLines.size() * 100 * newState.getLevel();
                 long blockBonus = blocksCleared * 10;
-                newState.addScore(lineBonus + blockBonus);
+                lineClearScore = lineBonus + blockBonus;
                 
-                // 라인 카운트 추가 (레벨업 진행을 위해)
-                newState.addLinesCleared(markedLines.size());
-                
-                System.out.println("Ⓛ [ArcadeGameEngine] LINE_CLEAR effect: " + 
+                System.out.println("Ⓛ [ArcadeGameEngine] LINE_CLEAR effect (after lock): " + 
                     markedLines.size() + " line(s), " + blocksCleared + " blocks");
                 System.out.println("   - Line bonus: " + lineBonus);
                 System.out.println("   - Block bonus: " + blockBonus);
+                
+                // 점수 및 라인 카운트 추가
+                newState.addScore(lineClearScore);
+                newState.addLinesCleared(lineClearMarkerLines);
             }
         }
         
-        // 4. 아이템 드롭 체크 (10줄마다)
-        // 주의: 기본 라인 클리어 + 'L' 마커 라인 클리어 모두 포함
-        int totalLinesCleared = newState.getLastLinesCleared() + lineClearMarkerLines;
+        // 2.6. 아이템 효과 적용 (BOMB, PLUS 등)
+        int itemEffectLinesCleared = 0;
+        
+        if (originalItemType != null && itemManager != null) {
+            // WEIGHT_BOMB과 LINE_CLEAR는 이미 처리됨
+            if (originalItemType != seoultech.se.core.engine.item.ItemType.WEIGHT_BOMB &&
+                originalItemType != seoultech.se.core.engine.item.ItemType.LINE_CLEAR) {
+                
+                // Pivot 위치는 미리 저장한 원본 값 사용
+                // (lockTetromino 후 currentTetromino가 null이 되므로)
+                int pivotX = originalPivotX;
+                int pivotY = originalPivotY;
+                
+                System.out.println("🎯 [ArcadeGameEngine] Applying item effect: " + originalItemType);
+                System.out.println("   - Pivot position (original): (" + pivotY + ", " + pivotX + ")");
+                
+                seoultech.se.core.engine.item.Item item = itemManager.getItem(originalItemType);
+                if (item != null) {
+                    seoultech.se.core.engine.item.ItemEffect effect = item.apply(newState, pivotY, pivotX);
+                    
+                    if (effect.isSuccess()) {
+                        // 아이템 효과로 인한 점수 추가
+                        newState.addScore(effect.getBonusScore());
+                        
+                        // 🔥 FIX: 아이템 효과로 클리어된 라인 수 저장
+                        itemEffectLinesCleared = effect.getLinesCleared();
+                        
+                        // 🔥 FIX: 라인 클리어를 GameState에도 반영 (레벨업 진행)
+                        if (itemEffectLinesCleared > 0) {
+                            newState.addLinesCleared(itemEffectLinesCleared);
+                        }
+                        
+                        System.out.println("✅ [ArcadeGameEngine] Item effect applied successfully");
+                        System.out.println("   - Blocks cleared: " + effect.getBlocksCleared());
+                        System.out.println("   - Lines cleared: " + effect.getLinesCleared());
+                        System.out.println("   - Bonus score: " + effect.getBonusScore());
+                    }
+                }
+            }
+        }
+        
+        // Phase 4: 무게추 점수 추가
+        if (weightBombScore > 0) {
+            newState.addScore(weightBombScore);
+        }
+        
+        // 4. 아이템 드롭 체크 (모든 라인 클리어 포함)
+        // 🔥 FIX: 기본 라인 클리어 + LINE_CLEAR 마커 + 아이템 효과 라인 클리어
+        int totalLinesCleared = newState.getLastLinesCleared() + lineClearMarkerLines + itemEffectLinesCleared;
         
         System.out.println("🔍 [ArcadeGameEngine] lockTetromino - itemManager: " + 
             (itemManager != null ? "initialized" : "NULL") + 

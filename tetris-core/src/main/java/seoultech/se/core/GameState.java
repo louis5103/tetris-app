@@ -43,7 +43,7 @@ public class GameState {
      * 10줄 클리어마다 아이템 생성 (Req2 명세)
      * ItemManager의 상태를 GameState로 이동 (Stateless 리팩토링)
      */
-    private int linesUntilNextItem = 10;
+    private int linesUntilNextItem = 1;
 
     // Hold 기능 관련 정보
     private boolean holdUsedThisTurn;
@@ -159,7 +159,7 @@ public class GameState {
         this.currentItemType = null;
         this.nextBlockItemType = null;
         this.isWeightBombLocked = false;
-        this.linesUntilNextItem = 10;
+        this.linesUntilNextItem = 1;
 
         // Lock Delay 초기화
         this.isLockDelayActive = false;

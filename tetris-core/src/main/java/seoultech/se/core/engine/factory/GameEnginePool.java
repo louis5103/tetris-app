@@ -96,9 +96,9 @@ public class GameEnginePool {
      */
     private GameModeConfig createDefaultConfig(GameplayType type) {
         if (type == GameplayType.ARCADE) {
-            return GameModeConfig.arcade();
+            return GameModeConfig.createDefaultArcade();
         } else {
-            return GameModeConfig.classic();
+            return GameModeConfig.createDefaultClassic();
         }
     }
 

@@ -95,9 +95,6 @@ public class GameController {
     
     @Autowired
     private seoultech.se.client.service.GameModeConfigFactory configFactory;
-    
-    @Autowired
-    private seoultech.se.client.config.ClientSettings clientSettings;
 
     // 게임 로직 컨트롤러
     private BoardController boardController;
@@ -166,8 +163,8 @@ public class GameController {
         // 현재 선택된 Difficulty 가져오기
         seoultech.se.core.model.enumType.Difficulty difficulty = settingsService.getCurrentDifficulty();
         
-        // ClientSettings + Difficulty → GameModeConfig 생성
-        this.gameModeConfig = configFactory.create(clientSettings, gameplayType, difficulty);
+        // GameplayType + Difficulty → GameModeConfig 생성
+        this.gameModeConfig = configFactory.create(gameplayType, difficulty);
 
         System.out.println("⚙️ Game mode set: " +
             gameplayType.getDisplayName() +
@@ -176,6 +173,13 @@ public class GameController {
             ", SRS: " + gameModeConfig.isSrsEnabled() +
             ", Hard Drop: " + gameModeConfig.isHardDropEnabled() +
             ", Drop Speed: " + gameModeConfig.getDropSpeedMultiplier() + "x");
+        
+        if (gameplayType == seoultech.se.core.config.GameplayType.ARCADE) {
+            System.out.println("🎯 [DEBUG] Arcade Item Config:");
+            System.out.println("   - linesPerItem: " + gameModeConfig.getLinesPerItem());
+            System.out.println("   - maxInventorySize: " + gameModeConfig.getMaxInventorySize());
+            System.out.println("   - enabledItems: " + gameModeConfig.getEnabledItemTypes().size());
+        }
 
         // 이제 실제 게임 초기화 수행
         startInitialization();
@@ -386,11 +390,11 @@ public class GameController {
     private void initializeItemInventory() {
         System.out.println("🔧 [GameController] Initializing item inventory...");
         System.out.println("   - gameModeConfig: " + gameModeConfig);
-        System.out.println("   - itemConfig: " + (gameModeConfig != null ? gameModeConfig.getItemConfig() : "null"));
-        System.out.println("   - isEnabled: " + (gameModeConfig != null && gameModeConfig.getItemConfig() != null ? gameModeConfig.getItemConfig().isEnabled() : "N/A"));
+        System.out.println("   - linesPerItem: " + (gameModeConfig != null ? gameModeConfig.getLinesPerItem() : "null"));
+        System.out.println("   - isEnabled: " + (gameModeConfig != null ? gameModeConfig.isItemSystemEnabled() : "N/A"));
         
         if (gameModeConfig != null && gameModeConfig.isItemSystemEnabled()) {
-            int maxInventorySize = gameModeConfig.getItemConfig().getMaxInventorySize();
+            int maxInventorySize = gameModeConfig.getMaxInventorySize();
             System.out.println("   - maxInventorySize: " + maxInventorySize);
             
             itemInventoryPanel = new ItemInventoryPanel(maxInventorySize);

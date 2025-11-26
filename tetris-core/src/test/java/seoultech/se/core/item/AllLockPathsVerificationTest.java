@@ -48,7 +48,7 @@ class AllLockPathsVerificationTest {
 
         // Arcade Engine (Stateless 리팩토링)
         arcadeEngine = new ArcadeGameEngine(GameModeConfig.arcade());
-        itemManager = new ItemManager(0.1, java.util.EnumSet.allOf(ItemType.class));
+        itemManager = new ItemManager(10, java.util.EnumSet.allOf(ItemType.class));
     }
     
     // ========== Hard Drop 경로 검증 ==========

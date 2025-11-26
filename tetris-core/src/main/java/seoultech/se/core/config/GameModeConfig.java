@@ -2,8 +2,11 @@ package seoultech.se.core.config;
 
 import lombok.Builder;
 import lombok.Getter;
-import seoultech.se.core.engine.item.ItemConfig;
+import seoultech.se.core.engine.item.ItemType;
 import seoultech.se.core.model.enumType.Difficulty;
+
+import java.util.Collections;
+import java.util.Set;
 
 /**
  * 게임 모드 설정 객체 (리팩토링 완료)
@@ -114,12 +117,45 @@ public class GameModeConfig {
     @Builder.Default
     private final Difficulty difficulty = Difficulty.NORMAL;
     
+    // ========== 아이템 시스템 설정 (Arcade 전용) ==========
+    
     /**
-     * 아이템 설정 (아케이드 모드 전용)
-     * null이면 아이템 시스템 비활성화
+     * 아이템 생성 간격 (줄 수)
+     * arcade.yml의 linesPerItem과 매핑
+     * 예: 10이면 10줄 클리어마다 아이템 생성
      */
     @Builder.Default
-    private final ItemConfig itemConfig = null;
+    private final int linesPerItem = 10;
+    
+    /**
+     * 아이템 드롭 확률 (0.0 ~ 1.0)
+     * @deprecated 10줄 카운터 기반으로 변경됨. linesPerItem 사용
+     * arcade.yml의 itemDropRate와 매핑
+     */
+    @Builder.Default
+    @Deprecated
+    private final double itemDropRate = 0.0;
+    
+    /**
+     * 최대 인벤토리 크기
+     * arcade.yml의 maxInventorySize와 매핑
+     */
+    @Builder.Default
+    private final int maxInventorySize = 0;
+    
+    /**
+     * 아이템 자동 사용 여부
+     * arcade.yml의 itemAutoUse와 매핑
+     */
+    @Builder.Default
+    private final boolean itemAutoUse = false;
+    
+    /**
+     * 활성화된 아이템 타입 목록
+     * arcade.yml의 enabledItems와 매핑
+     */
+    @Builder.Default
+    private final Set<ItemType> enabledItemTypes = Collections.emptySet();
     
     // ========== 헬퍼 메서드 ==========
     
@@ -129,7 +165,7 @@ public class GameModeConfig {
      * @return 아이템 시스템이 활성화되어 있으면 true
      */
     public boolean isItemSystemEnabled() {
-        return itemConfig != null && itemConfig.isEnabled();
+        return linesPerItem > 0 && !enabledItemTypes.isEmpty();
     }
     
     /**
@@ -141,34 +177,56 @@ public class GameModeConfig {
         return gameplayType == GameplayType.ARCADE;
     }
     
-    // ========== 하위 호환성 프리셋 (Deprecated) ==========
+    // ========== 기본 프리셋 헬퍼 메서드 (레거시 제거됨) ==========
     
     /**
-     * @deprecated ClientSettings + Difficulty 기반 생성 권장
-     * 하위 호환성을 위해 유지
+     * 기본 Classic 설정 생성 헬퍼
+     * 
+     * 주의: 실제 게임에서는 GameModeConfigFactory를 사용하세요.
+     * 이 메서드는 테스트용으로만 사용됩니다.
+     * 
+     * @return Classic 모드 기본 GameModeConfig
      */
-    @Deprecated
-    public static GameModeConfig classic() {
+    public static GameModeConfig createDefaultClassic() {
         return GameModeConfig.builder()
             .gameplayType(GameplayType.CLASSIC)
             .srsEnabled(true)
             .difficulty(Difficulty.NORMAL)
+            .itemDropRate(0.0)
+            .maxInventorySize(0)
+            .itemAutoUse(false)
+            .enabledItemTypes(Collections.emptySet())
             .build();
     }
     
     /**
-     * @deprecated ClientSettings + Difficulty 기반 생성 권장
-     * 하위 호환성을 위해 유지
+     * 기본 Arcade 설정 생성 헬퍼
+     * 
+     * 주의: 실제 게임에서는 GameModeConfigFactory를 사용하세요.
+     * 이 메서드는 테스트용으로만 사용됩니다.
+     * 
+     * @return Arcade 모드 기본 GameModeConfig
      */
-    @Deprecated
-    public static GameModeConfig arcade() {
+    public static GameModeConfig createDefaultArcade() {
         return GameModeConfig.builder()
             .gameplayType(GameplayType.ARCADE)
-            .dropSpeedMultiplier(1.5)
-            .lockDelay(300)
             .srsEnabled(true)
-            .itemConfig(ItemConfig.arcadeDefault())
             .difficulty(Difficulty.NORMAL)
+            .dropSpeedMultiplier(1.0)
+            .lockDelay(500)
+            // 아이템 설정
+            .linesPerItem(10)
+            .itemDropRate(0.15)  // Deprecated
+            .maxInventorySize(3)
+            .itemAutoUse(false)
+            .enabledItemTypes(java.util.EnumSet.of(
+                ItemType.LINE_CLEAR,
+                ItemType.WEIGHT_BOMB,
+                ItemType.PLUS,
+                ItemType.SPEED_RESET,
+                ItemType.BONUS_SCORE,
+                ItemType.BOMB
+            ))
             .build();
     }
 }

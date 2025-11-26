@@ -20,10 +20,10 @@ import javafx.beans.property.StringProperty;
 import javafx.stage.Stage;
 import seoultech.se.client.config.ClientSettings;
 import seoultech.se.client.config.GeneralSettings;
-import seoultech.se.client.config.mode.ArcadeModeSettings;
 import seoultech.se.client.constants.ColorBlindMode;
 import seoultech.se.core.config.GameModeConfig;
 import seoultech.se.core.config.GameplayType;
+import seoultech.se.core.model.enumType.Difficulty;
 
 @Service
 public class SettingsService {
@@ -33,6 +33,9 @@ public class SettingsService {
     
     @Autowired
     private YamlConfigPersistence yamlPersistence;
+    
+    @Autowired
+    private GameModeConfigFactory configFactory;
     
     // ========== application.yml 기본값은 GeneralSettings에서 주입 ==========
     // ClientSettings의 GeneralSettings가 기본값을 포함하고 있음
@@ -350,78 +353,31 @@ public class SettingsService {
     @Deprecated
     public GameModeConfig buildGameModeConfig(GameplayType gameplayType) {
         try {
-            // 게임플레이 타입에 따라 프리셋 사용
+            // 게임플레이 타입에 따라 Factory 사용
+            Difficulty currentDifficulty = getCurrentDifficulty();
             if (gameplayType == GameplayType.ARCADE) {
-                return GameModeConfig.arcade();
+                return configFactory.createArcadeConfig(currentDifficulty);
             } else {
-                return GameModeConfig.classic();
+                return configFactory.createClassicConfig(currentDifficulty);
             }
         } catch (Exception e) {
             System.err.println("❗ Failed to build game mode config: " + e.getMessage());
             e.printStackTrace();
-            return GameModeConfig.classic();
+            return configFactory.createClassicConfig(getCurrentDifficulty());
         }
     }
     
     /**
-     * 아케이드 모드 설정 빌드 (아이템 설정 포함)
+     * 아케이드 모드 설정 빌드
+     * 
+     * GameModeConfigFactory를 사용하여 game-modes.yml 기반 설정 생성
      * 
      * @return 아케이드 모드 설정
      */
     private GameModeConfig buildArcadeConfig() {
         System.out.println("🎮 [SettingsService] Building ARCADE config...");
-        ArcadeModeSettings arcadeSettings = clientSettings.getModes().getArcade();
-
-        // ItemConfig 생성
-        seoultech.se.core.engine.item.ItemConfig itemConfig = buildItemConfig();
-        
-        System.out.println("✅ ItemConfig created - isEnabled: " + itemConfig.isEnabled());
-        
-        // 아케이드 모드 기본 설정에 아이템 설정 추가
-        return GameModeConfig.builder()
-            .gameplayType(GameplayType.ARCADE)
-            .dropSpeedMultiplier(arcadeSettings.getDropSpeedMultiplier())
-            .lockDelay(arcadeSettings.getLockDelay())
-            .srsEnabled(arcadeSettings.isSrsEnabled())
-            .itemConfig(itemConfig)
-            .build();
-    }
-    
-    /**
-     * ItemConfig 생성
-     * ArcadeModeSettings 설정을 기반으로 ItemConfig를 빌드합니다.
-     * 
-     * @return ItemConfig 객체
-     */
-    private seoultech.se.core.engine.item.ItemConfig buildItemConfig() {
-        ArcadeModeSettings arcadeSettings = clientSettings.getModes().getArcade();
-        
-        // 활성화된 아이템 타입 수집
-        java.util.Set<seoultech.se.core.engine.item.ItemType> enabledItems = 
-            new java.util.HashSet<>();
-        
-        Map<String, Boolean> enabledItemsMap = arcadeSettings.getEnabledItems();
-        if (enabledItemsMap != null) {
-            for (Map.Entry<String, Boolean> entry : enabledItemsMap.entrySet()) {
-                if (entry.getValue()) {
-                    try {
-                        enabledItems.add(seoultech.se.core.engine.item.ItemType.valueOf(entry.getKey()));
-                    } catch (IllegalArgumentException e) {
-                        System.err.println("⚠️ Invalid item type: " + entry.getKey());
-                    }
-                }
-            }
-        }
-        
-        System.out.println("📊 Item drop rate: " + (int)(arcadeSettings.getItemDropRate() * 100) + "%");
-        System.out.println("📊 Enabled items: " + enabledItems);
-        
-        return seoultech.se.core.engine.item.ItemConfig.builder()
-            .dropRate(arcadeSettings.getItemDropRate())
-            .enabledItems(enabledItems)
-            .maxInventorySize(arcadeSettings.getMaxInventorySize())
-            .autoUse(arcadeSettings.isItemAutoUse())
-            .build();
+        Difficulty currentDifficulty = getCurrentDifficulty();
+        return configFactory.createArcadeConfig(currentDifficulty);
     }
     
     
@@ -463,15 +419,15 @@ public class SettingsService {
             modeSettings.put("softDropSpeed", config.getSoftDropSpeed());
             modeSettings.put("lockDelay", config.getLockDelay());
 
-            if (gameplayType == GameplayType.ARCADE && config.getItemConfig() != null) {
-                seoultech.se.core.engine.item.ItemConfig itemConfig = config.getItemConfig();
-                modeSettings.put("itemDropRate", itemConfig.getDropRate());
-                modeSettings.put("maxInventorySize", itemConfig.getMaxInventorySize());
-                modeSettings.put("itemAutoUse", itemConfig.isAutoUse());
+            if (gameplayType == GameplayType.ARCADE && config.isItemSystemEnabled()) {
+                modeSettings.put("linesPerItem", config.getLinesPerItem());
+                modeSettings.put("itemDropRate", config.getItemDropRate());  // Deprecated - 하위 호환성
+                modeSettings.put("maxInventorySize", config.getMaxInventorySize());
+                modeSettings.put("itemAutoUse", config.isItemAutoUse());
                 
                 Map<String, Boolean> enabledItems = new LinkedHashMap<>();
                 for (seoultech.se.core.engine.item.ItemType itemType : seoultech.se.core.engine.item.ItemType.values()) {
-                    enabledItems.put(itemType.name(), itemConfig.getEnabledItems().contains(itemType));
+                    enabledItems.put(itemType.name(), config.getEnabledItemTypes().contains(itemType));
                 }
                 modeSettings.put("enabledItems", enabledItems);
             }
@@ -521,8 +477,24 @@ public class SettingsService {
                 .lockDelay(getSetting(modeSettings, "lockDelay", 500));
 
             if (gameplayType == GameplayType.ARCADE) {
-                seoultech.se.core.engine.item.ItemConfig itemConfig = buildItemConfigFromMap(modeSettings);
-                builder.itemConfig(itemConfig);
+                // 아이템 설정 직접 추가 (ItemConfig 제거)
+                java.util.Set<seoultech.se.core.engine.item.ItemType> enabledItems = new java.util.HashSet<>();
+                Map<String, Boolean> enabledItemsMap = getSetting(modeSettings, "enabledItems", new HashMap<>());
+                for (Map.Entry<String, Boolean> entry : enabledItemsMap.entrySet()) {
+                    if (entry.getValue()) {
+                        try {
+                            enabledItems.add(seoultech.se.core.engine.item.ItemType.valueOf(entry.getKey()));
+                        } catch (IllegalArgumentException e) {
+                            System.err.println("⚠️ Invalid item type in config: " + entry.getKey());
+                        }
+                    }
+                }
+                
+                builder.linesPerItem(getSetting(modeSettings, "linesPerItem", 10))
+                       .itemDropRate(getSetting(modeSettings, "itemDropRate", 0.1))  // Deprecated - 하위 호환성
+                       .maxInventorySize(getSetting(modeSettings, "maxInventorySize", 3))
+                       .itemAutoUse(getSetting(modeSettings, "itemAutoUse", false))
+                       .enabledItemTypes(enabledItems);
             }
             
             GameModeConfig config = builder.build();
@@ -536,26 +508,8 @@ public class SettingsService {
         }
     }
 
-    private seoultech.se.core.engine.item.ItemConfig buildItemConfigFromMap(Map<String, Object> modeSettings) {
-        java.util.Set<seoultech.se.core.engine.item.ItemType> enabledItems = new java.util.HashSet<>();
-        Map<String, Boolean> enabledItemsMap = getSetting(modeSettings, "enabledItems", new HashMap<>());
-        for (Map.Entry<String, Boolean> entry : enabledItemsMap.entrySet()) {
-            if (entry.getValue()) {
-                try {
-                    enabledItems.add(seoultech.se.core.engine.item.ItemType.valueOf(entry.getKey()));
-                } catch (IllegalArgumentException e) {
-                    System.err.println("⚠️ Invalid item type in config: " + entry.getKey());
-                }
-            }
-        }
-
-        return seoultech.se.core.engine.item.ItemConfig.builder()
-            .dropRate(getSetting(modeSettings, "itemDropRate", 0.1))
-            .enabledItems(enabledItems)
-            .maxInventorySize(getSetting(modeSettings, "maxInventorySize", 3))
-            .autoUse(getSetting(modeSettings, "itemAutoUse", false))
-            .build();
-    }
+    // buildItemConfigFromMap() 메서드 제거 - ItemConfig 레거시 제거
+    // GameModeConfig.builder()에서 아이템 필드 직접 설정
     
     /**
      * ClientSettings 반환 (외부 접근용)

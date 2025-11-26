@@ -33,20 +33,22 @@ import seoultech.se.core.GameState;
 public class ItemManager {
 
     /**
-     * 아이템 생성 간격 (줄 수)
-     * Req2 명세: 10줄마다 아이템 생성
-     */
-    private static final int LINES_PER_ITEM = 10;
-
-    /**
      * 아이템 팩토리 맵
      * 각 아이템 타입에 대한 팩토리 함수를 저장
      */
     private final Map<ItemType, Item> itemPrototypes;
 
     /**
-     * 아이템 드롭 확률 (읽기 전용 설정값)
+     * 아이템 생성 간격 (줄 수)
+     * GameModeConfig에서 주입받음
      */
+    private final int linesPerItem;
+
+    /**
+     * 아이템 드롭 확률 (읽기 전용 설정값)
+     * @deprecated 10줄 카운터 기반으로 변경됨
+     */
+    @Deprecated
     private final double itemDropRate;
 
     /**
@@ -62,11 +64,12 @@ public class ItemManager {
     /**
      * 생성자
      *
-     * @param itemDropRate 아이템 드롭 확률 (0.0 ~ 1.0)
+     * @param linesPerItem 아이템 생성 간격 (줄 수)
      * @param enabledItemTypes 활성화할 아이템 타입들
      */
-    public ItemManager(double itemDropRate, Set<ItemType> enabledItemTypes) {
-        this.itemDropRate = itemDropRate;
+    public ItemManager(int linesPerItem, Set<ItemType> enabledItemTypes) {
+        this.linesPerItem = linesPerItem;
+        this.itemDropRate = 1.0;  // Deprecated - 항상 100% (카운터 기반)
         this.enabledItemTypes = ConcurrentHashMap.newKeySet();
         this.enabledItemTypes.addAll(enabledItemTypes != null ? enabledItemTypes : EnumSet.allOf(ItemType.class));
         this.random = new Random();
@@ -75,15 +78,15 @@ public class ItemManager {
         // 프로토타입 등록 (팩토리 패턴)
         registerPrototypes();
 
-        System.out.println("✅ ItemManager initialized (Stateless) - Drop Rate: " + (int)(itemDropRate * 100) +
-            "%, Enabled Items: " + this.enabledItemTypes);
+        System.out.println("✅ ItemManager initialized (Stateless) - Lines Per Item: " + linesPerItem +
+            ", Enabled Items: " + this.enabledItemTypes);
     }
 
     /**
-     * 기본 생성자 (모든 아이템 활성화, 10% 드롭률)
+     * 기본 생성자 (모든 아이템 활성화, 10줄마다 생성)
      */
     public ItemManager() {
-        this(0.1, EnumSet.allOf(ItemType.class));
+        this(10, EnumSet.allOf(ItemType.class));
     }
     
     /**
@@ -178,19 +181,22 @@ public class ItemManager {
         int remaining = newState.getLinesUntilNextItem() - linesCleared;
 
         if (remaining <= 0) {
-            // LINES_PER_ITEM 줄 달성! 아이템 생성
+            // linesPerItem 줄 달성! 아이템 생성
             ItemType itemType = generateRandomItemType();
 
             if (itemType != null) {
-                System.out.println("[Item] Generated: " + itemType);
+                System.out.println("[Item] Generated: " + itemType + " (after " + linesPerItem + " lines)");
                 newState.setNextBlockItemType(itemType);
+            } else {
+                System.out.println("[Item] No enabled items available");
             }
 
             // 카운터 리셋
-            newState.setLinesUntilNextItem(LINES_PER_ITEM);
+            newState.setLinesUntilNextItem(linesPerItem);
         } else {
             // 카운터만 갱신
             newState.setLinesUntilNextItem(remaining);
+            System.out.println("[Item] Lines until next item: " + remaining);
         }
 
         return newState;
@@ -280,8 +286,8 @@ public class ItemManager {
      */
     @Override
     public String toString() {
-        return String.format("ItemManager[DropRate=%.1f%%, EnabledItems=%s]",
-            itemDropRate * 100,
+        return String.format("ItemManager[LinesPerItem=%d, EnabledItems=%s]",
+            linesPerItem,
             enabledItemTypes.stream()
                 .map(ItemType::getDisplayName)
                 .collect(Collectors.joining(", ")));
