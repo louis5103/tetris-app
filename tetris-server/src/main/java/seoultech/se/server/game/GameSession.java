@@ -40,7 +40,7 @@ public class GameSession {
     private final Map<String, Long> lastSequences = new ConcurrentHashMap<>();
     private final Map<String, Integer> pendingAttackLines = new ConcurrentHashMap<>(); // 대기 중인 공격 라인
     private final GameEngine gameEngine; // 싱글톤 공유
-    
+
     /**
      * 게임 모드 설정 (멀티플레이어 세션의 권위 있는 Config)
      * - 호스트만 설정 가능
@@ -48,9 +48,15 @@ public class GameSession {
      * - 모든 클라이언트가 이 Config를 공유
      */
     private GameModeConfig gameModeConfig;
-    
+
     private String hostPlayerId; // 호스트 플레이어 ID (Config 설정 권한)
     private boolean isGameStarted = false; // 게임 시작 여부
+
+    /**
+     * Phase 1: 세션 타임아웃 추적
+     * 마지막 활동 시간 (밀리초)
+     */
+    private volatile long lastActivityTime;
 
     private final Object lock = new Object(); // 동기화를 위한 락 객체
 
@@ -63,13 +69,14 @@ public class GameSession {
     public GameSession(String sessionId, GameEngine gameEngine) {
         this.sessionId = sessionId;
         this.gameEngine = gameEngine;
+        this.lastActivityTime = System.currentTimeMillis(); // 생성 시점을 마지막 활동 시간으로 초기화
         System.out.println("✅ [GameSession] Created: " + sessionId +
             ", Engine: " + (gameEngine != null ? gameEngine.getClass().getSimpleName() : "null"));
     }
 
     /**
      * 플레이어 참여
-     * 
+     *
      * @param playerId 플레이어 ID
      */
     public void joinPlayer(String playerId) {
@@ -79,16 +86,74 @@ public class GameSession {
                 hostPlayerId = playerId;
                 System.out.println("👑 [GameSession] Host set: " + playerId);
             }
-            
+
             playerStates.put(playerId, new GameState(10, 20)); // 초기 상태
             lastSequences.put(playerId, 0L); // 초기 시퀀스 번호
             pendingAttackLines.put(playerId, 0); // 대기 중인 공격 라인 초기화
-            
+
+            // Phase 1: 활동 시간 갱신
+            updateLastActivityTime();
+
             System.out.println("✅ [GameSession] Player joined: " + playerId +
                 " (" + playerStates.size() + " players total)");
         }
     }
-    
+
+    /**
+     * Phase 1: 마지막 활동 시간 갱신
+     */
+    private void updateLastActivityTime() {
+        this.lastActivityTime = System.currentTimeMillis();
+    }
+
+    /**
+     * Phase 1: 마지막 활동 시간 조회
+     *
+     * @return 마지막 활동 시간 (밀리초)
+     */
+    public long getLastActivityTime() {
+        return lastActivityTime;
+    }
+
+    /**
+     * Phase 1: 플레이어 제거
+     *
+     * @param playerId 제거할 플레이어 ID
+     * @return 제거 성공 여부
+     */
+    public boolean removePlayer(String playerId) {
+        synchronized (lock) {
+            boolean removed = playerStates.remove(playerId) != null;
+
+            if (removed) {
+                lastSequences.remove(playerId);
+                pendingAttackLines.remove(playerId);
+
+                System.out.println("👋 [GameSession] Player removed: " + playerId +
+                    " (" + playerStates.size() + " players remaining)");
+
+                // 호스트가 나간 경우 새로운 호스트 지정
+                if (playerId.equals(hostPlayerId)) {
+                    hostPlayerId = playerStates.keySet().stream().findFirst().orElse(null);
+                    if (hostPlayerId != null) {
+                        System.out.println("👑 [GameSession] New host: " + hostPlayerId);
+                    }
+                }
+            }
+
+            return removed;
+        }
+    }
+
+    /**
+     * Phase 1: 현재 플레이어 수 조회
+     *
+     * @return 플레이어 수
+     */
+    public int getPlayerCount() {
+        return playerStates.size();
+    }
+
     /**
      * 게임 모드 설정 (호스트만 가능, 또는 초기 설정)
      * 
@@ -176,7 +241,10 @@ public class GameSession {
     public ServerStateDto processInput(String playerId, PlayerInputDto input){
         synchronized(lock){
             GameState currentState = playerStates.get(playerId);
-            
+
+            // Phase 1: 활동 시간 갱신
+            updateLastActivityTime();
+
             // 1. 시퀀스 검증 (오래된 패킷 무시)
             long lastSeq = lastSequences.getOrDefault(playerId, 0L);
             if (input.getSequenceId() <= lastSeq) {
@@ -185,7 +253,7 @@ public class GameSession {
 
             // 2. 서버 권한으로 로직 실행
             GameState nextState = gameEngine.executeCommand(input.getCommand(), currentState);
-            
+
             // 3. 상태 업데이트
             playerStates.put(playerId, nextState);
             lastSequences.put(playerId, input.getSequenceId());

@@ -4,6 +4,8 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import seoultech.se.core.config.GameModeConfig;
@@ -23,6 +25,7 @@ import seoultech.se.server.service.ServerConfigFactory;
  * - 각 세션은 공유 GameEngine을 사용
  * - 메모리 효율: 1000개 세션이 2개의 GameEngine만 공유
  * - ServerConfigFactory 주입: 세션 생성 시 기본 GameModeConfig 생성
+ * - Phase 1: 세션 타임아웃 자동 정리 (application.yml에서 설정 가능)
  */
 @Service
 public class GameSessionManager {
@@ -30,6 +33,13 @@ public class GameSessionManager {
     private final Map<String, GameSession> sessions = new ConcurrentHashMap<>();
     private final GameEnginePool gameEnginePool;
     private final ServerConfigFactory serverConfigFactory;
+
+    /**
+     * Phase 1: 세션 타임아웃 설정 (application.yml에서 주입)
+     * 기본값: 30분 (1800000 밀리초)
+     */
+    @Value("${game.session.timeout:1800000}")
+    private long sessionTimeoutMs;
 
     @Autowired
     public GameSessionManager(GameEnginePool gameEnginePool, ServerConfigFactory serverConfigFactory) {
@@ -109,6 +119,29 @@ public class GameSessionManager {
     }
 
     /**
+     * Phase 1: 세션에서 플레이어 제거
+     *
+     * @param sessionId 게임 세션 ID
+     * @param playerId 플레이어 ID
+     * @return 제거 성공 여부
+     */
+    public boolean removePlayerFromSession(String sessionId, String playerId) {
+        GameSession session = sessions.get(sessionId);
+        if (session != null) {
+            boolean removed = session.removePlayer(playerId);
+
+            // 세션에 플레이어가 없으면 세션도 제거
+            if (removed && session.getPlayerCount() == 0) {
+                removeSession(sessionId);
+                System.out.println("🗑️ [GameSessionManager] Empty session removed: " + sessionId);
+            }
+
+            return removed;
+        }
+        return false;
+    }
+
+    /**
      * 모든 세션 개수 반환
      *
      * @return 활성 세션 개수
@@ -123,6 +156,43 @@ public class GameSessionManager {
     public void clearAllSessions() {
         sessions.clear();
         System.out.println("🗑️ [GameSessionManager] All sessions cleared");
+    }
+
+    /**
+     * Phase 1: 비활성 세션 자동 정리 (매 1분마다 실행)
+     *
+     * - application.yml의 game.session.timeout 설정 사용
+     * - 마지막 활동으로부터 timeout 시간이 지난 세션 삭제
+     * - 삭제된 세션 수를 로그에 출력
+     */
+    @Scheduled(fixedRate = 60000) // 1분마다 실행
+    public void cleanupInactiveSessions() {
+        long currentTime = System.currentTimeMillis();
+        int removedCount = 0;
+
+        // 비활성 세션 찾아서 제거
+        var iterator = sessions.entrySet().iterator();
+        while (iterator.hasNext()) {
+            var entry = iterator.next();
+            GameSession session = entry.getValue();
+
+            long inactiveTime = currentTime - session.getLastActivityTime();
+
+            if (inactiveTime > sessionTimeoutMs) {
+                String sessionId = entry.getKey();
+                iterator.remove();
+                removedCount++;
+
+                System.out.println("⏰ [GameSessionManager] Session timeout: " + sessionId +
+                    " (inactive for " + (inactiveTime / 1000) + " seconds)");
+            }
+        }
+
+        // 정리 결과 로그 (세션이 삭제된 경우만)
+        if (removedCount > 0) {
+            System.out.println("🧹 [GameSessionManager] Cleanup completed: " + removedCount +
+                " session(s) removed, " + sessions.size() + " active session(s) remaining");
+        }
     }
 }
 
