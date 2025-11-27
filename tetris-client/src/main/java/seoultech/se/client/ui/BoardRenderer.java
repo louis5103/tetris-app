@@ -186,15 +186,17 @@ public class BoardRenderer {
      * 
      * Rectangle의 parent가 StackPane인 경우, ImageView를 추가하여
      * 배경색 위에 아이템 아이콘을 겹쳐서 표시합니다.
-     * 
+    /**
      * ✨ 핵심 개선:
      * 1. 배경색이 보이도록 반투명 이미지 사용
      * 2. 회전해도 아이콘은 항상 정방향 유지 (rotate=0)
      * 
+     * 🔒 PRIORITY 5: synchronized로 중복 방지
+     * 
      * @param rect 대상 Rectangle
      * @param itemType 아이템 타입
      */
-    private void applyItemMarkerOverlay(Rectangle rect, seoultech.se.core.engine.item.ItemType itemType) {
+    private synchronized void applyItemMarkerOverlay(Rectangle rect, seoultech.se.core.engine.item.ItemType itemType) {
         if (itemType == null) {
             System.err.println("⚠️ [BoardRenderer] applyItemMarkerOverlay called with null itemType");
             return;
@@ -330,14 +332,21 @@ public class BoardRenderer {
     
     /**
      * 내부용 셀 업데이트 메서드 (Platform.runLater 없음)
+     * 
+     * 🔍 동기화 확인:
+     * - GameState.grid의 Cell 객체를 직접 읽음
+     * - Cell의 isOccupied, color, itemMarker 상태를 Rectangle에 반영
+     * - itemMarker는 Lock된 셀에서만 의미 있음 (현재 테트로미노는 drawCurrentTetromino에서 처리)
      */
     private void updateCellInternal(int row, int col, Cell cell) {
         Rectangle rect = cellRectangles[row][col];
         
-        // 🔥 FIX: Lock된 셀에 남아있는 아이템 마커 제거 (메모리 누수 방지)
+        // 🔥 FIX: Lock된 셀에 남아있는 아이템 마커 오버레이 제거 (메모리 누수 방지)
+        // itemMarker 필드는 GameState에 남아있지만, UI 오버레이는 제거됨
         removeItemMarkerOverlay(rect);
         
         if (cell.isOccupied()) {
+            // 🔍 Cell이 점유 상태 → 블록 색상으로 렌더링
             rect.setFill(ColorMapper.toJavaFXColor(cell.getColor()));
             String colorClass = ColorMapper.toCssClass(cell.getColor(), currentColorBlindMode);
             rect.getStyleClass().removeAll(UIConstants.ALL_TETROMINO_COLOR_CLASSES);
@@ -345,9 +354,14 @@ public class BoardRenderer {
                 rect.getStyleClass().add(colorClass);
             }
         } else {
+            // 🔍 Cell이 비어있음 → 빈 셀 색상으로 렌더링
             rect.setFill(ColorMapper.getEmptyCellColor());
             rect.getStyleClass().removeAll(UIConstants.ALL_TETROMINO_COLOR_CLASSES);
         }
+        
+        // 🔍 주의: Cell.itemMarker는 여기서 렌더링하지 않음
+        // - Lock된 블록의 itemMarker는 이미 블록과 함께 고정됨
+        // - 현재 떨어지는 테트로미노의 itemMarker는 drawCurrentTetromino()에서 처리
     }
     
     /**

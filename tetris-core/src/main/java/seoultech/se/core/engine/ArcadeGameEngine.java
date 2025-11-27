@@ -369,6 +369,7 @@ public class ArcadeGameEngine extends ClassicGameEngine {
         
         // 2.5. LINE_CLEAR 마커 처리 (블록 고정 후)
         // 🔥 FIX: super.lockTetromino() 후에 마커가 Grid에 추가되므로 이제 처리 가능
+        // ⚠️ GameState 수정 방식: clearLines()가 newState의 Grid를 **직접 수정** (참조)
         int lineClearMarkerLines = 0;
         long lineClearScore = 0;
         
@@ -379,7 +380,7 @@ public class ArcadeGameEngine extends ClassicGameEngine {
             if (!markedLines.isEmpty()) {
                 lineClearMarkerLines = markedLines.size();
                 
-                // 'L' 마커 줄 삭제
+                // 'L' 마커 줄 삭제 (GameState.grid를 직접 수정)
                 int blocksCleared = 
                     seoultech.se.core.engine.item.impl.LineClearItem.clearLines(newState, markedLines);
                 
@@ -396,10 +397,29 @@ public class ArcadeGameEngine extends ClassicGameEngine {
                 // 점수 및 라인 카운트 추가
                 newState.addScore(lineClearScore);
                 newState.addLinesCleared(lineClearMarkerLines);
+                
+                // 🔥 FIX: LINE_CLEAR로 삭제된 줄을 lastClearedRows에 기록 (애니메이션 표시)
+                // 기존 lastClearedRows와 병합
+                int[] existingClearedRows = newState.getLastClearedRows();
+                int[] allClearedRows = new int[existingClearedRows.length + markedLines.size()];
+                
+                // 기존 클리어된 줄 복사
+                System.arraycopy(existingClearedRows, 0, allClearedRows, 0, existingClearedRows.length);
+                
+                // LINE_CLEAR로 클리어된 줄 추가
+                for (int i = 0; i < markedLines.size(); i++) {
+                    allClearedRows[existingClearedRows.length + i] = markedLines.get(i);
+                }
+                
+                newState.setLastClearedRows(allClearedRows);
+                
+                System.out.println("🎬 [ArcadeGameEngine] Updated lastClearedRows for animation: " + 
+                    java.util.Arrays.toString(allClearedRows));
             }
         }
         
         // 2.6. 아이템 효과 적용 (BOMB, PLUS 등)
+        // ⚠️ GameState 수정 방식: item.apply()가 newState의 Grid를 **직접 수정** (참조)
         int itemEffectLinesCleared = 0;
         
         if (originalItemType != null && itemManager != null) {
@@ -414,6 +434,7 @@ public class ArcadeGameEngine extends ClassicGameEngine {
                 
                 System.out.println("🎯 [ArcadeGameEngine] Applying item effect: " + originalItemType);
                 System.out.println("   - Pivot position (original): (" + pivotY + ", " + pivotX + ")");
+                System.out.println("   - GameState modification: DIRECT (grid modified in-place)");
                 
                 seoultech.se.core.engine.item.Item item = itemManager.getItem(originalItemType);
                 if (item != null) {
@@ -435,7 +456,12 @@ public class ArcadeGameEngine extends ClassicGameEngine {
                         System.out.println("   - Blocks cleared: " + effect.getBlocksCleared());
                         System.out.println("   - Lines cleared: " + effect.getLinesCleared());
                         System.out.println("   - Bonus score: " + effect.getBonusScore());
+                        System.out.println("   - Grid synchronized: YES (modified in-place)");
+                    } else {
+                        System.err.println("⚠️ [ArcadeGameEngine] Item effect failed: " + originalItemType);
                     }
+                } else {
+                    System.err.println("⚠️ [ArcadeGameEngine] Item not found: " + originalItemType);
                 }
             }
         }

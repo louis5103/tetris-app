@@ -65,6 +65,9 @@ public class InputHandler {
     private InputCallback callback;
     private GameStateProvider gameStateProvider;
     
+    // 🔒 PRIORITY 3: 입력 활성화 상태 (애니메이션 중 비활성화)
+    private volatile boolean inputEnabled = true;
+    
     /**
      * InputHandler 생성자
      * 
@@ -95,9 +98,17 @@ public class InputHandler {
     /**
      * 키 입력을 처리하고 Command로 변환합니다
      * 
+     * 🔒 PRIORITY 3: 애니메이션 중 입력 차단
+     * 
      * @param event 키보드 이벤트
      */
     public void handleKeyPress(KeyEvent event) {
+        // 🔒 입력 비활성화 상태이면 무시
+        if (!inputEnabled) {
+            System.out.println("🚫 [InputHandler] Input blocked (animation in progress)");
+            return;
+        }
+        
         // 게임 오버 상태 체크
         if (gameStateProvider != null && gameStateProvider.isGameOver()) {
             return;
@@ -189,6 +200,22 @@ public class InputHandler {
                     System.out.println("⌨️  Keyboard controls enabled");
                 }
             });
+        }
+    }
+    
+    /**
+     * 🔒 PRIORITY 3: 입력 활성화/비활성화 설정
+     * 
+     * 애니메이션 중 입력을 차단하기 위해 사용
+     * 
+     * @param enabled true면 입력 활성화, false면 비활성화
+     */
+    public void setInputEnabled(boolean enabled) {
+        this.inputEnabled = enabled;
+        if (!enabled) {
+            System.out.println("🔒 [InputHandler] Input disabled");
+        } else {
+            System.out.println("✅ [InputHandler] Input enabled");
         }
     }
 }

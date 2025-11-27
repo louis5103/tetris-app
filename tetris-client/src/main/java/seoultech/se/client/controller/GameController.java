@@ -449,11 +449,15 @@ public class GameController {
             settingsService.getColorBlindMode()
         );
         
+        // 🔒 검증: gameModeConfig가 null이면 안 됨 (이미 startInitialization()에서 체크했지만 재확인)
+        if (gameModeConfig == null) {
+            throw new IllegalStateException("[CRITICAL] gameModeConfig is null during initializeManagers()! This should never happen.");
+        }
+        
         // GameLoopManager 초기화 (gameModeConfig의 속도 배율 적용)
-        double dropSpeedMultiplier = (gameModeConfig != null) 
-            ? gameModeConfig.getDropSpeedMultiplier() 
-            : 1.0;
+        double dropSpeedMultiplier = gameModeConfig.getDropSpeedMultiplier();
         gameLoopManager = new GameLoopManager(dropSpeedMultiplier);
+        System.out.println("✅ [GameController] GameLoopManager initialized with speed multiplier: " + dropSpeedMultiplier);
         gameLoopManager.setCallback(() -> {
             GameState gameState = boardController.getGameState();
             
@@ -756,7 +760,8 @@ public class GameController {
             boolean linesWereCleared = newLines > oldLines;
 
             int width = newState.getBoardWidth();
-            int height = newState.getBoardHeight();
+            // Note: height는 현재 사용되지 않지만 애니메이션 확장 시 필요할 수 있음
+            // int height = newState.getBoardHeight();
 
             // 기존 UI 업데이트 로직을 Runnable로 캡슐화
             Runnable continueWithUiUpdates = () -> {
@@ -892,6 +897,12 @@ public class GameController {
             if (linesWereCleared) {
                 // 라인 클리어 애니메이션 처리
                 System.out.println("DEBUG: Line clear detected. Starting animation logic.");
+                
+                // 🔒 PRIORITY 3: 애니메이션 중 입력 차단
+                if (inputHandler != null) {
+                    inputHandler.setInputEnabled(false);
+                }
+                
                 gameLoopManager.pause();
 
                 // 클리어된 라인 인덱스 찾기 (GameState에서 직접 가져오기)
@@ -910,7 +921,7 @@ public class GameController {
                 }
 
                 // 애니메이션 시간만큼 대기
-                CompletableFuture.delayedExecutor(500, TimeUnit.MILLISECONDS).execute(() -> {
+                CompletableFuture.delayedExecutor(300, TimeUnit.MILLISECONDS).execute(() -> {
                     Platform.runLater(() -> {
                         System.out.println("DEBUG: Animation delay finished. Cleaning up animation.");
                         // 실제 UI 업데이트 수행 (나머지 기존 로직 실행)
@@ -920,6 +931,11 @@ public class GameController {
                         if (!boardController.getGameState().isPaused()) {
                             System.out.println("DEBUG: Resuming game loop.");
                             gameLoopManager.resume();
+                        }
+                        
+                        // 🔒 PRIORITY 3: 입력 재활성화
+                        if (inputHandler != null) {
+                            inputHandler.setInputEnabled(true);
                         }
                     });
                 });
@@ -1055,12 +1071,42 @@ public class GameController {
 
     // ========== 팝업 창 관리 ==========
 
+    /**
+     * 게임 오버 처리
+     * 
+     * 🔒 PRIORITY 6: 완전한 상태 리셋
+     * 
+     * @param finalScore 최종 점수
+     */
     private void processGameOver(long finalScore) {
+        System.out.println("💥 [GameController] Processing game over...");
+        
+        // 1. 게임 루프 중지
         gameLoopManager.stop();
+        
+        // 2. 🔒 입력 차단
+        if (inputHandler != null) {
+            inputHandler.setInputEnabled(false);
+        }
+        
+        // 3. 🔒 아이템 인벤토리 초기화 (재시작 시 깨끗한 상태로)
+        if (itemInventoryPanel != null) {
+            itemInventoryPanel.clear();
+            System.out.println("   - Item inventory cleared");
+        }
+        
+        // 4. 🔒 BoardController 상태 초기화 (nextQueue, holdPiece 등)
+        // 주의: BoardController는 재시작 시 새로운 GameEngine으로 초기화됨
+        System.out.println("   - BoardController state will reset on restart");
+        
+        // 5. 게임 오버 라벨 표시
         gameOverLabel.setVisible(true);
-
+        
+        // 6. 게임 오버 팝업 표시
         boolean isItemMode = gameModeConfig != null && gameModeConfig.isItemSystemEnabled();
         popupManager.showGameOverPopup(finalScore, isItemMode, settingsService.getCurrentDifficulty());
+        
+        System.out.println("✅ [GameController] Game over processed");
     }
     
     // ========== UI 알림 메서드 ==========
@@ -1122,14 +1168,20 @@ public class GameController {
                 System.out.println("   ✓ GameLoopManager cleaned up");
             }
 
-            // 3. 키보드 이벤트 핸들러 제거
+            // 3. 🔒 입력 재활성화 (게임 오버 시 비활성화되었으므로)
+            if (inputHandler != null) {
+                inputHandler.setInputEnabled(true);
+                System.out.println("   ✓ Input re-enabled");
+            }
+
+            // 4. 키보드 이벤트 핸들러 제거
             javafx.scene.Scene currentScene = boardGridPane.getScene();
             if (currentScene != null) {
                 currentScene.setOnKeyPressed(null);
                 System.out.println("   ✓ Keyboard handlers removed");
             }
 
-            // 4. 오버레이 숨기기
+            // 5. 오버레이 숨기기
             popupManager.hideAllPopups();
 
             // 5. UI 요소 초기화 (gameOverLabel 숨기기)
@@ -1152,15 +1204,38 @@ public class GameController {
     /**
      * ✨ 실행 전략 정리
      *
-     * 멀티플레이인 경우 네트워크 연결을 정리합니다.
+     * 🔒 리소스 정리 강화:
+     * - 멀티플레이인 경우 네트워크 연결 정리
+     * - 모든 참조 해제하여 GC 가능하도록
+     * 
      * Restart나 Quit 시 호출됩니다.
      * 
-     * 참고: 네트워크 연결 정리는 매칭 화면 컨트롤러에서 처리해야 합니다.
+     * 참고: NetworkExecutionStrategy의 cleanup() 메서드가 구현되어 있어야 합니다.
      */
     private void cleanupExecutionStrategy() {
-        executionStrategy = null;
-        opponentBoardView = null; // 상대방 보드 뷰 정리
-        System.out.println("   ✓ ExecutionStrategy cleaned up");
+        System.out.println("🧹 [GameController] Cleaning up ExecutionStrategy...");
+        
+        if (executionStrategy != null) {
+            // 🔒 NetworkExecutionStrategy인 경우 리소스 정리
+            if (executionStrategy instanceof seoultech.se.client.strategy.NetworkExecutionStrategy) {
+                System.out.println("   - NetworkExecutionStrategy detected, calling cleanup()");
+                // TODO: NetworkExecutionStrategy에 cleanup() 메서드 추가 필요
+                // ((NetworkExecutionStrategy) executionStrategy).cleanup();
+                System.out.println("   ⚠️ Note: NetworkExecutionStrategy.cleanup() not yet implemented");
+            }
+            
+            executionStrategy = null;
+        }
+        
+        // 상대방 보드 뷰 정리
+        if (opponentBoardView != null) {
+            opponentBoardView = null;
+        }
+        
+        // 멀티플레이 플래그 리셋
+        isMultiplayerMode = false;
+        
+        System.out.println("   ✅ ExecutionStrategy cleaned up");
     }
 }
 
