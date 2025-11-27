@@ -1,4 +1,4 @@
-package seoultech.se.backend.user;
+package seoultech.se.server.user;
 
 import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;

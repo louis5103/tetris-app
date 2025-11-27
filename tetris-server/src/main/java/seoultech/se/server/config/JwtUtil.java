@@ -1,4 +1,4 @@
-package seoultech.se.backend.config;
+package seoultech.se.server.config;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;

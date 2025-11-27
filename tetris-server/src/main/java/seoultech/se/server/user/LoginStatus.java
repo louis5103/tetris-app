@@ -1,4 +1,4 @@
-package seoultech.se.backend.user;
+package seoultech.se.server.user;
 
 public enum LoginStatus {
     LOGIN, LOGOUT

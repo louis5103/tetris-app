@@ -1,4 +1,4 @@
-package seoultech.se.backend.user;
+package seoultech.se.server.user;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -17,9 +17,9 @@ import lombok.RequiredArgsConstructor;
 @Service
 @RequiredArgsConstructor
 public class UserService {
-    private final UserRepository userRepository; 
+    private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-    private final seoultech.se.backend.config.JwtUtil jwtUtil;
+    private final seoultech.se.server.config.JwtUtil jwtUtil;
     private final RefreshTokenRepository refreshTokenRepository;
 
     @Transactional

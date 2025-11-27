@@ -1,4 +1,4 @@
-package seoultech.se.backend.user;
+package seoultech.se.server.user;
 
 import lombok.Getter;
 import lombok.Setter;

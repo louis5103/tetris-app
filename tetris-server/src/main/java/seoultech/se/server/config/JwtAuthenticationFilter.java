@@ -1,4 +1,4 @@
-package seoultech.se.backend.config;
+package seoultech.se.server.config;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -9,8 +9,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
-import seoultech.se.backend.user.UserRepository;
-import seoultech.se.backend.user.UserEntity;
+import seoultech.se.server.user.UserRepository;
+import seoultech.se.server.user.UserEntity;
 
 import java.io.IOException;
 
