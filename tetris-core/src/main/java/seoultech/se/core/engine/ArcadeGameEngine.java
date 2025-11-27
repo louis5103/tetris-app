@@ -407,10 +407,35 @@ public class ArcadeGameEngine extends ClassicGameEngine {
             if (originalItemType != seoultech.se.core.engine.item.ItemType.WEIGHT_BOMB &&
                 originalItemType != seoultech.se.core.engine.item.ItemType.LINE_CLEAR) {
                 
-                // Pivot 위치는 미리 저장한 원본 값 사용
-                // (lockTetromino 후 currentTetromino가 null이 되므로)
                 int pivotX = originalPivotX;
                 int pivotY = originalPivotY;
+
+                seoultech.se.core.model.Tetromino lockedTetromino = newState.getLastLockedTetromino();
+
+                if (lockedTetromino != null && lockedTetromino.getType() == TetrominoType.O) {
+                    seoultech.se.core.model.enumType.RotationState rotation = lockedTetromino.getRotationState();
+                    int itemRowInShape = 0;
+                    int itemColInShape = 0;
+                    switch(rotation) {
+                        case SPAWN:
+                            itemRowInShape = 0; itemColInShape = 0;
+                            break;
+                        case RIGHT:
+                            itemRowInShape = 0; itemColInShape = 1;
+                            break;
+                        case REVERSE:
+                            itemRowInShape = 1; itemColInShape = 1;
+                            break;
+                        case LEFT:
+                            itemRowInShape = 1; itemColInShape = 0;
+                            break;
+                    }
+                    int pivotInShapeY = lockedTetromino.getPivotY();
+                    int pivotInShapeX = lockedTetromino.getPivotX();
+                    
+                    pivotX = newState.getLastLockedX() + (itemColInShape - pivotInShapeX);
+                    pivotY = newState.getLastLockedY() + (itemRowInShape - pivotInShapeY);
+                }
                 
                 System.out.println("🎯 [ArcadeGameEngine] Applying item effect: " + originalItemType);
                 System.out.println("   - Pivot position (original): (" + pivotY + ", " + pivotX + ")");
