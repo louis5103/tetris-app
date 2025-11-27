@@ -14,7 +14,7 @@ import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
 
 import lombok.RequiredArgsConstructor;
-import seoultech.se.backend.config.JwtUtil;
+import seoultech.se.server.config.JwtUtil;
 
 
 @Configuration

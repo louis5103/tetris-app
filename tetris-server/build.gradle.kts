@@ -44,6 +44,16 @@ dependencies {
     // Actuator (모니터링)
     implementation(libs.backend.spring.boot.starter.actuator)
 
+    // JPA & Database
+    implementation(libs.backend.spring.boot.starter.data.jpa)
+    runtimeOnly("com.mysql:mysql-connector-j")
+
+    // Security & JWT
+    implementation("org.springframework.boot:spring-boot-starter-security")
+    implementation("io.jsonwebtoken:jjwt-api:0.12.3")
+    runtimeOnly("io.jsonwebtoken:jjwt-impl:0.12.3")
+    runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.12.3")
+
     // Development Tools
     implementation(libs.bundles.backend.development)
     annotationProcessor(libs.backend.spring.boot.configuration.processor)
