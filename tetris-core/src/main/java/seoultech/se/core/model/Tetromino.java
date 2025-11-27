@@ -42,7 +42,6 @@ public class Tetromino {
 
     // Method to get a new Tetromino instance with rotated shape
     public Tetromino getRotatedInstance(RotationDirection direction) {
-        if (this.type == TetrominoType.O) return this;
 
         Tetromino rotatedTetromino = new Tetromino(this.type);
         int size = this.currentShape.length;

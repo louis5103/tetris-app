@@ -9,6 +9,7 @@ import seoultech.se.client.util.ColorMapper;
 import seoultech.se.core.GameState;
 import seoultech.se.core.model.Cell;
 import seoultech.se.core.model.Tetromino;
+import seoultech.se.core.model.enumType.RotationState;
 import seoultech.se.core.model.enumType.TetrominoType;
 
 /**
@@ -129,6 +130,26 @@ public class BoardRenderer {
         // 아이템 블록 여부 확인
         boolean isItemBlock = gameState.getCurrentItemType() != null;
         seoultech.se.core.engine.item.ItemType itemType = gameState.getCurrentItemType();
+
+        int itemRowInShape = pivotY;
+        int itemColInShape = pivotX;
+
+        if (tetromino.getType() == TetrominoType.O) {
+            switch(tetromino.getRotationState()) {
+                case SPAWN:
+                    itemRowInShape = 0; itemColInShape = 0;
+                    break;
+                case RIGHT:
+                    itemRowInShape = 0; itemColInShape = 1;
+                    break;
+                case REVERSE:
+                    itemRowInShape = 1; itemColInShape = 1;
+                    break;
+                case LEFT:
+                    itemRowInShape = 1; itemColInShape = 0;
+                    break;
+            }
+        }
         
         for (int row = 0; row < shape.length; row++) {
             for (int col = 0; col < shape[0].length; col++) {
@@ -141,11 +162,9 @@ public class BoardRenderer {
                         
                         Rectangle rect = cellRectangles[absoluteY][absoluteX];
                         
-                        // 아이템이 있는 경우 pivot 블록에만 아이템 마커 표시
-                        // ✅ WEIGHT_BOMB는 테트로미노 전체가 아이템이므로 마커 표시 제외
-                        boolean isPivotBlock = (row == pivotY && col == pivotX);
+                        // 아이템이 있는 경우 계산된 위치에 아이템 마커 표시
                         boolean isWeightBomb = (tetromino.getType() == TetrominoType.WEIGHT_BOMB);
-                        boolean shouldShowItemMarker = isItemBlock && isPivotBlock && !isWeightBomb;
+                        boolean shouldShowItemMarker = isItemBlock && (row == itemRowInShape && col == itemColInShape) && !isWeightBomb;
                         
                         if (shouldShowItemMarker) {
                             // ✨ 수정: pivot 블록에는 배경색 + 아이템 마커 오버레이
