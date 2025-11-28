@@ -12,6 +12,7 @@ import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.layout.HBox;
 import javafx.stage.Stage;
@@ -100,6 +101,9 @@ public class MainController extends BaseController {
 
     @Autowired(required = false)
     private seoultech.se.client.service.AuthService authService;
+
+    @Autowired(required = false)
+    private seoultech.se.client.service.MultiplayerMatchingService matchingService;
 
     /**
      * UI 초기화 메서드
@@ -600,8 +604,116 @@ public class MainController extends BaseController {
     public void handleMultiplayerModeAction(ActionEvent event) {
         System.out.println("👥 MULTIPLAYER mode selected");
 
-        // 멀티플레이 모드로 게임 시작 (클래식 설정 기본 사용)
-        startGameWithGameplayType(event, GameplayType.CLASSIC, true, "MULTIPLAYER");
+        // 매칭 서비스 및 인증 서비스 확인
+        if (matchingService == null) {
+            System.err.println("❌ MultiplayerMatchingService not available");
+            showErrorAlert("멀티플레이 오류", "매칭 서비스를 사용할 수 없습니다.\n서버 모듈이 포함되어 있는지 확인하세요.");
+            return;
+        }
+
+        if (authService == null) {
+            System.err.println("❌ AuthService not available");
+            showErrorAlert("인증 오류", "로그인 정보를 확인할 수 없습니다.\n먼저 로그인해주세요.");
+            return;
+        }
+
+        // JWT 토큰 가져오기
+        String jwtToken = authService.getCurrentToken();
+        if (jwtToken == null || jwtToken.isEmpty()) {
+            System.err.println("❌ No JWT token available");
+            showErrorAlert("인증 오류", "로그인이 필요합니다.\n먼저 로그인해주세요.");
+            return;
+        }
+
+        // 서버 URL 가져오기
+        String serverBaseUrl = settingsService.getServerBaseUrl();
+        System.out.println("📡 Connecting to server: " + serverBaseUrl);
+
+        // 매칭 시작 - 매칭 완료 전까지 게임 화면으로 이동하지 않음
+        System.out.println("🔍 Starting matchmaking...");
+        matchingService.startMatching(
+            serverBaseUrl,
+            jwtToken,
+            sessionId -> onMatchSuccess(event, sessionId),
+            errorMsg -> onMatchFailed(errorMsg)
+        );
+    }
+
+    /**
+     * 매칭 성공 콜백
+     */
+    private void onMatchSuccess(ActionEvent event, String sessionId) {
+        Platform.runLater(() -> {
+            System.out.println("✅ Match found! Session: " + sessionId);
+
+            try {
+                // 게임 화면으로 전환
+                Stage stage = (Stage) rootPane.getScene().getWindow();
+                if (stage == null) {
+                    System.err.println("❌ Cannot get Stage from rootPane");
+                    return;
+                }
+
+                // game-view.fxml 로드
+                FXMLLoader loader = new FXMLLoader(
+                    TetrisApplication.class.getResource("/view/game-view.fxml")
+                );
+
+                // Controller Factory 설정 (Spring DI)
+                ApplicationContext context = ApplicationContextProvider.getApplicationContext();
+                loader.setControllerFactory(context::getBean);
+
+                // FXML 로드
+                Parent gameRoot = loader.load();
+
+                // GameController에 게임 모드 설정
+                GameController controller = loader.getController();
+                controller.setGameMode(GameplayType.CLASSIC, true);
+
+                // NetworkExecutionStrategy 생성 및 설정
+                seoultech.se.client.strategy.NetworkExecutionStrategy networkStrategy =
+                    matchingService.createNetworkExecutionStrategy();
+                controller.setupMultiplayMode(networkStrategy, sessionId);
+
+                // Scene 변경
+                Scene gameScene = new Scene(gameRoot);
+                stage.setScene(gameScene);
+                stage.setTitle("Tetris - MULTIPLAYER");
+                stage.setResizable(false);
+
+                // 화면 크기 CSS 클래스 적용
+                settingsService.applyScreenSizeClass();
+                stage.sizeToScene();
+
+                System.out.println("✅ MULTIPLAYER mode started successfully");
+
+            } catch (IOException e) {
+                System.err.println("❌ Failed to load game-view.fxml");
+                e.printStackTrace();
+                showErrorAlert("게임 로딩 오류", "게임 화면을 불러올 수 없습니다: " + e.getMessage());
+            }
+        });
+    }
+
+    /**
+     * 매칭 실패 콜백
+     */
+    private void onMatchFailed(String errorMsg) {
+        Platform.runLater(() -> {
+            System.err.println("❌ Matching failed: " + errorMsg);
+            showErrorAlert("매칭 실패", "서버에 연결할 수 없습니다:\n" + errorMsg);
+        });
+    }
+
+    /**
+     * 에러 알림 표시
+     */
+    private void showErrorAlert(String title, String message) {
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
     }
     
 

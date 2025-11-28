@@ -248,6 +248,11 @@ public class GameController {
             // 멀티플레이: 상대방 보드 활성화
             enableOpponentBoard();
             System.out.println("ℹ️ Multiplay mode - Strategy will be set after session creation");
+
+            // ⚠️ 임시: 매칭 전까지 LocalExecutionStrategy 사용 (게임 크래시 방지)
+            // TODO: 매칭 성공 후 NetworkExecutionStrategy로 교체해야 함
+            System.out.println("⚠️ [TEMPORARY] Using LocalExecutionStrategy until matching completes");
+            setupSingleplayMode();
         } else {
             // 싱글플레이: 상대방 보드 비활성화
             disableOpponentBoard();
