@@ -143,14 +143,36 @@ public class NetworkGameClient {
      * 게임 종료 또는 재시작 시 호출됩니다.
      * 연결을 정리하고 내부 상태를 초기화합니다.
      */
-    public void disconnect() {
-        // NetworkClient는 별도로 관리되므로 여기서는 내부 상태만 정리
+    public void cleanup() {
+        System.out.println("🧹 [NetworkGameClient] Cleaning up resources...");
+        
+        // NetworkTemplate 연결 정리
+        if (networkClient != null) {
+            networkClient.disconnect();
+        }
+        
+        // 입력 버퍼 정리
         inputBuffer.clear();
+        
+        // 시퀀스 리셋
         localSequence = 0;
+        
+        // 상태 초기화
         clientState = null;
         sessionId = null;
+        
+        // 콜백 해제
         opponentStateCallback = null;
         attackLinesCallback = null;
-        System.out.println("✅ MultiPlayStrategies disconnected and cleaned up");
+        
+        System.out.println("✅ [NetworkGameClient] Cleanup complete");
+    }
+    
+    /**
+     * @deprecated Use cleanup() instead
+     */
+    @Deprecated
+    public void disconnect() {
+        cleanup();
     }
 }

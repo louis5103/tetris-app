@@ -158,4 +158,30 @@ public class NetworkTemplate {
             System.err.println("❌ Cannot reconnect: No previous connection info");
         }
     }
+    
+    /**
+     * 연결 종료 및 리소스 정리
+     * 
+     * 게임 종료 또는 재시작 시 호출되어 WebSocket 연결을 정리합니다.
+     */
+    public void disconnect() {
+        if (session != null) {
+            try {
+                if (session.isConnected()) {
+                    session.disconnect();
+                    System.out.println("✅ [NetworkTemplate] Disconnected from server");
+                }
+            } catch (Exception e) {
+                System.err.println("⚠️ [NetworkTemplate] Error during disconnect: " + e.getMessage());
+            } finally {
+                session = null;
+            }
+        }
+        
+        // 재연결 정보도 초기화
+        lastUrl = null;
+        lastJwtToken = null;
+        reconnectAttempts = 0;
+        isReconnecting = false;
+    }
 }
