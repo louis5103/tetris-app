@@ -629,81 +629,46 @@ public class MainController extends BaseController {
         String serverBaseUrl = settingsService.getServerBaseUrl();
         System.out.println("📡 Connecting to server: " + serverBaseUrl);
 
-        // 매칭 시작 - 매칭 완료 전까지 게임 화면으로 이동하지 않음
-        System.out.println("🔍 Starting matchmaking...");
-        matchingService.startMatching(
-            serverBaseUrl,
-            jwtToken,
-            sessionId -> onMatchSuccess(event, sessionId),
-            errorMsg -> onMatchFailed(errorMsg)
-        );
+        try {
+            // 모드 선택 팝업 표시
+            FXMLLoader loader = new FXMLLoader(
+                TetrisApplication.class.getResource("/view/multiplayer-mode-selection.fxml")
+            );
+
+            // Controller Factory 설정 (Spring DI)
+            ApplicationContext context = ApplicationContextProvider.getApplicationContext();
+            loader.setControllerFactory(context::getBean);
+
+            // FXML 로드
+            Parent popupRoot = loader.load();
+
+            // MultiplayerModeSelectionController에 연결 정보 전달
+            MultiplayerModeSelectionController popupController = loader.getController();
+            popupController.setConnectionInfo(serverBaseUrl, jwtToken);
+
+            // 새 Stage에서 팝업 표시
+            Stage popupStage = new Stage();
+            popupStage.setScene(new Scene(popupRoot));
+            popupStage.setTitle("멀티플레이 설정");
+            popupStage.setResizable(false);
+            popupStage.initOwner(rootPane.getScene().getWindow());
+            popupStage.initModality(javafx.stage.Modality.WINDOW_MODAL);
+
+            // 화면 크기 CSS 클래스 적용
+            settingsService.applyScreenSizeClass();
+            popupStage.sizeToScene();
+
+            popupStage.showAndWait();
+
+            System.out.println("✅ Multiplayer mode selection popup shown");
+
+        } catch (IOException e) {
+            System.err.println("❌ Failed to load multiplayer-mode-selection.fxml");
+            e.printStackTrace();
+            showErrorAlert("화면 로딩 오류", "모드 선택 화면을 불러올 수 없습니다: " + e.getMessage());
+        }
     }
 
-    /**
-     * 매칭 성공 콜백
-     */
-    private void onMatchSuccess(ActionEvent event, String sessionId) {
-        Platform.runLater(() -> {
-            System.out.println("✅ Match found! Session: " + sessionId);
-
-            try {
-                // 게임 화면으로 전환
-                Stage stage = (Stage) rootPane.getScene().getWindow();
-                if (stage == null) {
-                    System.err.println("❌ Cannot get Stage from rootPane");
-                    return;
-                }
-
-                // game-view.fxml 로드
-                FXMLLoader loader = new FXMLLoader(
-                    TetrisApplication.class.getResource("/view/game-view.fxml")
-                );
-
-                // Controller Factory 설정 (Spring DI)
-                ApplicationContext context = ApplicationContextProvider.getApplicationContext();
-                loader.setControllerFactory(context::getBean);
-
-                // FXML 로드
-                Parent gameRoot = loader.load();
-
-                // GameController에 게임 모드 설정
-                GameController controller = loader.getController();
-                controller.setGameMode(GameplayType.CLASSIC, true);
-
-                // NetworkExecutionStrategy 생성 및 설정
-                seoultech.se.client.strategy.NetworkExecutionStrategy networkStrategy =
-                    matchingService.createNetworkExecutionStrategy();
-                controller.setupMultiplayMode(networkStrategy, sessionId);
-
-                // Scene 변경
-                Scene gameScene = new Scene(gameRoot);
-                stage.setScene(gameScene);
-                stage.setTitle("Tetris - MULTIPLAYER");
-                stage.setResizable(false);
-
-                // 화면 크기 CSS 클래스 적용
-                settingsService.applyScreenSizeClass();
-                stage.sizeToScene();
-
-                System.out.println("✅ MULTIPLAYER mode started successfully");
-
-            } catch (IOException e) {
-                System.err.println("❌ Failed to load game-view.fxml");
-                e.printStackTrace();
-                showErrorAlert("게임 로딩 오류", "게임 화면을 불러올 수 없습니다: " + e.getMessage());
-            }
-        });
-    }
-
-    /**
-     * 매칭 실패 콜백
-     */
-    private void onMatchFailed(String errorMsg) {
-        Platform.runLater(() -> {
-            System.err.println("❌ Matching failed: " + errorMsg);
-            showErrorAlert("매칭 실패", "서버에 연결할 수 없습니다:\n" + errorMsg);
-        });
-    }
 
     /**
      * 에러 알림 표시

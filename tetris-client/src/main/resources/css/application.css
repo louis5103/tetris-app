@@ -204,3 +204,54 @@
 .mode-selection-popup .separator {
     -fx-padding: 5px 0;
 }
+
+/* ============================================================ */
+/* Matching Screen Styles */
+/* ============================================================ */
+
+.matching-box {
+    -fx-padding: 40px;
+    -fx-alignment: center;
+}
+
+.matching-title {
+    -fx-font-size: 36px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #3498db;
+}
+
+.matching-progress {
+    -fx-progress-color: #3498db;
+}
+
+.matching-status {
+    -fx-font-size: 18px;
+    -fx-text-fill: #ecf0f1;
+}
+
+.matching-timer {
+    -fx-font-size: 24px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #e74c3c;
+}
+
+.matching-info {
+    -fx-font-size: 16px;
+    -fx-text-fill: #95a5a6;
+}
+
+.cancel-button {
+    -fx-background-color: #e74c3c;
+    -fx-text-fill: white;
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+    -fx-padding: 12px 40px;
+    -fx-background-radius: 8px;
+    -fx-min-width: 200px;
+}
+
+.cancel-button:hover {
+    -fx-background-color: #c0392b;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(gaussian, rgba(231, 76, 60, 0.6), 10, 0, 0, 0);
+}
