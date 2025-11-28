@@ -116,6 +116,7 @@ public class ArcadeGameEngine extends ClassicGameEngine {
             return state;
         }
         
+        // 📝 Note: 이 deepCopy는 GameEngine의 불변성 패턴 유지 (아이템 효과와 무관)
         GameState newState = state.deepCopy();
         TetrominoType currentType = newState.getCurrentTetromino().getType();
         TetrominoType previousHeld = newState.getHeldPiece();
@@ -314,8 +315,10 @@ public class ArcadeGameEngine extends ClassicGameEngine {
             int[] weightBombX = seoultech.se.core.engine.item.impl.WeightBombItem.getWeightBombXPositions(state);
             int weightBombY = state.getCurrentY();
             
-            // 🔥 CRITICAL FIX: deepCopy 후 블록 제거
-            stateAfterWeightBomb = state.deepCopy();
+            // 📝 아이템 데이터 처리 통일: WEIGHT_BOMB도 원본 직접 수정으로 변경
+            // deepCopy 제거하여 LINE_CLEAR/BOMB/PLUS와 동일한 방식으로 처리
+            // 성능 향상: 불필요한 전체 GameState 복사 제거
+            stateAfterWeightBomb = state;
             
             // 수직 경로의 모든 블록 제거
             int blocksCleared = seoultech.se.core.engine.item.impl.WeightBombItem.clearVerticalPath(
@@ -514,7 +517,7 @@ public class ArcadeGameEngine extends ClassicGameEngine {
             dropDistance++;
         }
 
-        // 2. deepCopy 후 최종 위치 설정 및 점수 추가
+        // 2. 📝 Note: 이 deepCopy는 GameEngine의 불변성 패턴 유지 (아이템 효과와 무관)
         GameState droppedState = state.deepCopy();
         droppedState.setCurrentY(finalY);
         droppedState.addScore(dropDistance * 2);
