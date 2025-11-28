@@ -89,4 +89,21 @@ public class NetworkExecutionStrategy implements GameExecutionStrategy {
         // 내부적으로 Client-side prediction + 서버 전송 처리
         return networkGameClient.executeCommand(command, currentState);
     }
+    
+    /**
+     * 리소스 정리
+     * 
+     * 게임 종료 또는 재시작 시 호출되어 네트워크 연결을 정리합니다.
+     * GameController.cleanupExecutionStrategy()에서 호출됩니다.
+     */
+    public void cleanup() {
+        System.out.println("🧹 [NetworkExecutionStrategy] Cleaning up resources...");
+        
+        // NetworkGameClient 정리
+        if (networkGameClient != null) {
+            networkGameClient.cleanup();
+        }
+        
+        System.out.println("✅ [NetworkExecutionStrategy] Cleanup complete");
+    }
 }

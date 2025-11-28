@@ -449,10 +449,8 @@ public class GameController {
             settingsService.getColorBlindMode()
         );
         
-        // 🔒 검증: gameModeConfig가 null이면 안 됨 (이미 startInitialization()에서 체크했지만 재확인)
-        if (gameModeConfig == null) {
-            throw new IllegalStateException("[CRITICAL] gameModeConfig is null during initializeManagers()! This should never happen.");
-        }
+        // 📝 Note: gameModeConfig는 startInitialization()에서 이미 검증됨
+        // 여기서 재검증은 불필요하며, 이미 보장된 상태로 간주함
         
         // GameLoopManager 초기화 (gameModeConfig의 속도 배율 적용)
         double dropSpeedMultiplier = gameModeConfig.getDropSpeedMultiplier();
@@ -472,6 +470,8 @@ public class GameController {
             }
             
             // 블록 자동 낙하
+            // 📝 성능 노트: deepCopy()는 비용이 크지만 showUiHints()에서 전체 GameState 필요
+            // 향후 최적화: GameStateSnapshot으로 변경 감지만 수행하고 UI는 newState만 사용
             GameState oldState = gameState.deepCopy();
             GameState newState = boardController.executeCommand(new MoveCommand(Direction.DOWN));
             // GameState 비교하여 UI 힌트 추출 및 업데이트
@@ -487,6 +487,8 @@ public class GameController {
         // InputHandler 초기화
         inputHandler = new InputHandler(keyMappingService);
         inputHandler.setCallback(command -> {
+            // 📝 성능 노트: deepCopy()는 비용이 크지만 showUiHints()에서 전체 GameState 필요
+            // 향후 최적화: GameStateSnapshot으로 변경 감지만 수행하고 UI는 newState만 사용
             GameState oldState = boardController.getGameState().deepCopy();
             GameState newState = boardController.executeCommand(command);
             
@@ -921,7 +923,7 @@ public class GameController {
                 }
 
                 // 애니메이션 시간만큼 대기
-                CompletableFuture.delayedExecutor(300, TimeUnit.MILLISECONDS).execute(() -> {
+                CompletableFuture.delayedExecutor(UIConstants.LINE_CLEAR_ANIMATION_MS, TimeUnit.MILLISECONDS).execute(() -> {
                     Platform.runLater(() -> {
                         System.out.println("DEBUG: Animation delay finished. Cleaning up animation.");
                         // 실제 UI 업데이트 수행 (나머지 기존 로직 실행)
@@ -1219,9 +1221,7 @@ public class GameController {
             // 🔒 NetworkExecutionStrategy인 경우 리소스 정리
             if (executionStrategy instanceof seoultech.se.client.strategy.NetworkExecutionStrategy) {
                 System.out.println("   - NetworkExecutionStrategy detected, calling cleanup()");
-                // TODO: NetworkExecutionStrategy에 cleanup() 메서드 추가 필요
-                // ((NetworkExecutionStrategy) executionStrategy).cleanup();
-                System.out.println("   ⚠️ Note: NetworkExecutionStrategy.cleanup() not yet implemented");
+                ((seoultech.se.client.strategy.NetworkExecutionStrategy) executionStrategy).cleanup();
             }
             
             executionStrategy = null;
