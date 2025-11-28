@@ -141,16 +141,16 @@ public class MatchingController extends BaseController {
             System.out.println("✅ Match found! Session: " + sessionId);
 
             try {
-                // 게임 화면으로 전환
+                // 매칭 완료 화면으로 전환
                 Stage stage = (Stage) titleLabel.getScene().getWindow();
                 if (stage == null) {
                     System.err.println("❌ Cannot get Stage");
                     return;
                 }
 
-                // game-view.fxml 로드
+                // match-found-view.fxml 로드
                 FXMLLoader loader = new FXMLLoader(
-                    TetrisApplication.class.getResource("/view/game-view.fxml")
+                    TetrisApplication.class.getResource("/view/match-found-view.fxml")
                 );
 
                 // Controller Factory 설정 (Spring DI)
@@ -158,33 +158,34 @@ public class MatchingController extends BaseController {
                 loader.setControllerFactory(context::getBean);
 
                 // FXML 로드
-                Parent gameRoot = loader.load();
+                Parent matchFoundRoot = loader.load();
 
-                // GameController에 게임 모드 설정
-                GameController controller = loader.getController();
-                controller.setGameMode(gameplayType, true);
+                // MatchFoundController에 매칭 정보 설정 및 카운트다운 시작
+                MatchFoundController controller = loader.getController();
 
-                // NetworkExecutionStrategy 생성 및 설정
-                seoultech.se.client.strategy.NetworkExecutionStrategy networkStrategy =
-                    matchingService.createNetworkExecutionStrategy();
-                controller.setupMultiplayMode(networkStrategy, sessionId);
+                // TODO: 서버에서 상대방 정보를 받아오도록 수정 필요
+                // 현재는 임시로 하드코딩된 값 사용
+                String opponentName = "상대 플레이어";
+                String opponentEmail = "opponent@example.com";
+
+                controller.startCountdown(sessionId, opponentName, opponentEmail, gameplayType);
 
                 // Scene 변경
-                Scene gameScene = new Scene(gameRoot);
-                stage.setScene(gameScene);
-                stage.setTitle("Tetris - MULTIPLAYER");
+                Scene matchFoundScene = new Scene(matchFoundRoot);
+                stage.setScene(matchFoundScene);
+                stage.setTitle("Tetris - 매칭 완료!");
                 stage.setResizable(false);
 
                 // 화면 크기 CSS 클래스 적용
                 settingsService.applyScreenSizeClass();
                 stage.sizeToScene();
 
-                System.out.println("✅ MULTIPLAYER mode started successfully");
+                System.out.println("✅ Match found screen loaded");
 
             } catch (IOException e) {
-                System.err.println("❌ Failed to load game-view.fxml");
+                System.err.println("❌ Failed to load match-found-view.fxml");
                 e.printStackTrace();
-                showErrorAlert("게임 로딩 오류", "게임 화면을 불러올 수 없습니다: " + e.getMessage());
+                showErrorAlert("화면 로딩 오류", "매칭 완료 화면을 불러올 수 없습니다: " + e.getMessage());
                 backToMainMenu();
             }
         });

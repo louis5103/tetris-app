@@ -159,10 +159,10 @@ public class GameController {
      */
     public void setGameMode(seoultech.se.core.config.GameplayType gameplayType, boolean isMultiplayer) {
         this.isMultiplayerMode = isMultiplayer;
-        
+
         // 현재 선택된 Difficulty 가져오기
         seoultech.se.core.model.enumType.Difficulty difficulty = settingsService.getCurrentDifficulty();
-        
+
         // GameplayType + Difficulty → GameModeConfig 생성
         this.gameModeConfig = configFactory.create(gameplayType, difficulty);
 
@@ -173,7 +173,7 @@ public class GameController {
             ", SRS: " + gameModeConfig.isSrsEnabled() +
             ", Hard Drop: " + gameModeConfig.isHardDropEnabled() +
             ", Drop Speed: " + gameModeConfig.getDropSpeedMultiplier() + "x");
-        
+
         if (gameplayType == seoultech.se.core.config.GameplayType.ARCADE) {
             System.out.println("🎯 [DEBUG] Arcade Item Config:");
             System.out.println("   - linesPerItem: " + gameModeConfig.getLinesPerItem());
@@ -181,8 +181,13 @@ public class GameController {
             System.out.println("   - enabledItems: " + gameModeConfig.getEnabledItemTypes().size());
         }
 
-        // 이제 실제 게임 초기화 수행
-        startInitialization();
+        // 멀티플레이 모드는 setupMultiplayMode()에서 초기화됨
+        // 싱글플레이 모드만 즉시 초기화
+        if (!isMultiplayer) {
+            startInitialization();
+        } else {
+            System.out.println("⏳ Multiplayer mode - deferring initialization until setupMultiplayMode()");
+        }
     }
     
     /**
@@ -290,12 +295,17 @@ public class GameController {
             throw new IllegalArgumentException("NetworkExecutionStrategy cannot be null");
         }
 
-        if (boardController == null) {
+        if (gameModeConfig == null) {
             throw new IllegalStateException(
-                "BoardController not initialized. " +
-                "Call setGameModeConfig() before setupMultiplayMode()."
+                "GameModeConfig not set. " +
+                "Call setGameMode() before setupMultiplayMode()."
             );
         }
+
+        // 멀티플레이 모드에서는 여기서 게임을 초기화
+        // 로컬 상태 없이 깨끗하게 시작
+        System.out.println("🎮 Initializing multiplayer game with fresh state...");
+        startInitialization();
 
         this.executionStrategy = networkStrategy;
 

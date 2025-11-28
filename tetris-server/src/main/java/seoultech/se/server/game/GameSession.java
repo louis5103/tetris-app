@@ -245,6 +245,18 @@ public class GameSession {
             // Phase 1: 활동 시간 갱신
             updateLastActivityTime();
 
+            // 플레이어 상태가 없으면 자동으로 join 처리
+            if (currentState == null) {
+                System.out.println("⚠️ [GameSession] No state for player: " + playerId + ", auto-joining...");
+                joinPlayer(playerId);
+                currentState = playerStates.get(playerId);
+
+                if (currentState == null) {
+                    System.err.println("❌ [GameSession] Failed to initialize player state");
+                    return null;
+                }
+            }
+
             // 1. 시퀀스 검증 (오래된 패킷 무시)
             long lastSeq = lastSequences.getOrDefault(playerId, 0L);
             if (input.getSequenceId() <= lastSeq) {
@@ -253,6 +265,12 @@ public class GameSession {
 
             // 2. 서버 권한으로 로직 실행
             GameState nextState = gameEngine.executeCommand(input.getCommand(), currentState);
+
+            // nextState가 null이면 명령 실행 실패
+            if (nextState == null) {
+                System.err.println("❌ [GameSession] Command execution failed, command: " + input.getCommand());
+                return null;
+            }
 
             // 3. 상태 업데이트
             playerStates.put(playerId, nextState);

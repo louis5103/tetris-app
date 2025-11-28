@@ -66,7 +66,7 @@ public class SessionController {
             }
 
             // 6. WebSocket URL 생성
-            String websocketUrl = "/game"; // STOMP endpoint
+            String websocketUrl = "/ws-game"; // STOMP endpoint
 
             // 7. Config를 DTO로 변환
             GameModeConfig config = session.getGameModeConfig();

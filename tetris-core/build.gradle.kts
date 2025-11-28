@@ -14,12 +14,15 @@ description = "Tetris Core Domain Logic"
 dependencies {
     // 🌱 Spring Framework (Configuration 및 DI용)
     implementation(libs.backend.spring.boot.starter)
-    
+
     // 📊 Utility Libraries
     implementation(libs.common.commons.lang3)
-    
+
     // ✅ Validation (설정값 검증용)
     implementation(libs.common.jakarta.validation.api)
+
+    // 🔄 Jackson (JSON 직렬화/역직렬화)
+    implementation("com.fasterxml.jackson.core:jackson-annotations:2.17.0")
     
     // 🛠️ Development Tools (공통 의존성)
     compileOnly(libs.common.lombok)

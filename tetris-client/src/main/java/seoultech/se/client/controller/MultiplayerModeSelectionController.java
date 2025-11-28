@@ -114,9 +114,20 @@ public class MultiplayerModeSelectionController extends BaseController {
             // 팝업 닫기
             popupStage.close();
 
-            // matching-view.fxml 로드
+            // 백그라운드에서 매칭 서비스 시작
+            if (matchingService != null) {
+                System.out.println("🔍 Starting background matchmaking...");
+                matchingService.startMatching(
+                    serverBaseUrl,
+                    jwtToken,
+                    sessionId -> onMatchSuccess(mainStage, sessionId, selectedMode.getGameplayType()),
+                    errorMsg -> onMatchFailed(errorMsg)
+                );
+            }
+
+            // game-view.fxml 로드 (로컬 싱글 플레이)
             FXMLLoader loader = new FXMLLoader(
-                TetrisApplication.class.getResource("/view/matching-view.fxml")
+                TetrisApplication.class.getResource("/view/game-view.fxml")
             );
 
             // Controller Factory 설정 (Spring DI)
@@ -124,34 +135,89 @@ public class MultiplayerModeSelectionController extends BaseController {
             loader.setControllerFactory(context::getBean);
 
             // FXML 로드
-            Parent matchingRoot = loader.load();
+            Parent gameRoot = loader.load();
 
-            // MatchingController에 매칭 시작
-            MatchingController matchingController = loader.getController();
+            // GameController에 로컬 싱글 플레이 모드 설정
+            GameController gameController = loader.getController();
+            gameController.setGameMode(selectedMode.getGameplayType(), false); // 로컬 모드로 시작
 
             // 메인 윈도우의 Scene 변경
-            Scene matchingScene = new Scene(matchingRoot);
-            mainStage.setScene(matchingScene);
-            mainStage.setTitle("Tetris - 매칭 중...");
+            Scene gameScene = new Scene(gameRoot);
+            mainStage.setScene(gameScene);
+            mainStage.setTitle("Tetris - 매칭 대기 중... (로컬 플레이)");
+            mainStage.setResizable(false);
 
             // 화면 크기 CSS 클래스 적용
             settingsService.applyScreenSizeClass();
             mainStage.sizeToScene();
 
-            // 매칭 시작 (선택한 모드와 난이도로)
-            matchingController.startMatching(
-                serverBaseUrl,
-                jwtToken,
-                selectedMode.getGameplayType()
-            );
-
-            System.out.println("✅ Matching screen loaded");
+            System.out.println("✅ Local single-player started while waiting for match");
 
         } catch (IOException e) {
-            System.err.println("❌ Failed to load matching-view.fxml");
+            System.err.println("❌ Failed to load game-view.fxml");
             e.printStackTrace();
-            showErrorAlert("화면 로딩 오류", "매칭 화면을 불러올 수 없습니다: " + e.getMessage());
+            showErrorAlert("화면 로딩 오류", "게임 화면을 불러올 수 없습니다: " + e.getMessage());
         }
+    }
+
+    /**
+     * 매칭 성공 콜백
+     */
+    private void onMatchSuccess(Stage mainStage, String sessionId, GameplayType gameplayType) {
+        javafx.application.Platform.runLater(() -> {
+            System.out.println("✅ Match found! Session: " + sessionId);
+
+            try {
+                // match-found-view.fxml 로드
+                FXMLLoader loader = new FXMLLoader(
+                    TetrisApplication.class.getResource("/view/match-found-view.fxml")
+                );
+
+                // Controller Factory 설정 (Spring DI)
+                ApplicationContext context = ApplicationContextProvider.getApplicationContext();
+                loader.setControllerFactory(context::getBean);
+
+                // FXML 로드
+                Parent matchFoundRoot = loader.load();
+
+                // MatchFoundController에 매칭 정보 설정 및 카운트다운 시작
+                MatchFoundController controller = loader.getController();
+
+                // TODO: 서버에서 상대방 정보를 받아오도록 수정 필요
+                String opponentName = "상대 플레이어";
+                String opponentEmail = "opponent@example.com";
+
+                controller.startCountdown(sessionId, opponentName, opponentEmail, gameplayType);
+
+                // Scene 변경
+                Scene matchFoundScene = new Scene(matchFoundRoot);
+                mainStage.setScene(matchFoundScene);
+                mainStage.setTitle("Tetris - 매칭 완료!");
+                mainStage.setResizable(false);
+
+                // 화면 크기 CSS 클래스 적용
+                settingsService.applyScreenSizeClass();
+                mainStage.sizeToScene();
+
+                System.out.println("✅ Match found screen loaded");
+
+            } catch (IOException e) {
+                System.err.println("❌ Failed to load match-found-view.fxml");
+                e.printStackTrace();
+                showErrorAlert("화면 로딩 오류", "매칭 완료 화면을 불러올 수 없습니다: " + e.getMessage());
+            }
+        });
+    }
+
+    /**
+     * 매칭 실패 콜백
+     */
+    private void onMatchFailed(String errorMsg) {
+        javafx.application.Platform.runLater(() -> {
+            System.err.println("❌ Matching failed: " + errorMsg);
+            // 실패해도 로컬 싱글 플레이는 계속 진행
+            System.out.println("⚠️ Continuing with local single-player mode");
+        });
     }
 
     /**

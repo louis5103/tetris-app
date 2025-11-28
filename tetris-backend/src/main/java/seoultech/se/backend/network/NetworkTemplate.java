@@ -9,6 +9,7 @@ import org.springframework.messaging.simp.stomp.StompHeaders;
 import org.springframework.messaging.simp.stomp.StompSession;
 import org.springframework.messaging.simp.stomp.StompSessionHandlerAdapter;
 import org.springframework.stereotype.Component;
+import org.springframework.web.socket.WebSocketHttpHeaders;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.messaging.WebSocketStompClient;
 
@@ -36,11 +37,23 @@ public class NetworkTemplate {
         this.lastJwtToken = jwtToken;
 
         StandardWebSocketClient client = new StandardWebSocketClient();
+
+        // WebSocket 메시지 크기 제한 설정 (서버와 동일하게)
+        client.getUserProperties().put("org.apache.tomcat.websocket.textBufferSize", 512 * 1024);      // 512KB
+        client.getUserProperties().put("org.apache.tomcat.websocket.binaryBufferSize", 512 * 1024);    // 512KB
+
         WebSocketStompClient stompClient = new WebSocketStompClient(client);
         stompClient.setMessageConverter(new MappingJackson2MessageConverter());
 
         try{
-            this.session = stompClient.connectAsync(url, new StompSessionHandlerAdapter() {
+            // WebSocket HTTP 헤더 생성 (빈 헤더)
+            WebSocketHttpHeaders httpHeaders = new WebSocketHttpHeaders();
+
+            // STOMP 헤더 생성 및 JWT 토큰 추가
+            StompHeaders connectHeaders = new StompHeaders();
+            connectHeaders.add("Authorization", "Bearer " + jwtToken);
+
+            this.session = stompClient.connectAsync(url, httpHeaders, connectHeaders, new StompSessionHandlerAdapter() {
 
                 @Override
                 public void afterConnected(StompSession session, StompHeaders connectedHeaders) {
@@ -57,7 +70,7 @@ public class NetworkTemplate {
                     // Phase 1: 연결 끊김 시 자동 재연결 시도
                     attemptReconnect();
                 }
-            }, "Authorization", "Bearer " + jwtToken).get();
+            }).get();
         } catch(Exception e){
             System.err.println("❌ Connection failed: " + e.getMessage());
 
@@ -88,6 +101,31 @@ public class NetworkTemplate {
             });
         } else {
             System.out.println("Not connected to server");
+        }
+    }
+
+    /**
+     * 매칭 완료 알림 구독
+     *
+     * @param callback 매칭 완료 시 호출될 콜백
+     */
+    public void subscribeToMatchFound(Consumer<seoultech.se.backend.dto.MatchFoundNotification> callback) {
+        if (session != null && session.isConnected()) {
+            session.subscribe("/user/queue/match-found", new StompFrameHandler() {
+                @Override
+                public Type getPayloadType(StompHeaders headers) {
+                    return seoultech.se.backend.dto.MatchFoundNotification.class;
+                }
+
+                @Override
+                public void handleFrame(StompHeaders headers, Object payload) {
+                    System.out.println("🎮 [NetworkTemplate] Match found notification received");
+                    callback.accept((seoultech.se.backend.dto.MatchFoundNotification) payload);
+                }
+            });
+            System.out.println("✅ [NetworkTemplate] Subscribed to match-found notifications");
+        } else {
+            System.out.println("❌ [NetworkTemplate] Not connected to server - cannot subscribe to match-found");
         }
     }
 
