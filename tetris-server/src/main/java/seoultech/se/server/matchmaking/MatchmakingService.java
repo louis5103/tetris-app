@@ -39,6 +39,7 @@ public class MatchmakingService {
 
     private final GameSessionManager gameSessionManager;
     private final WebSocketEventListener webSocketEventListener;
+    private final seoultech.se.server.admin.AdminDashboardService dashboardService;
 
     /**
      * 매칭 큐: 게임 모드별로 대기 중인 플레이어 관리
@@ -119,6 +120,9 @@ public class MatchmakingService {
 
                 log.info("✅ [Matchmaking] Match found! Session: {}, Players: {} vs {}",
                     sessionId, player1.getPlayerId(), player2.getPlayerId());
+
+                // Dashboard 통계 기록
+                dashboardService.recordMatchCreated();
 
                 return MatchmakingResult.matched(sessionId, player1.getPlayerId(), player2.getPlayerId());
             }

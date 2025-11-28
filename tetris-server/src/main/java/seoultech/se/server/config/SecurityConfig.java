@@ -41,6 +41,8 @@ public class SecurityConfig {
                 .requestMatchers("/tetris/users/logout").authenticated()
                 // Phase 3: 헬스체크 엔드포인트는 인증 없이 접근 가능
                 .requestMatchers("/api/health", "/api/health/**").permitAll()
+                // Dashboard: 관리자 대시보드는 인증 필요 (추후 ADMIN 역할 추가 가능)
+                .requestMatchers("/api/admin/**").authenticated()
                 .anyRequest().authenticated()
             )
             .addFilterBefore(new JwtAuthenticationFilter(jwtUtil, userRepository), UsernamePasswordAuthenticationFilter.class);
