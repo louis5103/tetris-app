@@ -9,8 +9,6 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
-import seoultech.se.backend.dto.SessionCreateRequest;
-import seoultech.se.backend.dto.SessionCreateResponse;
 import seoultech.se.backend.network.NetworkGameClient;
 import seoultech.se.backend.network.NetworkTemplate;
 import seoultech.se.core.config.GameplayType;
@@ -40,21 +38,22 @@ public class MultiplayerMatchingService {
     private final RestTemplate restTemplate = new RestTemplate();
 
     private String currentSessionId;
-    private Consumer<String> onMatchSuccessCallback;
+    private Consumer<seoultech.se.backend.dto.MatchFoundNotification> onMatchSuccessCallback;
     private Consumer<String> onMatchFailCallback;
+    private boolean isWaitingForMatch = false;
 
     /**
      * 매칭 시작
      *
      * @param serverBaseUrl 서버 기본 URL (예: "http://localhost:8080")
      * @param jwtToken JWT 인증 토큰
-     * @param onSuccess 매칭 성공 시 콜백 (sessionId 전달)
+     * @param onSuccess 매칭 성공 시 콜백 (MatchFoundNotification 전달)
      * @param onFail 매칭 실패 시 콜백 (에러 메시지 전달)
      */
     public void startMatching(
             String serverBaseUrl,
             String jwtToken,
-            Consumer<String> onSuccess,
+            Consumer<seoultech.se.backend.dto.MatchFoundNotification> onSuccess,
             Consumer<String> onFail) {
 
         this.onMatchSuccessCallback = onSuccess;
@@ -69,9 +68,33 @@ public class MultiplayerMatchingService {
             System.out.println("🔍 [MatchingService] Starting matching...");
             System.out.println("   - Server URL: " + serverBaseUrl);
 
-            // 1. 세션 생성 API 호출
-            SessionCreateRequest request = new SessionCreateRequest();
+            // 1. WebSocket 연결 먼저 (매칭 알림을 받기 위해)
+            String websocketUrl = serverBaseUrl.replace("http://", "ws://")
+                .replace("https://", "wss://") + "/ws-game";
+
+            System.out.println("🔌 [MatchingService] Connecting to WebSocket: " + websocketUrl);
+            networkTemplate.connect(websocketUrl, jwtToken);
+            System.out.println("✅ [MatchingService] WebSocket connected");
+
+            // 2. 매칭 완료 알림 구독
+            isWaitingForMatch = true;
+            networkTemplate.subscribeToMatchFound(matchNotification -> {
+                System.out.println("🎮 [MatchingService] Match found notification received!");
+                System.out.println("   - Session ID: " + matchNotification.getSessionId());
+                System.out.println("   - Opponent: " + matchNotification.getOpponentName());
+                System.out.println("   - Opponent Email: " + matchNotification.getOpponentEmail());
+
+                if (isWaitingForMatch) {
+                    isWaitingForMatch = false;
+                    currentSessionId = matchNotification.getSessionId();
+                    notifySuccess(matchNotification);
+                }
+            });
+
+            // 3. 매칭 큐 참여 API 호출
+            MatchmakingRequest request = new MatchmakingRequest();
             request.setGameplayType(GameplayType.CLASSIC);
+            request.setDifficulty(seoultech.se.core.model.enumType.Difficulty.NORMAL);
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
@@ -79,37 +102,35 @@ public class MultiplayerMatchingService {
                 headers.set("Authorization", "Bearer " + jwtToken);
             }
 
-            HttpEntity<SessionCreateRequest> httpRequest = new HttpEntity<>(request, headers);
+            HttpEntity<MatchmakingRequest> httpRequest = new HttpEntity<>(request, headers);
 
-            String sessionApiUrl = serverBaseUrl + "/api/session/create";
-            System.out.println("📡 [MatchingService] Calling session API: " + sessionApiUrl);
+            String matchmakingApiUrl = serverBaseUrl + "/api/matchmaking/join";
+            System.out.println("📡 [MatchingService] Calling matchmaking API: " + matchmakingApiUrl);
 
-            SessionCreateResponse response = restTemplate.postForObject(
-                sessionApiUrl,
+            MatchmakingResponse response = restTemplate.postForObject(
+                matchmakingApiUrl,
                 httpRequest,
-                SessionCreateResponse.class
+                MatchmakingResponse.class
             );
 
-            if (response == null || !response.isSuccess()) {
-                String errorMsg = response != null ? response.getErrorMessage() : "No response from server";
-                notifyFailure("Session creation failed: " + errorMsg);
+            if (response == null) {
+                notifyFailure("No response from matchmaking server");
                 return;
             }
 
-            currentSessionId = response.getSessionId();
-            System.out.println("✅ [MatchingService] Session created: " + currentSessionId);
+            System.out.println("✅ [MatchingService] Matchmaking response: " + response.getStatus());
 
-            // 2. WebSocket 연결
-            String websocketUrl = serverBaseUrl.replace("http://", "ws://")
-                .replace("https://", "wss://") + response.getWebsocketUrl();
-
-            System.out.println("🔌 [MatchingService] Connecting to WebSocket: " + websocketUrl);
-            networkTemplate.connect(websocketUrl, jwtToken);
-
-            System.out.println("✅ [MatchingService] WebSocket connected");
-
-            // 3. 매칭 성공 콜백 호출
-            notifySuccess(currentSessionId);
+            // 4. 즉시 매칭된 경우 (큐에 이미 대기자가 있었던 경우)
+            if ("MATCHED".equals(response.getStatus())) {
+                currentSessionId = response.getSessionId();
+                System.out.println("🎮 [MatchingService] Immediately matched! Session: " + currentSessionId);
+                // WebSocket 알림도 올 것이므로 여기서는 처리하지 않음
+            } else if ("WAITING".equals(response.getStatus())) {
+                System.out.println("⏳ [MatchingService] Waiting for match...");
+            } else if ("ALREADY_IN_QUEUE".equals(response.getStatus())) {
+                notifyFailure("Already in matchmaking queue");
+                return;
+            }
 
         } catch (Exception e) {
             System.err.println("❌ [MatchingService] Matching failed: " + e.getMessage());
@@ -145,6 +166,7 @@ public class MultiplayerMatchingService {
         } finally {
             // 로컬 상태 정리
             currentSessionId = null;
+            isWaitingForMatch = false;
             System.out.println("🛑 [MatchingService] Matching cancelled");
         }
     }
@@ -152,9 +174,9 @@ public class MultiplayerMatchingService {
     /**
      * 매칭 성공 알림
      */
-    private void notifySuccess(String sessionId) {
+    private void notifySuccess(seoultech.se.backend.dto.MatchFoundNotification notification) {
         if (onMatchSuccessCallback != null) {
-            onMatchSuccessCallback.accept(sessionId);
+            onMatchSuccessCallback.accept(notification);
         }
     }
 
@@ -201,5 +223,71 @@ public class MultiplayerMatchingService {
         }
         currentSessionId = null;
         System.out.println("🔌 [MatchingService] Disconnected");
+    }
+
+    /**
+     * 매칭 요청 DTO
+     */
+    private static class MatchmakingRequest {
+        private GameplayType gameplayType;
+        private seoultech.se.core.model.enumType.Difficulty difficulty;
+
+        public GameplayType getGameplayType() {
+            return gameplayType;
+        }
+
+        public void setGameplayType(GameplayType gameplayType) {
+            this.gameplayType = gameplayType;
+        }
+
+        public seoultech.se.core.model.enumType.Difficulty getDifficulty() {
+            return difficulty;
+        }
+
+        public void setDifficulty(seoultech.se.core.model.enumType.Difficulty difficulty) {
+            this.difficulty = difficulty;
+        }
+    }
+
+    /**
+     * 매칭 응답 DTO
+     */
+    private static class MatchmakingResponse {
+        private String status;
+        private String sessionId;
+        private String player1Id;
+        private String player2Id;
+
+        public String getStatus() {
+            return status;
+        }
+
+        public void setStatus(String status) {
+            this.status = status;
+        }
+
+        public String getSessionId() {
+            return sessionId;
+        }
+
+        public void setSessionId(String sessionId) {
+            this.sessionId = sessionId;
+        }
+
+        public String getPlayer1Id() {
+            return player1Id;
+        }
+
+        public void setPlayer1Id(String player1Id) {
+            this.player1Id = player1Id;
+        }
+
+        public String getPlayer2Id() {
+            return player2Id;
+        }
+
+        public void setPlayer2Id(String player2Id) {
+            this.player2Id = player2Id;
+        }
     }
 }

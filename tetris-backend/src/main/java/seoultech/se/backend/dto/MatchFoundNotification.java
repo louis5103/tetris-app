@@ -37,4 +37,9 @@ public class MatchFoundNotification {
      * 게임 시작까지 대기 시간 (초)
      */
     private int countdownSeconds;
+
+    /**
+     * 서버 타임스탬프 (밀리초) - 카운트다운 동기화용
+     */
+    private long serverTimestamp;
 }

@@ -120,7 +120,7 @@ public class MultiplayerModeSelectionController extends BaseController {
                 matchingService.startMatching(
                     serverBaseUrl,
                     jwtToken,
-                    sessionId -> onMatchSuccess(mainStage, sessionId, selectedMode.getGameplayType()),
+                    notification -> onMatchSuccess(mainStage, notification, selectedMode.getGameplayType()),
                     errorMsg -> onMatchFailed(errorMsg)
                 );
             }
@@ -163,9 +163,12 @@ public class MultiplayerModeSelectionController extends BaseController {
     /**
      * 매칭 성공 콜백
      */
-    private void onMatchSuccess(Stage mainStage, String sessionId, GameplayType gameplayType) {
+    private void onMatchSuccess(Stage mainStage, seoultech.se.backend.dto.MatchFoundNotification notification, GameplayType gameplayType) {
         javafx.application.Platform.runLater(() -> {
-            System.out.println("✅ Match found! Session: " + sessionId);
+            System.out.println("✅ Match found!");
+            System.out.println("   - Session: " + notification.getSessionId());
+            System.out.println("   - Opponent: " + notification.getOpponentName());
+            System.out.println("   - Opponent Email: " + notification.getOpponentEmail());
 
             try {
                 // match-found-view.fxml 로드
@@ -183,11 +186,14 @@ public class MultiplayerModeSelectionController extends BaseController {
                 // MatchFoundController에 매칭 정보 설정 및 카운트다운 시작
                 MatchFoundController controller = loader.getController();
 
-                // TODO: 서버에서 상대방 정보를 받아오도록 수정 필요
-                String opponentName = "상대 플레이어";
-                String opponentEmail = "opponent@example.com";
-
-                controller.startCountdown(sessionId, opponentName, opponentEmail, gameplayType);
+                // 서버로부터 받은 실제 상대방 정보 사용 (서버 타임스탬프 포함)
+                controller.startCountdown(
+                    notification.getSessionId(),
+                    notification.getOpponentName(),
+                    notification.getOpponentEmail(),
+                    gameplayType,
+                    notification.getServerTimestamp()
+                );
 
                 // Scene 변경
                 Scene matchFoundScene = new Scene(matchFoundRoot);

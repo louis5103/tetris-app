@@ -51,6 +51,8 @@ public class MatchFoundController extends BaseController {
     private int countdown = 3;
     private String sessionId;
     private GameplayType gameplayType;
+    private long serverTimestamp; // 서버 기준 시간
+    private long countdownEndTime; // 카운트다운 종료 시간
 
     @FXML
     public void initialize() {
@@ -65,10 +67,20 @@ public class MatchFoundController extends BaseController {
      * @param opponentName 상대방 이름
      * @param opponentEmail 상대방 이메일
      * @param gameplayType 게임 모드
+     * @param serverTimestamp 서버 타임스탬프 (카운트다운 동기화용)
      */
-    public void startCountdown(String sessionId, String opponentName, String opponentEmail, GameplayType gameplayType) {
+    public void startCountdown(String sessionId, String opponentName, String opponentEmail,
+                              GameplayType gameplayType, long serverTimestamp) {
         this.sessionId = sessionId;
         this.gameplayType = gameplayType;
+        this.serverTimestamp = serverTimestamp;
+
+        // 카운트다운 종료 시간 계산 (서버 시간 기준 + 3초)
+        this.countdownEndTime = serverTimestamp + (3 * 1000);
+
+        // 네트워크 지연 계산 (클라이언트 시간 - 서버 시간)
+        long networkDelay = System.currentTimeMillis() - serverTimestamp;
+        System.out.println("🕐 [MatchFoundController] Network delay: " + networkDelay + "ms");
 
         // UI 업데이트
         if (opponentName != null && !opponentName.isEmpty()) {
@@ -84,48 +96,73 @@ public class MatchFoundController extends BaseController {
         }
 
         gameModeLabel.setText("모드: " + gameplayType.getDisplayName());
+
+        // 초기 카운트다운 값 계산 (서버 동기화)
+        long currentTime = System.currentTimeMillis();
+        long remainingTime = countdownEndTime - currentTime;
+        int initialCountdown = (int) Math.ceil(remainingTime / 1000.0);
+
+        if (initialCountdown < 0) {
+            initialCountdown = 0;
+        } else if (initialCountdown > 3) {
+            initialCountdown = 3;
+        }
+
+        countdown = initialCountdown;
         countdownLabel.setText(String.valueOf(countdown));
 
-        // 카운트다운 시작
-        startCountdownTimer();
+        // 카운트다운 시작 (서버 동기화)
+        startSynchronizedCountdownTimer();
     }
 
     /**
-     * 카운트다운 타이머 시작
+     * 서버 동기화된 카운트다운 타이머 시작
      */
-    private void startCountdownTimer() {
-        countdownTimeline = new Timeline(new KeyFrame(Duration.seconds(1), event -> {
-            countdown--;
+    private void startSynchronizedCountdownTimer() {
+        // 100ms마다 체크하여 더 정확한 동기화 제공
+        countdownTimeline = new Timeline(new KeyFrame(Duration.millis(100), event -> {
+            long currentTime = System.currentTimeMillis();
+            long remainingTime = countdownEndTime - currentTime;
 
-            if (countdown > 0) {
-                countdownLabel.setText(String.valueOf(countdown));
-
-                // 카운트다운 애니메이션 효과 (선택적)
-                countdownLabel.setScaleX(1.5);
-                countdownLabel.setScaleY(1.5);
-
-                Timeline scaleTimeline = new Timeline(
-                    new KeyFrame(Duration.millis(300), e -> {
-                        countdownLabel.setScaleX(1.0);
-                        countdownLabel.setScaleY(1.0);
-                    })
-                );
-                scaleTimeline.play();
-
-            } else {
-                // 카운트다운 완료 - 게임 시작
+            if (remainingTime <= 0) {
+                // 카운트다운 종료 - 게임 시작
+                countdown = 0;
                 countdownLabel.setText("시작!");
                 messageLabel.setText("게임을 시작합니다!");
+                countdownTimeline.stop();
 
                 // 0.5초 후 게임 화면으로 전환
                 Timeline delayTimeline = new Timeline(
                     new KeyFrame(Duration.millis(500), e -> startGame())
                 );
                 delayTimeline.play();
+
+            } else {
+                // 남은 시간을 초 단위로 표시 (올림)
+                int newCountdown = (int) Math.ceil(remainingTime / 1000.0);
+
+                // 카운트다운이 변경되었을 때만 UI 업데이트 및 애니메이션
+                if (newCountdown != countdown) {
+                    countdown = newCountdown;
+                    countdownLabel.setText(String.valueOf(countdown));
+                    System.out.println("⏱️ [MatchFoundController] Countdown: " + countdown);
+
+                    // 카운트다운 애니메이션 효과
+                    countdownLabel.setScaleX(1.5);
+                    countdownLabel.setScaleY(1.5);
+
+                    Timeline scaleTimeline = new Timeline(
+                        new KeyFrame(Duration.millis(300), e -> {
+                            countdownLabel.setScaleX(1.0);
+                            countdownLabel.setScaleY(1.0);
+                        })
+                    );
+                    scaleTimeline.play();
+                }
             }
         }));
 
-        countdownTimeline.setCycleCount(4); // 3, 2, 1, 0
+        countdownTimeline.setCycleCount(Timeline.INDEFINITE);
         countdownTimeline.play();
     }
 

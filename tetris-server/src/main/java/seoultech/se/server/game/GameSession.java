@@ -10,6 +10,9 @@ import seoultech.se.core.config.GameModeConfig;
 import seoultech.se.core.dto.PlayerInputDto;
 import seoultech.se.core.dto.ServerStateDto;
 import seoultech.se.core.engine.GameEngine;
+import seoultech.se.core.model.Tetromino;
+import seoultech.se.core.model.enumType.TetrominoType;
+import seoultech.se.core.random.TetrominoGenerator;
 
 /**
  * 게임 세션
@@ -39,6 +42,7 @@ public class GameSession {
     private final Map<String, GameState> playerStates = new ConcurrentHashMap<>();
     private final Map<String, Long> lastSequences = new ConcurrentHashMap<>();
     private final Map<String, Integer> pendingAttackLines = new ConcurrentHashMap<>(); // 대기 중인 공격 라인
+    private final Map<String, TetrominoGenerator> playerGenerators = new ConcurrentHashMap<>(); // 플레이어별 블록 생성기
     private final GameEngine gameEngine; // 싱글톤 공유
 
     /**
@@ -78,8 +82,9 @@ public class GameSession {
      * 플레이어 참여
      *
      * @param playerId 플레이어 ID
+     * @return 매칭 완료 여부 (두 번째 플레이어가 참여하면 true)
      */
-    public void joinPlayer(String playerId) {
+    public boolean joinPlayer(String playerId) {
         synchronized (lock) {
             if (hostPlayerId == null) {
                 // 첫 번째 플레이어가 호스트
@@ -87,15 +92,31 @@ public class GameSession {
                 System.out.println("👑 [GameSession] Host set: " + playerId);
             }
 
-            playerStates.put(playerId, new GameState(10, 20)); // 초기 상태
+            // 플레이어 전용 블록 생성기 생성
+            seoultech.se.core.random.RandomGenerator randomGen = new seoultech.se.core.random.RandomGenerator();
+            seoultech.se.core.model.enumType.Difficulty difficulty = gameModeConfig != null ?
+                gameModeConfig.getDifficulty() : seoultech.se.core.model.enumType.Difficulty.NORMAL;
+            TetrominoGenerator generator = new TetrominoGenerator(randomGen, difficulty);
+            playerGenerators.put(playerId, generator);
+
+            // 초기 상태 생성 및 첫 블록 스폰
+            GameState initialState = new GameState(10, 20);
+            spawnNewTetromino(initialState, generator); // 첫 블록 생성
+            updateNextQueue(initialState, generator); // Next Queue 업데이트
+
+            playerStates.put(playerId, initialState);
             lastSequences.put(playerId, 0L); // 초기 시퀀스 번호
             pendingAttackLines.put(playerId, 0); // 대기 중인 공격 라인 초기화
 
             // Phase 1: 활동 시간 갱신
             updateLastActivityTime();
 
+            int playerCount = playerStates.size();
             System.out.println("✅ [GameSession] Player joined: " + playerId +
-                " (" + playerStates.size() + " players total)");
+                " (" + playerCount + " players total)");
+
+            // 두 번째 플레이어가 참여하면 매칭 완료
+            return playerCount == 2;
         }
     }
 
@@ -128,6 +149,7 @@ public class GameSession {
             if (removed) {
                 lastSequences.remove(playerId);
                 pendingAttackLines.remove(playerId);
+                playerGenerators.remove(playerId); // 블록 생성기도 제거
 
                 System.out.println("👋 [GameSession] Player removed: " + playerId +
                     " (" + playerStates.size() + " players remaining)");
@@ -152,6 +174,15 @@ public class GameSession {
      */
     public int getPlayerCount() {
         return playerStates.size();
+    }
+
+    /**
+     * 플레이어 ID 목록 반환
+     *
+     * @return 플레이어 ID 리스트
+     */
+    public List<String> getPlayerIds() {
+        return new ArrayList<>(playerStates.keySet());
     }
 
     /**
@@ -238,6 +269,46 @@ public class GameSession {
         return isGameStarted;
     }
 
+    /**
+     * 새 테트로미노 생성
+     *
+     * @param state 게임 상태 (변경됨)
+     * @param generator 블록 생성기
+     */
+    private void spawnNewTetromino(GameState state, TetrominoGenerator generator) {
+        TetrominoType nextType = generator.next();
+        Tetromino newTetromino = new Tetromino(nextType);
+
+        // 초기 위치 설정
+        int startX = (state.getBoardWidth() - newTetromino.getCurrentShape()[0].length) / 2;
+        int startY = 0;
+
+        state.setCurrentTetromino(newTetromino);
+        state.setCurrentX(startX);
+        state.setCurrentY(startY);
+        state.setHoldUsedThisTurn(false); // 새 블록이므로 Hold 재사용 가능
+
+        // 아이템 타입 설정 (있다면)
+        state.setCurrentItemType(state.getNextBlockItemType());
+        state.setNextBlockItemType(null);
+        state.setWeightBombLocked(false); // 무게추 초기화
+    }
+
+    /**
+     * Next Queue 업데이트
+     *
+     * @param state 게임 상태 (변경됨)
+     * @param generator 블록 생성기
+     */
+    private void updateNextQueue(GameState state, TetrominoGenerator generator) {
+        TetrominoType[] queue = state.getNextQueue();
+        // TetrominoGenerator는 peekNext 메서드가 없으므로 간단히 next()를 미리 호출하지 않음
+        // 대신 클라이언트에서 표시용으로만 사용하므로 빈 큐로 둠
+        for (int i = 0; i < queue.length; i++) {
+            queue[i] = TetrominoType.I; // 기본값
+        }
+    }
+
     public ServerStateDto processInput(String playerId, PlayerInputDto input){
         synchronized(lock){
             GameState currentState = playerStates.get(playerId);
@@ -264,12 +335,22 @@ public class GameSession {
             }
 
             // 2. 서버 권한으로 로직 실행
+            boolean needsNewTetromino = currentState.getCurrentTetromino() != null;
             GameState nextState = gameEngine.executeCommand(input.getCommand(), currentState);
 
             // nextState가 null이면 명령 실행 실패
             if (nextState == null) {
                 System.err.println("❌ [GameSession] Command execution failed, command: " + input.getCommand());
                 return null;
+            }
+
+            // GameEngine이 currentTetromino를 null로 설정했다면 새 블록 생성
+            if (needsNewTetromino && nextState.getCurrentTetromino() == null && !nextState.isGameOver()) {
+                TetrominoGenerator generator = playerGenerators.get(playerId);
+                if (generator != null) {
+                    spawnNewTetromino(nextState, generator);
+                    updateNextQueue(nextState, generator);
+                }
             }
 
             // 3. 상태 업데이트

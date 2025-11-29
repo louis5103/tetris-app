@@ -506,7 +506,7 @@ public class GameController {
             // 향후 최적화: GameStateSnapshot으로 변경 감지만 수행하고 UI는 newState만 사용
             GameState oldState = boardController.getGameState().deepCopy();
             GameState newState = boardController.executeCommand(command);
-            
+
             // GameState 비교하여 UI 힌트 추출 및 업데이트
             showUiHints(oldState, newState);
         });
@@ -521,6 +521,9 @@ public class GameController {
                 return boardController.getGameState().isPaused();
             }
         });
+
+        // 멀티플레이 모드 설정
+        inputHandler.setMultiplayerMode(isMultiplayerMode);
         
         // GameInfoManager 초기화
         gameInfoManager = new GameInfoManager(

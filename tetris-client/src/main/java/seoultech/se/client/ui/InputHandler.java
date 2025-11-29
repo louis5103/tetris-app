@@ -64,9 +64,12 @@ public class InputHandler {
     private final KeyMappingService keyMappingService;
     private InputCallback callback;
     private GameStateProvider gameStateProvider;
-    
+
     // 🔒 PRIORITY 3: 입력 활성화 상태 (애니메이션 중 비활성화)
     private volatile boolean inputEnabled = true;
+
+    // 멀티플레이 모드 플래그 (pause 비활성화용)
+    private boolean isMultiplayerMode = false;
     
     /**
      * InputHandler 생성자
@@ -122,7 +125,13 @@ public class InputHandler {
         }
         
         GameAction action = actionOpt.get();
-        
+
+        // 멀티플레이 모드에서는 PAUSE_RESUME 액션 차단
+        if (isMultiplayerMode && action == GameAction.PAUSE_RESUME) {
+            System.out.println("🚫 [InputHandler] Pause is disabled in multiplayer mode");
+            return;
+        }
+
         // 일시정지 상태 체크: PAUSE_RESUME 액션만 허용
         if (gameStateProvider != null && gameStateProvider.isPaused()) {
             if (action != GameAction.PAUSE_RESUME) {
@@ -205,9 +214,9 @@ public class InputHandler {
     
     /**
      * 🔒 PRIORITY 3: 입력 활성화/비활성화 설정
-     * 
+     *
      * 애니메이션 중 입력을 차단하기 위해 사용
-     * 
+     *
      * @param enabled true면 입력 활성화, false면 비활성화
      */
     public void setInputEnabled(boolean enabled) {
@@ -216,6 +225,18 @@ public class InputHandler {
             System.out.println("🔒 [InputHandler] Input disabled");
         } else {
             System.out.println("✅ [InputHandler] Input enabled");
+        }
+    }
+
+    /**
+     * 멀티플레이 모드 설정
+     *
+     * @param isMultiplayer true면 멀티플레이 모드 (pause 비활성화)
+     */
+    public void setMultiplayerMode(boolean isMultiplayer) {
+        this.isMultiplayerMode = isMultiplayer;
+        if (isMultiplayer) {
+            System.out.println("🌐 [InputHandler] Multiplayer mode enabled - Pause disabled");
         }
     }
 }
