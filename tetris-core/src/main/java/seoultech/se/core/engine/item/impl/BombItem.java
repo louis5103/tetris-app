@@ -95,7 +95,7 @@ public class BombItem extends AbstractItem {
                 }
             }
         }
-        gameState.setLastClearedCells(clearedCells);
+        gameState.setItemEffectClearedCells(clearedCells);
         
         // 블록 제거 - 폭발 범위 내의 모든 블록 제거
         for (int r = startRow; r <= endRow; r++) {

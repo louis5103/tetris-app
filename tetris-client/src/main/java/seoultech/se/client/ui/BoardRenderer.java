@@ -67,6 +67,19 @@ public class BoardRenderer {
     }
     
     /**
+     * 특정 셀의 Rectangle을 업데이트합니다 (동기 버전 - 애니메이션용)
+     * 
+     * ⚠️ UI 스레드에서만 호출해야 합니다!
+     * 
+     * @param row 행 인덱스
+     * @param col 열 인덱스
+     * @param cell 셀 데이터
+     */
+    public void updateCellSync(int row, int col, Cell cell) {
+        updateCellInternal(row, col, cell);
+    }
+    
+    /**
      * 특정 셀의 Rectangle을 업데이트합니다
      * 
      * ⚠️ Thread-safe: UI 스레드가 아니면 Platform.runLater()로 감싸서 실행
@@ -375,6 +388,10 @@ public class BoardRenderer {
     private void updateCellInternal(int row, int col, Cell cell) {
         Rectangle rect = cellRectangles[row][col];
         
+        // 애니메이션에서 설정한 인라인 스타일과 불투명도를 초기화
+        rect.setStyle("");
+        rect.setOpacity(1.0);
+        
         // 🔍 Cell에 아이템 마커가 있으면 오버레이 표시, 없으면 제거
         if (cell.hasItemMarker()) {
             applyItemMarkerOverlay(rect, cell.getItemMarker());
@@ -656,9 +673,19 @@ public class BoardRenderer {
                 
                 System.out.println("   Setting cell [" + row + "," + col + "] to WHITE");
                 
-                // 흰색으로 변경
-                rect.setFill(Color.WHITE);
+                // 모든 스타일 클래스 제거
                 rect.getStyleClass().removeAll(UIConstants.ALL_TETROMINO_COLOR_CLASSES);
+                rect.getStyleClass().removeAll("range-bomb-block", "cross-bomb-block", "line-clear-block", "selectable-block");
+                
+                // 아이템 마커 오버레이 제거
+                removeItemMarkerOverlay(rect);
+                
+                // 흰색으로 변경 (불투명도 1.0으로 명시)
+                rect.setFill(Color.WHITE);
+                rect.setOpacity(1.0);
+                
+                // 인라인 스타일로도 명시적으로 흰색 설정 (CSS 오버라이드)
+                rect.setStyle("-fx-fill: white; -fx-opacity: 1.0;");
             }
         }
         

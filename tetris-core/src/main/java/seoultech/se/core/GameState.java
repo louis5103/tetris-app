@@ -123,7 +123,8 @@ public class GameState {
     private ItemType collectedItem;
     
     // 애니메이션용: 제거될 셀들의 좌표 (row, col)
-    private java.util.List<int[]> lastClearedCells;  // [[row1, col1], [row2, col2], ...]
+    private java.util.List<int[]> lastClearedCells;  // [[row1, col1], [row2, col2], ...] - LINE_CLEAR 또는 일반 라인 클리어용
+    private java.util.List<int[]> itemEffectClearedCells;  // [[row1, col1], [row2, col2], ...] - BOMB, PLUS 등 아이템 효과용
 
 
     // 생성자
@@ -194,6 +195,7 @@ public class GameState {
         this.lastIsPerfectClear = false;
         this.lastLeveledUp = false;
         this.lastClearedCells = new java.util.ArrayList<>();
+        this.itemEffectClearedCells = new java.util.ArrayList<>();
     }
     
     // 깊은 복사.
@@ -279,6 +281,16 @@ public class GameState {
             }
         } else {
             copy.lastClearedCells = new java.util.ArrayList<>();
+        }
+        
+        // 아이템 효과로 제거된 셀 좌표 복사
+        if (this.itemEffectClearedCells != null) {
+            copy.itemEffectClearedCells = new java.util.ArrayList<>();
+            for (int[] cell : this.itemEffectClearedCells) {
+                copy.itemEffectClearedCells.add(cell.clone());
+            }
+        } else {
+            copy.itemEffectClearedCells = new java.util.ArrayList<>();
         }
         
         return copy;
@@ -370,5 +382,17 @@ public class GameState {
         }
 
         return false;
+    }
+    
+    // ============================================
+    // Getter/Setter for Animation Fields
+    // ============================================
+    
+    public java.util.List<int[]> getItemEffectClearedCells() {
+        return itemEffectClearedCells;
+    }
+    
+    public void setItemEffectClearedCells(java.util.List<int[]> itemEffectClearedCells) {
+        this.itemEffectClearedCells = itemEffectClearedCells;
     }
 }

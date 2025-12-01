@@ -3,6 +3,7 @@ package seoultech.se.core.engine;
 import seoultech.se.core.GameState;
 import seoultech.se.core.config.GameModeConfig;
 import seoultech.se.core.engine.item.ItemManager;
+import seoultech.se.core.model.Cell;
 import seoultech.se.core.model.enumType.TetrominoType;
 
 /**
@@ -450,9 +451,10 @@ public class ArcadeGameEngine extends ClassicGameEngine {
             }
         }
 
-        // 7. 아이템 효과 처리 1: LINE_CLEAR (행 삭제)
+        // 7. 아이템 효과 처리 1: LINE_CLEAR (행 식별만, 중력은 나중에)
         int lineClearMarkerLines = 0;
         long lineClearScore = 0;
+        int[] lineClearRows = new int[0];  // LINE_CLEAR로 지워질 행들 저장
         
         if (itemManager != null) {
             java.util.List<Integer> markedLines = 
@@ -460,21 +462,36 @@ public class ArcadeGameEngine extends ClassicGameEngine {
             
             if (!markedLines.isEmpty()) {
                 lineClearMarkerLines = markedLines.size();
-                int blocksCleared = 
-                    seoultech.se.core.engine.item.impl.LineClearItem.clearLines(newState, markedLines);
+                
+                // 블록 수 계산 (점수용)
+                int blocksCleared = 0;
+                for (int row : markedLines) {
+                    for (int col = 0; col < newState.getBoardWidth(); col++) {
+                        if (newState.getGrid()[row][col].isOccupied()) {
+                            blocksCleared++;
+                        }
+                    }
+                }
+                
+                // 행들을 비움 (중력 적용 없이)
+                for (int row : markedLines) {
+                    for (int col = 0; col < newState.getBoardWidth(); col++) {
+                        newState.getGrid()[row][col].clear();
+                    }
+                }
                 
                 long lineBonus = markedLines.size() * 100 * newState.getLevel();
                 long blockBonus = blocksCleared * 10;
                 lineClearScore = lineBonus + blockBonus;
                 
-                System.out.println("Ⓛ [Arcade] LINE_CLEAR executed: " + markedLines);
+                System.out.println("Ⓛ [Arcade] LINE_CLEAR executed (rows cleared, gravity pending): " + markedLines);
                 
                 newState.addScore(lineClearScore);
                 newState.addLinesCleared(lineClearMarkerLines);
                 
-                // 애니메이션용 기록 (기존 값 덮어쓰기 주의 - 여기선 초기화 상태라 괜찮음)
-                int[] clearedRowsArray = markedLines.stream().mapToInt(i->i).toArray();
-                newState.setLastClearedRows(clearedRowsArray);
+                // LINE_CLEAR로 지워진 행들을 임시 저장 (나중에 중력 적용 시 사용)
+                lineClearRows = markedLines.stream().mapToInt(i->i).toArray();
+                System.out.println("   LINE_CLEAR rows saved (will apply gravity later): " + java.util.Arrays.toString(lineClearRows));
             }
         }
         
@@ -532,6 +549,7 @@ public class ArcadeGameEngine extends ClassicGameEngine {
                                 newState.addLinesCleared(itemEffectLinesCleared);
                             }
                             System.out.println("✅ [Arcade] Item applied successfully - Score: +" + effect.getBonusScore() + ", Lines: +" + effect.getLinesCleared());
+                            System.out.println("   itemEffectClearedCells size: " + (newState.getItemEffectClearedCells() != null ? newState.getItemEffectClearedCells().size() : 0));
                         } else {
                             System.out.println("❌ [Arcade] Item application failed: " + effect.getMessage());
                         }
@@ -540,12 +558,68 @@ public class ArcadeGameEngine extends ClassicGameEngine {
             }
         }
         
-        // 9. 기본 라인 클리어 (Classic 로직 호출)
-        // checkAndClearLines는 protected로 변경되었으므로 호출 가능
-        // 이미 아이템으로 지워진 후 남은 블록들에 대해 수행됨
-        System.out.println("📋 [ArcadeGameEngine] Calling checkAndClearLines()...");
-        checkAndClearLines(newState, isTSpin, isTSpinMini);
-        System.out.println("📋 [ArcadeGameEngine] checkAndClearLines() completed");
+        // 9. 기본 라인 클리어 및 LINE_CLEAR 통합 처리
+        // LINE_CLEAR로 비워진 행과 가득 찬 행을 모두 확인하여 중력 적용
+        System.out.println("📋 [ArcadeGameEngine] Checking for lines to clear...");
+        
+        // 가득 찬 행 찾기 (checkAndClearLines 로직 일부 복사)
+        java.util.List<Integer> fullRows = new java.util.ArrayList<>();
+        for (int row = newState.getBoardHeight() - 1; row >= 0; row--) {
+            boolean isFull = true;
+            for (int col = 0; col < newState.getBoardWidth(); col++) {
+                if (!newState.getGrid()[row][col].isOccupied()) {
+                    isFull = false;
+                    break;
+                }
+            }
+            if (isFull) {
+                fullRows.add(row);
+            }
+        }
+        
+        // LINE_CLEAR 행과 가득 찬 행을 병합
+        java.util.Set<Integer> allRowsToRemove = new java.util.HashSet<>();
+        for (int row : lineClearRows) {
+            allRowsToRemove.add(row);
+        }
+        for (int row : fullRows) {
+            allRowsToRemove.add(row);
+        }
+        
+        System.out.println("   LINE_CLEAR rows: " + java.util.Arrays.toString(lineClearRows));
+        System.out.println("   Full rows: " + fullRows);
+        System.out.println("   Total rows to remove: " + allRowsToRemove);
+        
+        if (!allRowsToRemove.isEmpty()) {
+            // 정렬된 배열로 변환
+            int[] clearedRowsArray = allRowsToRemove.stream().mapToInt(i->i).sorted().toArray();
+            
+            // 중력 적용 (한번에)
+            System.out.println("🌍 [ArcadeGameEngine] Applying gravity for all cleared rows...");
+            applyGravityForEmptyRows(newState, clearedRowsArray);
+            
+            // lastClearedRows 설정 (애니메이션용)
+            newState.setLastClearedRows(clearedRowsArray);
+            
+            // 점수 계산 (가득 찬 행에 대해서만)
+            if (!fullRows.isEmpty()) {
+                boolean isPerfectClear = checkPerfectClear(newState);
+                long score = calculateScore(fullRows.size(), isTSpin, isTSpinMini, isPerfectClear,
+                        newState.getLevel(), newState.getComboCount(), newState.getBackToBackCount());
+                newState.setLastLinesCleared(fullRows.size());
+                newState.setLastScoreEarned(score);
+                newState.setLastIsPerfectClear(isPerfectClear);
+                System.out.println("   Score for " + fullRows.size() + " full rows: " + score);
+            } else {
+                newState.setLastLinesCleared(0);
+            }
+            
+            System.out.println("   Final lastClearedRows for animation: " + java.util.Arrays.toString(clearedRowsArray));
+        } else {
+            newState.setLastClearedRows(new int[0]);
+            newState.setLastLinesCleared(0);
+            System.out.println("   No lines to clear");
+        }
         
         // 10. 무게추 점수 반영
         if (weightBombScore > 0) newState.addScore(weightBombScore);
@@ -586,32 +660,57 @@ public class ArcadeGameEngine extends ClassicGameEngine {
     }
     
     /**
-     * 아케이드 모드에서는 아이템 효과 셀 + 라인 클리어 셀을 누적합니다.
-     * ClassicGameEngine의 checkAndClearLines를 오버라이드하여
-     * lastClearedCells를 덮어쓰지 않고 추가합니다.
+     * 빈 행들에 대해 중력을 적용 (LINE_CLEAR 아이템용)
+     * 
+     * @param state 게임 상태
+     * @param emptyRows 비워진 행들의 인덱스 배열
      */
-    @Override
-    protected void checkAndClearLines(GameState state, boolean isTSpin, boolean isTSpinMini) {
-        // 기존 lastClearedCells 백업 (아이템 효과 셀)
-        java.util.List<int[]> existingCells = state.getLastClearedCells();
-        
-        // 부모 클래스 호출 (새로운 리스트로 덮어씀)
-        super.checkAndClearLines(state, isTSpin, isTSpinMini);
-        
-        // 아이템 효과 셀 + 라인 클리어 셀 합치기
-        if (existingCells != null && !existingCells.isEmpty()) {
-            java.util.List<int[]> lineClearCells = state.getLastClearedCells();
-            if (lineClearCells == null) {
-                lineClearCells = new java.util.ArrayList<>();
-            }
-            
-            // 아이템 효과 셀을 앞에 추가 (먼저 표시됨)
-            java.util.List<int[]> combined = new java.util.ArrayList<>(existingCells);
-            combined.addAll(lineClearCells);
-            state.setLastClearedCells(combined);
-            
-            System.out.println("🎨 [ArcadeGameEngine] Combined cleared cells: " + 
-                existingCells.size() + " (item) + " + lineClearCells.size() + " (lines) = " + combined.size());
+    private void applyGravityForEmptyRows(GameState state, int[] emptyRows) {
+        if (emptyRows == null || emptyRows.length == 0) {
+            return;
         }
+        
+        java.util.Set<Integer> emptyRowsSet = new java.util.HashSet<>();
+        for (int row : emptyRows) {
+            emptyRowsSet.add(row);
+        }
+        
+        Cell[][] grid = state.getGrid();
+        int boardHeight = state.getBoardHeight();
+        int boardWidth = state.getBoardWidth();
+        
+        // 비워지지 않은 행들만 수집 (위에서 아래로)
+        java.util.List<Cell[]> remainingRows = new java.util.ArrayList<>();
+        for (int row = 0; row < boardHeight; row++) {
+            if (!emptyRowsSet.contains(row)) {
+                Cell[] rowCopy = new Cell[boardWidth];
+                for (int col = 0; col < boardWidth; col++) {
+                    rowCopy[col] = grid[row][col].copy();
+                }
+                remainingRows.add(rowCopy);
+            }
+        }
+        
+        // 보드를 위에서부터 다시 채우기 (빈 줄이 위로)
+        int srcIndex = 0;
+        for (int targetRow = emptyRows.length; targetRow < boardHeight; targetRow++) {
+            if (srcIndex < remainingRows.size()) {
+                Cell[] rowData = remainingRows.get(srcIndex++);
+                for (int col = 0; col < boardWidth; col++) {
+                    grid[targetRow][col].setColor(rowData[col].getColor());
+                    grid[targetRow][col].setOccupied(rowData[col].isOccupied());
+                    grid[targetRow][col].setItemMarker(rowData[col].getItemMarker());
+                }
+            }
+        }
+        
+        // 위쪽 줄들을 빈 칸으로 초기화
+        for (int row = 0; row < emptyRows.length; row++) {
+            for (int col = 0; col < boardWidth; col++) {
+                grid[row][col].clear();
+            }
+        }
+        
+        System.out.println("✅ [ArcadeGameEngine] Gravity applied for " + emptyRows.length + " empty row(s)");
     }
 }

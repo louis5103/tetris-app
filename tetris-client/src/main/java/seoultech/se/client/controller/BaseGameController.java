@@ -29,6 +29,7 @@ import seoultech.se.client.util.ColorMapper;
 import seoultech.se.core.GameState;
 import seoultech.se.core.command.GameCommand;
 import seoultech.se.core.config.GameModeConfig;
+import seoultech.se.core.model.Cell;
 
 /**
  * 게임 컨트롤러의 기본 추상 클래스 (공통 기능 정의)
@@ -138,9 +139,14 @@ public abstract class BaseGameController {
      */
     protected void updateUI(GameState oldState, GameState newState) {
         Platform.runLater(() -> {
-            int oldLines = oldState.getLinesCleared();
-            int newLines = newState.getLinesCleared();
-            boolean linesWereCleared = newLines > oldLines;
+            // 라인이 제거되었는지 확인 (lastClearedRows가 비어있지 않으면 라인 클리어 발생)
+            boolean hasLineClearRows = newState.getLastClearedRows() != null && newState.getLastClearedRows().length > 0;
+            
+            // 아이템 효과로 셀이 제거되었는지 확인
+            boolean hasItemEffectCells = newState.getItemEffectClearedCells() != null && !newState.getItemEffectClearedCells().isEmpty();
+            
+            // 라인 클리어 또는 아이템 효과가 있으면 애니메이션 실행
+            boolean shouldAnimate = hasLineClearRows || hasItemEffectCells;
 
             Runnable uiUpdateTask = () -> {
                 // 1. 보드 & 미리보기 렌더링
@@ -162,49 +168,92 @@ public abstract class BaseGameController {
                 checkGameState(oldState, newState);
             };
 
-            // 라인 클리어 애니메이션 처리
-            if (linesWereCleared) {
+            // 라인 클리어 또는 아이템 효과 애니메이션 처리
+            if (shouldAnimate) {
                 if (inputHandler != null) inputHandler.setInputEnabled(false);
                 onLineClearAnimationStart(); // 자식 클래스 훅 (예: 게임루프 일시정지)
                 
-                System.out.println("🎨 [Animation] Starting line clear animation");
-                System.out.println("   lastClearedCells size: " + 
-                    (newState.getLastClearedCells() != null ? newState.getLastClearedCells().size() : 0));
+                System.out.println("🎨 [Animation] Starting animation sequence");
+                System.out.println("   hasLineClearRows: " + hasLineClearRows + " (rows: " + (hasLineClearRows ? newState.getLastClearedRows().length : 0) + ")");
+                System.out.println("   hasItemEffectCells: " + hasItemEffectCells + " (cells: " + (hasItemEffectCells ? newState.getItemEffectClearedCells().size() : 0) + ")");
                 
-                // Step 1: oldState + 락된 테트로미노로 락 직후 상태를 그림
+                // Step 1: oldState + 락된 블록을 그려서 라인 제거 직전 상태를 표시
                 Runnable step1 = () -> {
-                    System.out.println("🎨 [Animation] Step 1: Drawing locked state (oldState + locked piece)");
+                    System.out.println("🎨 [Animation] Step 1: Drawing board with locked piece (before line removal)");
+                    // oldState의 그리드를 그려서 이전 애니메이션 효과 제거 + 라인 제거 전 상태 표시
+                    Cell[][] grid = oldState.getGrid();
+                    for (int row = 0; row < oldState.getBoardHeight(); row++) {
+                        for (int col = 0; col < oldState.getBoardWidth(); col++) {
+                            boardRenderer.updateCellSync(row, col, grid[row][col]);
+                        }
+                    }
+                    // 락된 테트로미노를 그 위에 그림
                     boardRenderer.drawBoardWithLockedPieceSync(oldState, newState);
                     
-                    // Step 2: 다음 프레임에 제거될 셀들을 흰색으로 하이라이트
                     Platform.runLater(() -> {
-                        System.out.println("🎨 [Animation] Step 2: Highlighting cleared cells in white");
-                        
-                        if (newState.getLastClearedCells() != null && !newState.getLastClearedCells().isEmpty()) {
-                            System.out.println("   Highlighting " + newState.getLastClearedCells().size() + " cells from lastClearedCells");
-                            boardRenderer.highlightClearedCellsSync(newState.getLastClearedCells());
-                        } else if (newState.getLastClearedRows() != null && newState.getLastClearedRows().length > 0) {
-                            // fallback: lastClearedRows만 있는 경우, 해당 행의 모든 셀을 하이라이트
-                            java.util.List<int[]> cells = new java.util.ArrayList<>();
-                            for (int row : newState.getLastClearedRows()) {
-                                for (int col = 0; col < newState.getBoardWidth(); col++) {
-                                    cells.add(new int[]{row, col});
-                                }
-                            }
-                            System.out.println("   Highlighting " + cells.size() + " cells from lastClearedRows (fallback)");
-                            boardRenderer.highlightClearedCellsSync(cells);
-                        }
-                        
-                        // Step 3: 300ms 후 전체 UI 업데이트 (라인 제거 후 상태)
-                        System.out.println("🎨 [Animation] Step 3: Scheduling full UI update in 300ms");
-                        CompletableFuture.delayedExecutor(UIConstants.LINE_CLEAR_ANIMATION_MS, TimeUnit.MILLISECONDS).execute(() -> {
-                            Platform.runLater(() -> {
-                                System.out.println("🎨 [Animation] Step 4: Full UI update (lines removed)");
-                                uiUpdateTask.run(); // 라인 제거 후 상태로 전체 업데이트
-                                if (inputHandler != null) inputHandler.setInputEnabled(true);
-                                onLineClearAnimationEnd(); // 자식 클래스 훅
+                        // Step 2a: 아이템 효과로 제거된 셀 하이라이트 (BOMB, PLUS)
+                        if (hasItemEffectCells) {
+                            System.out.println("🎨 [Animation] Step 2a: Highlighting item effect cells (BOMB/PLUS)");
+                            boardRenderer.highlightClearedCellsSync(newState.getItemEffectClearedCells());
+                            
+                            // 300ms 후 Step 2b로 진행
+                            // 300ms 후 Step 2b로 진행
+                            CompletableFuture.delayedExecutor(UIConstants.LINE_CLEAR_ANIMATION_MS, TimeUnit.MILLISECONDS).execute(() -> {
+                                Platform.runLater(() -> {
+                                    // Step 2b: 라인 클리어 하이라이트 (LINE_CLEAR 아이템 포함)
+                                    if (hasLineClearRows) {
+                                        System.out.println("🎨 [Animation] Step 2b: Highlighting line clear rows");
+                                        java.util.List<int[]> cells = new java.util.ArrayList<>();
+                                        for (int row : newState.getLastClearedRows()) {
+                                            for (int col = 0; col < newState.getBoardWidth(); col++) {
+                                                cells.add(new int[]{row, col});
+                                            }
+                                        }
+                                        boardRenderer.highlightClearedCellsSync(cells);
+                                    }
+                                    // Step 3: 300ms 후 최종 UI 업데이트
+                                    CompletableFuture.delayedExecutor(UIConstants.LINE_CLEAR_ANIMATION_MS, TimeUnit.MILLISECONDS).execute(() -> {
+                                        Platform.runLater(() -> {
+                                            System.out.println("🎨 [Animation] Step 3: Full UI update (lines removed)");
+                                            // 애니메이션 데이터 클리어 (다음 렌더링에서 재트리거 방지)
+                                            newState.setItemEffectClearedCells(new java.util.ArrayList<>());
+                                            newState.setLastClearedCells(new java.util.ArrayList<>());
+                                            newState.setLastClearedRows(new int[0]);
+                                            uiUpdateTask.run();
+                                            if (inputHandler != null) inputHandler.setInputEnabled(true);
+                                            onLineClearAnimationEnd();
+                                        });
+                                    });
+                                });
                             });
-                        });
+                        } else {
+                            // 아이템 효과 없음 - 바로 라인 클리어 하이라이트
+                            System.out.println("🎨 [Animation] Step 2: Highlighting line clear (no item effect)");
+                            
+                            if (hasLineClearRows) {
+                                java.util.List<int[]> cells = new java.util.ArrayList<>();
+                                for (int row : newState.getLastClearedRows()) {
+                                    for (int col = 0; col < newState.getBoardWidth(); col++) {
+                                        cells.add(new int[]{row, col});
+                                    }
+                                }
+                                boardRenderer.highlightClearedCellsSync(cells);
+                            }
+                            
+                            // Step 3: 300ms 후 최종 UI 업데이트
+                            CompletableFuture.delayedExecutor(UIConstants.LINE_CLEAR_ANIMATION_MS, TimeUnit.MILLISECONDS).execute(() -> {
+                                Platform.runLater(() -> {
+                                    System.out.println("🎨 [Animation] Step 3: Full UI update (lines removed)");
+                                    // 애니메이션 데이터 클리어 (다음 렌더링에서 재트리거 방지)
+                                    newState.setItemEffectClearedCells(new java.util.ArrayList<>());
+                                    newState.setLastClearedCells(new java.util.ArrayList<>());
+                                    newState.setLastClearedRows(new int[0]);
+                                    uiUpdateTask.run();
+                                    if (inputHandler != null) inputHandler.setInputEnabled(true);
+                                    onLineClearAnimationEnd();
+                                });
+                            });
+                        }
                     });
                 };
                 

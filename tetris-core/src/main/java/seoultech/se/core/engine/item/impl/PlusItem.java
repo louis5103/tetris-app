@@ -100,7 +100,7 @@ public class PlusItem extends AbstractItem {
         }
         
         // 애니메이션용 좌표 저장
-        gameState.setLastClearedCells(clearedCells);
+        gameState.setItemEffectClearedCells(clearedCells);
         
         int linesCleared = 0;
         
