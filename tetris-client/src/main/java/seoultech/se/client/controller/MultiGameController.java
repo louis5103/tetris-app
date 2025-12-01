@@ -1,11 +1,10 @@
 package seoultech.se.client.controller;
 
-import javafx.application.Platform;
-import javafx.fxml.FXML;
-import javafx.scene.layout.HBox;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
+
+import javafx.application.Platform;
 import seoultech.se.client.service.GameApiService;
 import seoultech.se.client.strategy.NetworkExecutionStrategy;
 import seoultech.se.client.ui.OpponentBoardView;

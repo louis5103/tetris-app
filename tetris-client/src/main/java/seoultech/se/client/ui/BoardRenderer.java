@@ -33,6 +33,14 @@ public class BoardRenderer {
     // 🚀 이미지 캐시 (정적 필드)
     private static final java.util.Map<String, javafx.scene.image.Image> IMAGE_CACHE = new java.util.HashMap<>();
     
+    // ⚡ 성능 최적화: 이전 테트로미노 위치 저장 (차분 업데이트용)
+    private Tetromino previousTetromino = null;
+    private int previousX = -1;
+    private int previousY = -1;
+    
+    // 🔒 락 감지: 이전 그리드 상태 저장 (변경된 셀만 업데이트)
+    private Cell[][] previousGrid = null;
+    
     /**
      * BoardRenderer 생성자
      * 
@@ -121,24 +129,127 @@ public class BoardRenderer {
      */
     public void drawBoard(GameState gameState) {
         Runnable drawTask = () -> {
-            // 전체 보드를 먼저 그립니다
-            Cell[][] grid = gameState.getGrid();
-            for (int row = 0; row < gameState.getBoardHeight(); row++) {
-                for (int col = 0; col < gameState.getBoardWidth(); col++) {
-                    updateCellInternal(row, col, grid[row][col]);
-                }
-            }
-            
-            // 현재 테트로미노가 있으면 그 위에 그립니다
-            if (gameState.getCurrentTetromino() != null) {
-                drawCurrentTetromino(gameState);
-            }
+            drawBoardInternal(gameState);
         };
         
         if (Platform.isFxApplicationThread()) {
             drawTask.run();
         } else {
             Platform.runLater(drawTask);
+        }
+    }
+    
+    /**
+     * 보드를 동기적으로 그립니다 (이미 UI 스레드에 있을 때 사용)
+     * ✅ 성능 최적화: Platform.runLater() 체크 없이 즉시 실행
+     * 
+     * @param gameState 현재 게임 상태
+     */
+    public void drawBoardSync(GameState gameState) {
+        drawBoardInternal(gameState);
+    }
+    
+    /**
+     * 내부 보드 렌더링 메서드
+     */
+    private void drawBoardInternal(GameState gameState) {
+        drawBoardInternal(gameState, true);
+    }
+    
+    /**
+     * 내부 보드 렌더링 메서드
+     * ⚡ 성능 최적화: 변경된 셀만 업데이트 (락 시 ~4개, 이동 시 ~8개)
+     * 🔥 애니메이션 처리: 강제 전체 렌더링 플래그 지원
+     * 
+     * @param gameState 현재 게임 상태
+     * @param includeCurrentTetromino 현재 테트로미노를 포함할지 여부
+     */
+    private void drawBoardInternal(GameState gameState, boolean includeCurrentTetromino) {
+        Cell[][] currentGrid = gameState.getGrid();
+        
+        // 🔒 락 감지: 이전 그리드와 비교하여 변경된 셀만 업데이트
+        if (previousGrid != null) {
+            // 변경된 셀만 업데이트 (락된 블록만)
+            for (int row = 0; row < gameState.getBoardHeight(); row++) {
+                for (int col = 0; col < gameState.getBoardWidth(); col++) {
+                    Cell prev = previousGrid[row][col];
+                    Cell curr = currentGrid[row][col];
+                    Rectangle rect = cellRectangles[row][col];
+                    
+                    // 셀이 변경되었거나 애니메이션 스타일이 있으면 업데이트
+                    // 🔥 인라인 스타일 체크: 애니메이션으로 흰색이 된 셀 감지
+                    boolean hasAnimationStyle = rect.getStyle() != null && 
+                                               !rect.getStyle().isEmpty() && 
+                                               rect.getStyle().contains("-fx-fill: white");
+                    boolean gridChanged = prev.isOccupied() != curr.isOccupied() || 
+                                         (prev.isOccupied() && prev.getColor() != curr.getColor());
+                    
+                    if (hasAnimationStyle || gridChanged) {
+                        updateCellInternal(row, col, curr);
+                    }
+                }
+            }
+        } else {
+            // 첫 렌더링 - 전체 보드 그리기
+            for (int row = 0; row < gameState.getBoardHeight(); row++) {
+                for (int col = 0; col < gameState.getBoardWidth(); col++) {
+                    updateCellInternal(row, col, currentGrid[row][col]);
+                }
+            }
+        }
+        
+        // 이전 그리드 저장 (얕은 복사로 충분 - Cell은 불변)
+        previousGrid = new Cell[currentGrid.length][currentGrid[0].length];
+        for (int row = 0; row < currentGrid.length; row++) {
+            System.arraycopy(currentGrid[row], 0, previousGrid[row], 0, currentGrid[row].length);
+        }
+        
+        // ⚡ 최적화: 이전 테트로미노 위치 지우기 (그리드 셀로 복원)
+        if (previousTetromino != null) {
+            clearPreviousTetromino(gameState);
+        }
+        
+        // 현재 테트로미노가 있으면 그립니다
+        if (includeCurrentTetromino && gameState.getCurrentTetromino() != null) {
+            drawCurrentTetromino(gameState);
+            
+            // 상태 저장
+            previousTetromino = gameState.getCurrentTetromino();
+            previousX = gameState.getCurrentX();
+            previousY = gameState.getCurrentY();
+        } else {
+            // 테트로미노가 없으면 이전 상태 초기화
+            previousTetromino = null;
+            previousX = -1;
+            previousY = -1;
+        }
+    }
+    
+    /**
+     * 이전 테트로미노 위치를 현재 그리드 셀로 복원합니다
+     * ⚡ 성능 최적화: 변경된 위치만 업데이트
+     */
+    private void clearPreviousTetromino(GameState currentState) {
+        if (previousTetromino == null) return;
+        
+        int[][] shape = previousTetromino.getCurrentShape();
+        int pivotX = previousTetromino.getPivotX();
+        int pivotY = previousTetromino.getPivotY();
+        Cell[][] grid = currentState.getGrid();
+        
+        for (int row = 0; row < shape.length; row++) {
+            for (int col = 0; col < shape[0].length; col++) {
+                if (shape[row][col] == 1) {
+                    int absoluteX = previousX + (col - pivotX);
+                    int absoluteY = previousY + (row - pivotY);
+                    
+                    if (absoluteY >= 0 && absoluteY < currentState.getBoardHeight() &&
+                        absoluteX >= 0 && absoluteX < currentState.getBoardWidth()) {
+                        // 현재 그리드의 셀로 복원 (락된 블록 표시)
+                        updateCellInternal(absoluteY, absoluteX, grid[absoluteY][absoluteX]);
+                    }
+                }
+            }
         }
     }
     
@@ -329,9 +440,6 @@ public class BoardRenderer {
                 
                 // StackPane에 추가 (StackPane의 alignment가 CENTER이므로 자동 중앙 정렬)
                 parentPane.getChildren().add(imageView);
-                
-                // 🔥 FIX: 로그를 실제 추가 시에만 출력 (중복 방지)
-                System.out.println("🎨 [BoardRenderer] Item marker overlay added: " + itemType);
             } catch (Exception e) {
                 System.err.println("⚠️ [BoardRenderer] Failed to load item image: " + imagePath + " - " + e.getMessage());
             }
@@ -355,8 +463,6 @@ public class BoardRenderer {
             
             // StackPane에 추가
             parentPane.getChildren().add(text);
-            
-            System.out.println("🎨 [BoardRenderer] Item marker text overlay added: " + itemType + " (" + textOverlay + ")");
         }
     }
     
@@ -661,8 +767,6 @@ public class BoardRenderer {
             return;
         }
         
-        System.out.println("🎨 [BoardRenderer] highlightClearedCellsSync - highlighting " + clearedCells.size() + " cells");
-        
         for (int[] cell : clearedCells) {
             int row = cell[0];
             int col = cell[1];
@@ -670,8 +774,6 @@ public class BoardRenderer {
             if (row >= 0 && row < cellRectangles.length && 
                 col >= 0 && col < cellRectangles[0].length) {
                 Rectangle rect = cellRectangles[row][col];
-                
-                System.out.println("   Setting cell [" + row + "," + col + "] to WHITE");
                 
                 // 모든 스타일 클래스 제거
                 rect.getStyleClass().removeAll(UIConstants.ALL_TETROMINO_COLOR_CLASSES);
@@ -684,12 +786,10 @@ public class BoardRenderer {
                 rect.setFill(Color.WHITE);
                 rect.setOpacity(1.0);
                 
-                // 인라인 스타일로도 명시적으로 흰색 설정 (CSS 오버라이드)
+                // 🔥 인라인 스타일을 빈 문자열로 설정 (추후 감지 가능하도록)
                 rect.setStyle("-fx-fill: white; -fx-opacity: 1.0;");
             }
         }
-        
-        System.out.println("🎨 [BoardRenderer] highlightClearedCellsSync - completed");
     }
     
     /**
