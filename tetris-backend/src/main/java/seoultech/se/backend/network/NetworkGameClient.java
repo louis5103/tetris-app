@@ -109,44 +109,54 @@ public class NetworkGameClient {
      * @param serverState 서버로부터 받은 상태 업데이트
      */
     private void onServerUpdate(ServerStateDto serverState) {
-        // Performance: 로그 출력 최소화 (틱마다 발생하므로)
-        // System.out.println("📥 [NetworkGameClient] ========== SERVER UPDATE RECEIVED ==========");
-        
-        // 1. GameStateDto를 GameState로 변환
-        GameState myState = dtoToStateMapper.toGameState(serverState.getMyGameState());
-        if (myState == null) {
-            System.err.println("❌ [NetworkGameClient] ERROR: Server sent NULL game state!");
-            return;
-        }
-
-        // 2. 서버의 권위 있는 상태를 그대로 저장 (Reconciliation 없음)
-        this.clientState = myState;
-
-        // 3. 게임 오버 체크 및 명령 차단 (서버에서 게임 오버 상태 수신 시)
-        if (serverState.isGameOver()) {
-            System.out.println("💀 [NetworkGameClient] Game Over received from server");
-            // 게임 오버 상태는 clientState에도 반영됨
-        }
-
-        // 4. ✨ 자신의 보드 상태 업데이트 (렌더링 트리거)
-        if (myStateCallback != null) {
-            myStateCallback.accept(this.clientState);
-        } else {
-            System.err.println("❌ [NetworkGameClient] ERROR: myStateCallback is NULL!");
-        }
-
-        // 5. 공격 라인 처리
-        if (serverState.getAttackLinesReceived() > 0 && attackLinesCallback != null) {
-            attackLinesCallback.accept(serverState.getAttackLinesReceived());
-            System.out.println("⚔️ [NetworkGameClient] Attack lines: " + serverState.getAttackLinesReceived());
-        }
-
-        // 6. 상대방 상태는 콜백으로 전달 (GameStateDto → GameState 변환)
-        if (serverState.getOpponentGameState() != null && opponentStateCallback != null) {
-            GameState opponentState = dtoToStateMapper.toGameState(serverState.getOpponentGameState());
-            if (opponentState != null) {
-                opponentStateCallback.accept(opponentState);
+        try {
+            // Performance: 로그 출력 최소화 (틱마다 발생하므로)
+            // System.out.println("📥 [NetworkGameClient] ========== SERVER UPDATE RECEIVED ==========");
+            
+            // 1. GameStateDto를 GameState로 변환
+            GameState myState = dtoToStateMapper.toGameState(serverState.getMyGameState());
+            if (myState == null) {
+                System.err.println("❌ [NetworkGameClient] ERROR: Server sent NULL game state!");
+                return;
             }
+
+            // 2. 서버의 권위 있는 상태를 그대로 저장 (Reconciliation 없음)
+            this.clientState = myState;
+
+            // 3. 게임 오버 체크 및 명령 차단 (서버에서 게임 오버 상태 수신 시)
+            if (serverState.isGameOver()) {
+                System.out.println("💀 [NetworkGameClient] Game Over received from server");
+                // 게임 오버 상태는 clientState에도 반영됨 - 서버 권한 강제 적용
+                this.clientState.setGameOver(true);
+                // 승리/패배 구분: 내 보드가 살아있는데 게임 오버라면 'WIN'으로 간주 (임시)
+                if (this.clientState.getGameOverReason() == null) {
+                    this.clientState.setGameOverReason("GAME_OVER");
+                }
+            }
+
+            // 4. ✨ 자신의 보드 상태 업데이트 (렌더링 트리거)
+            if (myStateCallback != null) {
+                myStateCallback.accept(this.clientState);
+            } else {
+                System.err.println("❌ [NetworkGameClient] ERROR: myStateCallback is NULL!");
+            }
+
+            // 5. 공격 라인 처리
+            if (serverState.getAttackLinesReceived() > 0 && attackLinesCallback != null) {
+                attackLinesCallback.accept(serverState.getAttackLinesReceived());
+                System.out.println("⚔️ [NetworkGameClient] Attack lines: " + serverState.getAttackLinesReceived());
+            }
+
+            // 6. 상대방 상태는 콜백으로 전달 (GameStateDto → GameState 변환)
+            if (serverState.getOpponentGameState() != null && opponentStateCallback != null) {
+                GameState opponentState = dtoToStateMapper.toGameState(serverState.getOpponentGameState());
+                if (opponentState != null) {
+                    opponentStateCallback.accept(opponentState);
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("❌ [NetworkGameClient] Exception in onServerUpdate: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 

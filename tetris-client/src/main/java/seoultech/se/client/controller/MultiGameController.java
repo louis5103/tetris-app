@@ -163,6 +163,8 @@ public class MultiGameController extends BaseGameController {
     private void onMyStateUpdate(GameState newState) {
         Platform.runLater(() -> {
             // 서버 상태로 보정 (Reconciliation)
+            System.out.println("📥 [MultiGameController] Received state update from server. Tetromino Y: " + 
+                (newState.getCurrentTetromino() != null ? newState.getCurrentY() : "null")); 
             GameState oldState = boardController.getGameState();
             boardController.setGameState(newState);
             updateUI(oldState, newState);

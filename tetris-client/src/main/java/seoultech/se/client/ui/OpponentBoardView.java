@@ -5,6 +5,7 @@ import javafx.scene.layout.GridPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.shape.Rectangle;
 import seoultech.se.client.constants.ColorBlindMode;
+import seoultech.se.client.constants.UIConstants;
 import seoultech.se.client.util.ColorMapper;
 import seoultech.se.core.GameState;
 
@@ -20,7 +21,7 @@ import seoultech.se.core.GameState;
  * - GameController가 GameState를 전달하면 렌더링
  */
 public class OpponentBoardView extends VBox {
-    private static final int CELL_SIZE = 15; // 작은 크기
+    private static final double CELL_SIZE = UIConstants.CELL_SIZE; // 메인 보드와 동일한 크기
     private static final int BOARD_WIDTH = 10;
     private static final int BOARD_HEIGHT = 20;
 
@@ -119,7 +120,7 @@ public class OpponentBoardView extends VBox {
         
         // Hold & Next 초기화 (4x4)
         int PREVIEW_SIZE = 4;
-        double PREVIEW_CELL_SIZE = 10; // 더 작게
+        double PREVIEW_CELL_SIZE = UIConstants.PREVIEW_CELL_SIZE; // 메인 프리뷰와 동일한 크기
         
         holdCellRectangles = new Rectangle[PREVIEW_SIZE][PREVIEW_SIZE];
         initializePreviewGrid(holdGrid, holdCellRectangles, PREVIEW_SIZE, PREVIEW_CELL_SIZE);

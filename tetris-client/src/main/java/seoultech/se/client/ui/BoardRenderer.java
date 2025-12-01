@@ -165,6 +165,7 @@ public class BoardRenderer {
      * @param includeCurrentTetromino 현재 테트로미노를 포함할지 여부
      */
     private void drawBoardInternal(GameState gameState, boolean includeCurrentTetromino) {
+        System.out.println("🖌️ [BoardRenderer] drawBoardInternal. Tetromino: " + (gameState.getCurrentTetromino() != null)); // Debug log
         Cell[][] currentGrid = gameState.getGrid();
         
         // 🔒 락 감지: 이전 그리드와 비교하여 변경된 셀만 업데이트

@@ -149,7 +149,7 @@ public class GameSessionController {
                 .lastProcessedSequence(0) // Opponent는 이 입력을 보낸게 아니므로 시퀀스 무관
                 .myGameState(senderResponse.getOpponentGameState()) // 내(Opponent) 상태 = Sender가 본 Opponent 상태
                 .opponentGameState(senderResponse.getMyGameState()) // 상대(Sender) 상태 = Sender가 본 자신 상태
-                .events(senderResponse.getEvents()) // 이벤트는 공유 (필요 시 분리 가능)
+                .events(new java.util.ArrayList<>()) // 이벤트는 공유하지 않음
                 .attackLinesReceived(0) // 입력에 의한 즉각적인 공격 수신은 별도 처리 필요할 수 있음 (현재는 0 처리)
                 .gameOver(senderResponse.isGameOver()) // 게임 오버 상태도 전달
                 .build();

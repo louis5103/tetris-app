@@ -140,7 +140,7 @@ public class GameTickService {
                                 .lastProcessedSequence(0)
                                 .myGameState(stateUpdate.getOpponentGameState()) // 상대 입장에서의 나 = 원래 상대
                                 .opponentGameState(stateUpdate.getMyGameState()) // 상대 입장에서의 상대 = 원래 나 (움직인 사람)
-                                .events(stateUpdate.getEvents())
+                                .events(new java.util.ArrayList<>()) // 이벤트는 공유하지 않음 (상대방에게는 별도 이벤트 없음)
                                 .attackLinesReceived(0)
                                 .gameOver(stateUpdate.isGameOver()) // 게임 오버 상태도 전달
                                 .build();

@@ -1,7 +1,9 @@
 package seoultech.se.core.dto;
 
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 /**
  * GameState DTO for API Response
@@ -12,6 +14,8 @@ import lombok.Data;
  */
 @Data
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class GameStateDto {
 
     /**
@@ -80,6 +84,8 @@ public class GameStateDto {
      */
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class TetrominoDto {
         private String type;  // I, O, T, S, Z, J, L
         private int x;
