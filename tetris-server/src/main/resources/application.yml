@@ -48,6 +48,15 @@ server:
     connection-timeout: 20000
     max-connections: 10000
 
+    # WebSocket 메시지 버퍼 크기 증가 (GameState JSON 전송용)
+    # CloseStatus code=1009 (message too big) 오류 해결
+    max-http-post-size: 10485760  # 10MB
+
+  # Spring WebSocket 메시지 크기 제한
+  websocket:
+    max-text-message-buffer-size: 1048576  # 1MB (텍스트 메시지)
+    max-binary-message-buffer-size: 1048576  # 1MB (바이너리 메시지)
+
 # ===============================================================================
 # WebSocket Configuration
 # ===============================================================================

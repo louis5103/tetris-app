@@ -40,7 +40,7 @@ public class GameState {
 
     /**
      * 다음 아이템까지 남은 라인 수 (Arcade 모드)
-     * 10줄 클리어마다 아이템 생성 (Req2 명세)
+     * ItemManager 생성 시 linesPerItem 값으로 초기화됨
      * ItemManager의 상태를 GameState로 이동 (Stateless 리팩토링)
      */
     private int linesUntilNextItem = 1;
@@ -118,6 +118,9 @@ public class GameState {
     private long lastScoreEarned;  // 마지막 액션에서 획득한 점수
     private boolean lastIsPerfectClear;  // 마지막 액션이 Perfect Clear였는지
     private boolean lastLeveledUp;  // 마지막 액션에서 레벨업이 발생했는지
+    
+    // Phase 3: 아이템 수집 이벤트 (Controller가 소비)
+    private ItemType collectedItem;
 
 
     // 생성자
@@ -159,7 +162,7 @@ public class GameState {
         this.currentItemType = null;
         this.nextBlockItemType = null;
         this.isWeightBombLocked = false;
-        this.linesUntilNextItem = 1;
+        this.linesUntilNextItem = 1;  // 기본값 (테스트용), BoardController에서 재설정됨
 
         // Lock Delay 초기화
         this.isLockDelayActive = false;

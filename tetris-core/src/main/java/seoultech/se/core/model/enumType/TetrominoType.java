@@ -10,7 +10,7 @@ public enum TetrominoType {
             {1, 1, 1, 1},
             {0, 0, 0, 0},
             {0, 0, 0, 0}
-    }, Color.CYAN, 1, 2),
+    }, Color.CYAN, 2, 1),  // 🔥 FIX: pivotX=2, pivotY=1 (블록이 있는 row에 pivot 배치)
 
     J(new int[][]{
             {0, 1, 0},

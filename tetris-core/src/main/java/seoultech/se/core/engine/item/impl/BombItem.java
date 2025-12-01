@@ -74,8 +74,17 @@ public class BombItem extends AbstractItem {
         int startCol = Math.max(0, col - EXPLOSION_RADIUS);
         int endCol = Math.min(boardWidth - 1, col + EXPLOSION_RADIUS);
         
+        int areaBlocks = 0;
+        for (int r = startRow; r <= endRow; r++) {
+            for (int c = startCol; c <= endCol; c++) {
+                if (grid[r][c] != null && grid[r][c].isOccupied()) {
+                    areaBlocks++;
+                }
+            }
+        }
+        
         System.out.println("   - Explosion area: rows " + startRow + "-" + endRow + 
-            ", cols " + startCol + "-" + endCol);
+            ", cols " + startCol + "-" + endCol + " (" + areaBlocks + " blocks)");
         
         // 블록 제거 - 폭발 범위 내의 모든 블록 제거
         for (int r = startRow; r <= endRow; r++) {
@@ -139,6 +148,12 @@ public class BombItem extends AbstractItem {
                     }
                     writeRow--;  // 다음 쓰기 위치는 한 칸 위로
                 }
+            }
+            
+            // 남은 위쪽 줄들을 빈 칸으로 초기화 (잔상 제거)
+            while (writeRow >= 0) {
+                grid[writeRow][col].clear();
+                writeRow--;
             }
         }
         

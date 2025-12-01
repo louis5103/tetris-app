@@ -45,4 +45,13 @@ public class LocalExecutionStrategy implements GameExecutionStrategy {
         // 내부적으로 CommandType에 따라 적절한 메서드로 라우팅됨
         return gameEngine.executeCommand(command, currentState);
     }
+
+    /**
+     * 게임 엔진 인스턴스 반환
+     * 
+     * @return GameEngine
+     */
+    public GameEngine getGameEngine() {
+        return gameEngine;
+    }
 }

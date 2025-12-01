@@ -1,5 +1,11 @@
 package seoultech.se.server.config;
 
+import org.apache.catalina.connector.Connector;
+import org.apache.coyote.http11.Http11NioProtocol;
+import org.springframework.boot.web.embedded.tomcat.TomcatConnectorCustomizer;
+import org.springframework.boot.web.embedded.tomcat.TomcatServletWebServerFactory;
+import org.springframework.boot.web.server.WebServerFactoryCustomizer;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
@@ -13,6 +19,7 @@ import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBr
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
 import org.springframework.web.socket.config.annotation.WebSocketTransportRegistration;
+import org.springframework.web.socket.server.standard.ServletServerContainerFactoryBean;
 
 import lombok.RequiredArgsConstructor;
 import seoultech.se.server.config.JwtUtil;
@@ -40,10 +47,11 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void configureWebSocketTransport(WebSocketTransportRegistration registration) {
-        // WebSocket 메시지 크기 제한 설정
-        registration.setMessageSizeLimit(512 * 1024);        // 512KB (기본값: 64KB)
-        registration.setSendBufferSizeLimit(1024 * 1024);    // 1MB (기본값: 512KB)
-        registration.setSendTimeLimit(20000);                // 20초 (기본값: 10초)
+        // WebSocket 메시지 크기 제한 설정 (GameState JSON 전송용)
+        // 대용량 데이터 전송을 위해 넉넉하게 설정 (10MB)
+        registration.setMessageSizeLimit(10 * 1024 * 1024);       // 10MB (수신 제한)
+        registration.setSendBufferSizeLimit(10 * 1024 * 1024);    // 10MB (송신 버퍼)
+        registration.setSendTimeLimit(60 * 1000);                 // 60초 (전송 타임아웃)
     }
     
     @Override
@@ -77,6 +85,25 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
                 return message;
             }
+        });
+    }
+
+    /**
+     * Tomcat WebSocket 컨테이너 커스터마이저
+     *
+     * Embedded Tomcat에서 WebSocket 버퍼 크기를 설정하는 올바른 방법입니다.
+     * ServletServerContainerFactoryBean은 런타임에 적용되지 않으므로
+     * WebServerFactoryCustomizer를 사용해야 합니다.
+     *
+     * CloseStatus code=1009 (message too big) 오류 해결
+     */
+    @Bean
+    public WebServerFactoryCustomizer<TomcatServletWebServerFactory> tomcatCustomizer() {
+        return factory -> factory.addConnectorCustomizers((TomcatConnectorCustomizer) connector -> {
+            connector.setProperty("org.apache.tomcat.websocket.textBufferSize", "1048576");  // 1MB
+            connector.setProperty("org.apache.tomcat.websocket.binaryBufferSize", "1048576"); // 1MB
+
+            System.out.println("✅ [WebSocket] Tomcat connector configured with 1MB buffer size");
         });
     }
 }

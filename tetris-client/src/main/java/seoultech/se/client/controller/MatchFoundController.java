@@ -166,6 +166,11 @@ public class MatchFoundController extends BaseController {
         countdownTimeline.play();
     }
 
+    @Autowired
+    private seoultech.se.client.service.GameModeConfigFactory configFactory;
+
+    // ... (기존 필드)
+
     /**
      * 게임 시작 - 게임 화면으로 전환
      */
@@ -186,21 +191,28 @@ public class MatchFoundController extends BaseController {
                     TetrisApplication.class.getResource("/view/game-view.fxml")
                 );
 
-                // Controller Factory 설정 (Spring DI)
+                // Controller 설정 (Spring DI)
                 ApplicationContext context = ApplicationContextProvider.getApplicationContext();
-                loader.setControllerFactory(context::getBean);
+                
+                // MultiGameController 빈 가져오기
+                MultiGameController controller = context.getBean(MultiGameController.class);
+                loader.setController(controller);
 
                 // FXML 로드
                 Parent gameRoot = loader.load();
 
-                // GameController에 게임 모드 설정
-                GameController controller = loader.getController();
-                controller.setGameMode(gameplayType, true);
+                // 1. 게임 모드 설정 (공통 초기화)
+                seoultech.se.core.model.enumType.Difficulty difficulty = settingsService.getCurrentDifficulty();
+                seoultech.se.core.config.GameModeConfig config = configFactory.create(gameplayType, difficulty);
+                controller.initGame(config);
 
-                // NetworkExecutionStrategy 생성 및 설정
+                // 2. 멀티플레이 설정 (네트워크 연결)
                 seoultech.se.client.strategy.NetworkExecutionStrategy networkStrategy =
                     matchingService.createNetworkExecutionStrategy();
-                controller.setupMultiplayMode(networkStrategy, sessionId);
+                controller.initMultiplayer(networkStrategy, sessionId);
+                
+                // 3. 게임 시작
+                controller.startGame();
 
                 // Scene 변경
                 Scene gameScene = new Scene(gameRoot);

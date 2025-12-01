@@ -50,21 +50,24 @@ public class NetworkExecutionStrategy implements GameExecutionStrategy {
      *
      * @param sessionId STOMP 세션 ID
      * @param initialState 초기 게임 상태
+     * @param myStateCallback 자신의 보드 상태 업데이트 콜백
      * @param opponentStateCallback 상대방 상태 업데이트 콜백
      * @param attackLinesCallback 공격 라인 수신 콜백
      */
     public void setupMultiplayMode(
             String sessionId,
             GameState initialState,
+            Consumer<GameState> myStateCallback,
             Consumer<GameState> opponentStateCallback,
             Consumer<Integer> attackLinesCallback) {
         // NetworkGameClient 초기화
         networkGameClient.init(sessionId, initialState);
-        
+
         // 콜백 설정
+        networkGameClient.setMyStateCallback(myStateCallback);
         networkGameClient.setOpponentStateCallback(opponentStateCallback);
         networkGameClient.setAttackLinesCallback(attackLinesCallback);
-        
+
         System.out.println("✅ NetworkExecutionStrategy initialized - Session: " + sessionId);
     }
 

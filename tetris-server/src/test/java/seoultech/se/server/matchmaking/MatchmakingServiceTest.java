@@ -36,12 +36,26 @@ class MatchmakingServiceTest {
     @Mock
     private WebSocketEventListener webSocketEventListener;
 
+    // Added mocks
+    @Mock
+    private seoultech.se.server.admin.AdminDashboardService dashboardService;
+    @Mock
+    private org.springframework.messaging.simp.SimpMessagingTemplate messagingTemplate;
+    @Mock
+    private seoultech.se.server.user.UserRepository userRepository;
+
     private MatchmakingService matchmakingService;
 
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-        matchmakingService = new MatchmakingService(gameSessionManager, webSocketEventListener);
+        matchmakingService = new MatchmakingService(
+            gameSessionManager,
+            webSocketEventListener,
+            dashboardService,
+            messagingTemplate,
+            userRepository
+        );
     }
 
     @Test
@@ -71,7 +85,7 @@ class MatchmakingServiceTest {
 
         // Mock GameSession
         var mockSession = org.mockito.Mockito.mock(seoultech.se.server.game.GameSession.class);
-        when(gameSessionManager.createSession(anyString(), any(GameplayType.class), any(Difficulty.class)))
+        when(gameSessionManager.createSession(anyString(), any(GameplayType.class), any(Difficulty.class), any(seoultech.se.server.game.SessionType.class)))
             .thenReturn(mockSession);
 
         // When
@@ -143,9 +157,9 @@ class MatchmakingServiceTest {
         GameplayType gameplayType = GameplayType.CLASSIC;
         Difficulty difficulty = Difficulty.NORMAL;
 
-        // Mock GameSession
+        // Mock GameSession - Added this block
         var mockSession = org.mockito.Mockito.mock(seoultech.se.server.game.GameSession.class);
-        when(gameSessionManager.createSession(anyString(), any(GameplayType.class), any(Difficulty.class)))
+        when(gameSessionManager.createSession(anyString(), any(GameplayType.class), any(Difficulty.class), any(seoultech.se.server.game.SessionType.class)))
             .thenReturn(mockSession);
 
         // When

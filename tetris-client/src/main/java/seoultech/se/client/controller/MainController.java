@@ -716,16 +716,23 @@ public class MainController extends BaseController {
                 TetrisApplication.class.getResource("/view/game-view.fxml")
             );
 
-            // 3단계: Controller Factory 설정 (Spring DI)
+            // 3단계: 컨트롤러 설정 (Spring DI)
             ApplicationContext context = ApplicationContextProvider.getApplicationContext();
-            loader.setControllerFactory(context::getBean);
+            
+            // SingleGameController 빈 가져오기
+            SingleGameController controller = context.getBean(SingleGameController.class);
+            loader.setController(controller); // 동적 컨트롤러 설정
 
             // 4단계: FXML 로드
             Parent gameRoot = loader.load();
 
-            // 5단계: GameController에 게임 모드 설정
-            GameController controller = loader.getController();
-            controller.setGameMode(gameplayType, isMultiplayer);
+            // 5단계: 게임 모드 설정 및 초기화
+            seoultech.se.client.service.GameModeConfigFactory configFactory = context.getBean(seoultech.se.client.service.GameModeConfigFactory.class);
+            seoultech.se.core.model.enumType.Difficulty difficulty = settingsService.getCurrentDifficulty();
+            seoultech.se.core.config.GameModeConfig config = configFactory.create(gameplayType, difficulty);
+            
+            controller.initGame(config);
+            controller.startGame();
             
             // 창 크기 변경 전 현재 위치와 크기 저장
             double currentX = stage.getX();
@@ -755,12 +762,6 @@ public class MainController extends BaseController {
 
             System.out.println("✅ " + modeName + " mode started successfully");
 
-            // 7단계: 멀티플레이 모드인 경우 매칭 시작
-            // TODO: 멀티플레이 매칭은 별도 매칭 화면 컨트롤러에서 처리
-            if (isMultiplayer) {
-                System.out.println("⚠️ Multiplayer mode - matching should be handled in a separate screen");
-                // 매칭 기능은 나중에 별도 화면에서 구현 예정
-            }
         } catch (IOException e) {
             System.err.println("❌ Failed to load game-view.fxml");
             System.err.println("   Error: " + e.getMessage());

@@ -37,6 +37,15 @@ public class ClassicGameEngine implements GameEngine {
      */
     private final GameModeConfig config;
 
+    /**
+     * 게임 모드 설정 반환
+     * 
+     * @return GameModeConfig
+     */
+    protected GameModeConfig getConfig() {
+        return config;
+    }
+
     // ========== 생성자 및 초기화 ==========
 
     /**
@@ -151,6 +160,7 @@ public class ClassicGameEngine implements GameEngine {
                 newState.addScore(1);
             }
             
+            System.out.println("⬇️ [ClassicGameEngine] tryMoveDown SUCCESS - moved to Y=" + newY);
             return newState;
         } else {
             // Phase 4: 무게추가 바닥/블록에 닿으면 잠김
@@ -158,9 +168,11 @@ public class ClassicGameEngine implements GameEngine {
                 !state.isWeightBombLocked()) {
                 GameState newState = state.deepCopy();
                 newState.setWeightBombLocked(true);
+                System.out.println("🔒 [ClassicGameEngine] tryMoveDown FAILED (Weight Bomb locked) - Y=" + state.getCurrentY());
                 return newState;  // 상태만 변경, 위치는 그대로
             }
             
+            System.out.println("🛑 [ClassicGameEngine] tryMoveDown FAILED (will trigger lockTetromino) - Y=" + state.getCurrentY());
             return state;  // 실패 시 원본 상태 반환 (고정 필요 신호)
         }
     }
@@ -252,10 +264,13 @@ public class ClassicGameEngine implements GameEngine {
      */
     @Override
     public GameState hardDrop(GameState state){
+        System.out.println("⚡ [ClassicGameEngine] hardDrop() CALLED - currentY: " + state.getCurrentY());
         // 1. 바닥까지 이동 거리 계산 (원본 state는 수정하지 않음)
         int dropDistance = 0;
         int finalY = state.getCurrentY();
 
+        // 🔥 FIX: isValidPosition만 체크하도록 수정 (boardHeight 중복 체크 제거)
+        // isValidPosition이 이미 absY >= boardHeight를 체크하므로 안전함
         while(isValidPosition(state, state.getCurrentTetromino(), 
                               state.getCurrentX(), finalY + 1)
         ) {
@@ -267,9 +282,11 @@ public class ClassicGameEngine implements GameEngine {
         GameState droppedState = state.deepCopy();
         droppedState.setCurrentY(finalY);
         droppedState.addScore(dropDistance * 2);
+        
+        System.out.println("⚡ [ClassicGameEngine] hardDrop() - dropped to Y=" + finalY + ", calling lockTetromino()");
 
-        // 3. 즉시 고정 (이미 deepCopy되었으므로 내부에서 다시 복사하지 않음)
-        return lockTetrominoInternal(droppedState, false);
+        // 3. 즉시 고정 - lockTetromino() 호출하여 ArcadeGameEngine override 적용
+        return lockTetromino(droppedState);
     }
     
     // ========== Hold 기능 ==========
@@ -400,6 +417,7 @@ public class ClassicGameEngine implements GameEngine {
      * @return 고정이 완료된 새로운 게임 상태
      */
     private GameState lockTetrominoInternal(GameState state, boolean needsCopy) {
+        System.out.println("🔒 [ClassicGameEngine] lockTetrominoInternal() CALLED (needsCopy=" + needsCopy + ")");
         GameState newState = needsCopy ? state.deepCopy() : state;
         
         // 고정하기 전에 블록 정보 저장 (EventMapper에서 사용)
@@ -485,8 +503,11 @@ public class ClassicGameEngine implements GameEngine {
         if (state.getCurrentItemType() != null && !blockPositions.isEmpty()) {
             seoultech.se.core.engine.item.ItemType itemType = state.getCurrentItemType();
             
-            // 모든 아이템 타입에 대해 마커 추가
-            if (itemType == seoultech.se.core.engine.item.ItemType.LINE_CLEAR) {
+            // WEIGHT_BOMB은 마커를 추가하지 않음 (이미지가 아닌 블록 형태로 표현됨)
+            if (itemType == seoultech.se.core.engine.item.ItemType.WEIGHT_BOMB) {
+                // Do nothing
+            } 
+            else if (itemType == seoultech.se.core.engine.item.ItemType.LINE_CLEAR) {
                 // LINE_CLEAR: 무작위로 하나의 블록에만 마커 추가
                 java.util.Random random = new java.util.Random();
                 int randomIndex = random.nextInt(blockPositions.size());
@@ -497,13 +518,25 @@ public class ClassicGameEngine implements GameEngine {
                 System.out.println("Ⓛ [ClassicGameEngine] LINE_CLEAR marker added at (" + 
                     markerPos[0] + ", " + markerPos[1] + ")");
             } else {
-                // 다른 아이템들 (BOMB, PLUS 등): 모든 블록에 마커 추가
-                for (int[] pos : blockPositions) {
-                    newState.getGrid()[pos[0]][pos[1]].setItemMarker(itemType);
-                }
+                // 다른 아이템들 (BOMB, PLUS 등): Pivot(중심) 블록에만 마커 추가
+                // Pivot의 절대 좌표는 현재 Tetromino의 (X, Y)와 일치함 (Pivot 기준 좌표계이므로)
+                int pivotAbsX = state.getCurrentX();
+                int pivotAbsY = state.getCurrentY();
                 
-                System.out.println("🎯 [ClassicGameEngine] " + itemType + " markers added to " + 
-                    blockPositions.size() + " blocks");
+                // Pivot 위치가 보드 내에 있고, 실제로 블록이 있는지 확인
+                if (pivotAbsY >= 0 && pivotAbsY < state.getBoardHeight() &&
+                    pivotAbsX >= 0 && pivotAbsX < state.getBoardWidth() &&
+                    newState.getGrid()[pivotAbsY][pivotAbsX].isOccupied()) {
+                    
+                    newState.getGrid()[pivotAbsY][pivotAbsX].setItemMarker(itemType);
+                    System.out.println("🎯 [ClassicGameEngine] " + itemType + " marker added at pivot (" + 
+                        pivotAbsY + ", " + pivotAbsX + ")");
+                } else {
+                    // Pivot이 비어있거나(모양이 이상한 경우) 보드 밖이면 첫 번째 블록에 추가
+                    int[] firstBlock = blockPositions.get(0);
+                    newState.getGrid()[firstBlock[0]][firstBlock[1]].setItemMarker(itemType);
+                    System.out.println("⚠️ [ClassicGameEngine] Pivot invalid, marker added at first block");
+                }
             }
         }
 
@@ -692,14 +725,23 @@ public class ClassicGameEngine implements GameEngine {
     /**
      * 라인 클리어 체크 및 실행
      * 
+     * 🔍 중요: 이 메서드는 **완전히 채워진 줄만** 체크합니다 (isOccupied() == true).
+     * 
+     * ⚠️ ArcadeGameEngine에서의 실행 순서:
+     * 1. LINE_CLEAR 아이템 처리 (마커가 있는 줄 삭제, 블록 수 무관)
+     * 2. 이 메서드 호출 (남은 블록들 중 완전한 줄만 삭제)
+     * 
+     * 따라서 LINE_CLEAR 마커가 있는 줄은 이 메서드 실행 전에 이미 제거되어
+     * 충돌이 발생하지 않습니다.
+     * 
      * @param state 현재 게임 상태
      * @param isTSpin T-Spin 여부
      * @param isTSpinMini T-Spin Mini 여부
      */
-    private void checkAndClearLines(GameState state, boolean isTSpin, boolean isTSpinMini) {
+    protected void checkAndClearLines(GameState state, boolean isTSpin, boolean isTSpinMini) {
         List<Integer> clearedRowsList = new ArrayList<>();
 
-        // 라인 체크
+        // 라인 체크: 완전히 채워진 줄만 찾기
         for (int row = state.getBoardHeight() - 1; row >= 0; row--) {
             boolean isFullLine = true;
 
@@ -712,6 +754,14 @@ public class ClassicGameEngine implements GameEngine {
             }
 
             if (isFullLine) {
+                // 🔒 Assert: ArcadeGameEngine에서는 LINE_CLEAR 마커가 있는 줄은
+                // 이미 제거되었으므로, 여기서 발견되는 줄에는 LINE_CLEAR 마커가 없어야 함
+                if (state.getGrid()[row][0].hasItemMarker() && 
+                    state.getGrid()[row][0].getItemMarker() == seoultech.se.core.engine.item.ItemType.LINE_CLEAR) {
+                    System.err.println("⚠️ [ClassicGameEngine] WARNING: Found LINE_CLEAR marker in full line at row " + row + 
+                        " - This should have been cleared earlier by ArcadeGameEngine!");
+                }
+                
                 clearedRowsList.add(row);
             }
         }
@@ -801,7 +851,7 @@ public class ClassicGameEngine implements GameEngine {
      * @param state 현재 게임 상태
      * @return Perfect Clear이면 true
      */
-    private boolean checkPerfectClear(GameState state) {
+    protected boolean checkPerfectClear(GameState state) {
         for (int row = 0; row < state.getBoardHeight(); row++) {
             for (int col = 0; col < state.getBoardWidth(); col++) {
                 if (state.getGrid()[row][col].isOccupied()) {
@@ -824,7 +874,7 @@ public class ClassicGameEngine implements GameEngine {
      * @param b2b Back-to-Back 카운트
      * @return 점수
      */
-    private long calculateScore(int lines, boolean tSpin, boolean tSpinMini,
+    protected long calculateScore(int lines, boolean tSpin, boolean tSpinMini,
                                  boolean perfectClear, int level, int combo, int b2b
     ) {
         long baseScore = 0;
@@ -882,7 +932,7 @@ public class ClassicGameEngine implements GameEngine {
      * @param y Y 위치
      * @return true면 놓을 수 있음
      */
-    private boolean isValidPosition(GameState state, Tetromino tetromino, int x, int y){
+    protected boolean isValidPosition(GameState state, Tetromino tetromino, int x, int y){
         int[][] shape = tetromino.getCurrentShape();
         
         if (shape == null || shape.length == 0) {

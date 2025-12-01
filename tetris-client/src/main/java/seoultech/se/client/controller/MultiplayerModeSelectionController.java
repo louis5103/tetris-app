@@ -45,6 +45,9 @@ public class MultiplayerModeSelectionController extends BaseController {
 
     private String serverBaseUrl;
     private String jwtToken;
+    
+    // 매칭 대기 중 실행되는 로컬 게임 컨트롤러
+    private SingleGameController localGameController;
 
     @FXML
     public void initialize() {
@@ -130,16 +133,20 @@ public class MultiplayerModeSelectionController extends BaseController {
                 TetrisApplication.class.getResource("/view/game-view.fxml")
             );
 
-            // Controller Factory 설정 (Spring DI)
+            // Controller 설정 (Spring DI)
             ApplicationContext context = ApplicationContextProvider.getApplicationContext();
-            loader.setControllerFactory(context::getBean);
+            localGameController = context.getBean(SingleGameController.class);
+            loader.setController(localGameController);
 
             // FXML 로드
             Parent gameRoot = loader.load();
 
-            // GameController에 로컬 싱글 플레이 모드 설정
-            GameController gameController = loader.getController();
-            gameController.setGameMode(selectedMode.getGameplayType(), false); // 로컬 모드로 시작
+            // 게임 초기화
+            seoultech.se.client.service.GameModeConfigFactory configFactory = context.getBean(seoultech.se.client.service.GameModeConfigFactory.class);
+            seoultech.se.core.config.GameModeConfig config = configFactory.create(selectedMode.getGameplayType(), settingsService.getCurrentDifficulty());
+            
+            localGameController.initGame(config);
+            localGameController.startGame();
 
             // 메인 윈도우의 Scene 변경
             Scene gameScene = new Scene(gameRoot);
@@ -165,6 +172,13 @@ public class MultiplayerModeSelectionController extends BaseController {
      */
     private void onMatchSuccess(Stage mainStage, seoultech.se.backend.dto.MatchFoundNotification notification, GameplayType gameplayType) {
         javafx.application.Platform.runLater(() -> {
+            // 매칭 성공 시 로컬 게임 종료
+            if (localGameController != null) {
+                System.out.println("🧹 [MultiplayerModeSelection] Stopping local background game...");
+                localGameController.cleanup();
+                localGameController = null;
+            }
+
             System.out.println("✅ Match found!");
             System.out.println("   - Session: " + notification.getSessionId());
             System.out.println("   - Opponent: " + notification.getOpponentName());

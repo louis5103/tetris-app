@@ -65,7 +65,13 @@ public class PlusItem extends AbstractItem {
         System.out.println("   - Board size: " + boardHeight + "x" + boardWidth);
         
         // 행 제거 - 지정된 행의 모든 블록 제거
-        System.out.println("   - Clearing row " + row);
+        int rowBlocks = 0;
+        for (int c = 0; c < boardWidth; c++) {
+            if (grid[row][c] != null && grid[row][c].isOccupied()) {
+                rowBlocks++;
+            }
+        }
+        System.out.println("   - Clearing row " + row + " (" + rowBlocks + " blocks)");
         for (int c = 0; c < boardWidth; c++) {
             if (grid[row][c] != null && grid[row][c].isOccupied()) {
                 grid[row][c].clear();
@@ -74,7 +80,13 @@ public class PlusItem extends AbstractItem {
         }
         
         // 열 제거 (교차점 제외) - 지정된 열의 모든 블록 제거
-        System.out.println("   - Clearing column " + col);
+        int colBlocks = 0;
+        for (int r = 0; r < boardHeight; r++) {
+            if (r != row && grid[r][col] != null && grid[r][col].isOccupied()) {
+                colBlocks++;
+            }
+        }
+        System.out.println("   - Clearing column " + col + " (" + colBlocks + " blocks, excluding intersection)");
         for (int r = 0; r < boardHeight; r++) {
             if (r != row && grid[r][col] != null && grid[r][col].isOccupied()) {
                 grid[r][col].clear();
@@ -134,6 +146,12 @@ public class PlusItem extends AbstractItem {
                     }
                     writeRow--;  // 다음 쓰기 위치는 한 칸 위로
                 }
+            }
+            
+            // 남은 위쪽 줄들을 빈 칸으로 초기화 (잔상 제거)
+            while (writeRow >= 0) {
+                grid[writeRow][col].clear();
+                writeRow--;
             }
         }
         

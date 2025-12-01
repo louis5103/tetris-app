@@ -22,7 +22,6 @@
 <BorderPane fx:id="rootPane"
             xmlns="http://javafx.com/javafx/21" 
             xmlns:fx="http://javafx.com/fxml/1" 
-            fx:controller="seoultech.se.client.controller.GameController"
             styleClass="game-background"
             stylesheets="@../css/application.css, @../css/game-view.css">
     

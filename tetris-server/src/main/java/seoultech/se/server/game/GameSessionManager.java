@@ -49,7 +49,35 @@ public class GameSessionManager {
     }
 
     /**
-     * 세션 생성 (GameplayType + Difficulty 지정)
+     * 세션 생성 (GameplayType + Difficulty + SessionType 지정)
+     *
+     * @param sessionId 세션 ID
+     * @param gameplayType 게임플레이 타입 (CLASSIC, ARCADE)
+     * @param difficulty 난이도 (EASY, NORMAL, HARD)
+     * @param sessionType 세션 타입 (SINGLE/MULTI)
+     * @return 생성된 세션
+     */
+    public GameSession createSession(String sessionId, GameplayType gameplayType, Difficulty difficulty, SessionType sessionType) {
+        // Pool에서 싱글톤 GameEngine 가져오기
+        GameEngine sharedEngine = gameEnginePool.getEngine(gameplayType);
+
+        // 세션 생성
+        GameSession session = new GameSession(sessionId, sharedEngine, sessionType);
+
+        // 기본 Config 설정 (Factory 사용)
+        GameModeConfig defaultConfig = serverConfigFactory.createConfig(gameplayType, difficulty);
+        session.setGameModeConfig(null, defaultConfig); // null = 초기 설정 (호스트 검증 생략)
+
+        sessions.put(sessionId, session);
+
+        System.out.println("🎮 [GameSessionManager] Session created: " + sessionId +
+            ", Type: " + sessionType + ", GameplayType: " + gameplayType + ", Difficulty: " + difficulty);
+
+        return session;
+    }
+
+    /**
+     * 세션 생성 (GameplayType + Difficulty 지정, SessionType은 SINGLE)
      *
      * @param sessionId 세션 ID
      * @param gameplayType 게임플레이 타입 (CLASSIC, ARCADE)
@@ -57,22 +85,7 @@ public class GameSessionManager {
      * @return 생성된 세션
      */
     public GameSession createSession(String sessionId, GameplayType gameplayType, Difficulty difficulty) {
-        // Pool에서 싱글톤 GameEngine 가져오기
-        GameEngine sharedEngine = gameEnginePool.getEngine(gameplayType);
-
-        // 세션 생성
-        GameSession session = new GameSession(sessionId, sharedEngine);
-        
-        // 기본 Config 설정 (Factory 사용)
-        GameModeConfig defaultConfig = serverConfigFactory.createConfig(gameplayType, difficulty);
-        session.setGameModeConfig(null, defaultConfig); // null = 초기 설정 (호스트 검증 생략)
-        
-        sessions.put(sessionId, session);
-
-        System.out.println("🎮 [GameSessionManager] Session created: " + sessionId +
-            ", GameplayType: " + gameplayType + ", Difficulty: " + difficulty);
-
-        return session;
+        return createSession(sessionId, gameplayType, difficulty, SessionType.SINGLE);
     }
 
     /**
@@ -83,17 +96,17 @@ public class GameSessionManager {
      * @return 생성된 세션
      */
     public GameSession createSession(String sessionId, GameplayType gameplayType) {
-        return createSession(sessionId, gameplayType, Difficulty.NORMAL);
+        return createSession(sessionId, gameplayType, Difficulty.NORMAL, SessionType.SINGLE);
     }
 
     /**
-     * 세션 생성 (기본값: CLASSIC, NORMAL)
+     * 세션 생성 (기본값: CLASSIC, NORMAL, SINGLE)
      *
      * @param sessionId 세션 ID
      * @return 생성된 세션
      */
     public GameSession createSession(String sessionId) {
-        return createSession(sessionId, GameplayType.CLASSIC, Difficulty.NORMAL);
+        return createSession(sessionId, GameplayType.CLASSIC, Difficulty.NORMAL, SessionType.SINGLE);
     }
 
     /**
@@ -107,7 +120,7 @@ public class GameSessionManager {
     }
 
     /**
-     * 세션 제거
+     * 세션에서 플레이어 제거
      *
      * @param sessionId 세션 ID
      */
@@ -115,6 +128,20 @@ public class GameSessionManager {
         GameSession removed = sessions.remove(sessionId);
         if (removed != null) {
             System.out.println("🗑️ [GameSessionManager] Session removed: " + sessionId);
+        }
+    }
+    
+    /**
+     * 플레이어 온라인 상태 설정
+     * 
+     * @param sessionId 세션 ID
+     * @param playerId 플레이어 ID
+     * @param isOnline 온라인 여부
+     */
+    public void setPlayerOnline(String sessionId, String playerId, boolean isOnline) {
+        GameSession session = sessions.get(sessionId);
+        if (session != null) {
+            session.setPlayerOnline(playerId, isOnline);
         }
     }
 
@@ -148,6 +175,24 @@ public class GameSessionManager {
      */
     public int getActiveSessionCount() {
         return sessions.size();
+    }
+
+    /**
+     * 멀티플레이 세션 목록 조회
+     *
+     * @return 모든 멀티플레이 세션 (Map<SessionId, GameSession>)
+     */
+    public Map<String, GameSession> getMultiplayerSessions() {
+        Map<String, GameSession> multiSessions = new ConcurrentHashMap<>();
+
+        for (Map.Entry<String, GameSession> entry : sessions.entrySet()) {
+            GameSession session = entry.getValue();
+            if (session.getSessionType() == SessionType.MULTI) {
+                multiSessions.put(entry.getKey(), session);
+            }
+        }
+
+        return multiSessions;
     }
 
     /**

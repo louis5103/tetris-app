@@ -30,6 +30,9 @@ public class BoardRenderer {
     private final Rectangle[][] nextCellRectangles;
     private ColorBlindMode currentColorBlindMode = ColorBlindMode.NORMAL;
     
+    // 🚀 이미지 캐시 (정적 필드)
+    private static final java.util.Map<String, javafx.scene.image.Image> IMAGE_CACHE = new java.util.HashMap<>();
+    
     /**
      * BoardRenderer 생성자
      * 
@@ -66,12 +69,14 @@ public class BoardRenderer {
     /**
      * 특정 셀의 Rectangle을 업데이트합니다
      * 
+     * ⚠️ Thread-safe: UI 스레드가 아니면 Platform.runLater()로 감싸서 실행
+     * 
      * @param row 행 인덱스
      * @param col 열 인덱스
      * @param cell 셀 데이터
      */
     public void updateCell(int row, int col, Cell cell) {
-        Platform.runLater(() -> {
+        Runnable updateTask = () -> {
             Rectangle rect = cellRectangles[row][col];
             
             if (cell.isOccupied()) {
@@ -85,16 +90,24 @@ public class BoardRenderer {
                 rect.setFill(ColorMapper.getEmptyCellColor());
                 rect.getStyleClass().removeAll(UIConstants.ALL_TETROMINO_COLOR_CLASSES);
             }
-        });
+        };
+        
+        if (Platform.isFxApplicationThread()) {
+            updateTask.run();
+        } else {
+            Platform.runLater(updateTask);
+        }
     }
     
     /**
      * 현재 테트로미노를 포함한 전체 보드를 다시 그립니다
      * 
+     * ⚠️ Thread-safe: UI 스레드가 아니면 Platform.runLater()로 감싸서 실행
+     * 
      * @param gameState 현재 게임 상태
      */
     public void drawBoard(GameState gameState) {
-        Platform.runLater(() -> {
+        Runnable drawTask = () -> {
             // 전체 보드를 먼저 그립니다
             Cell[][] grid = gameState.getGrid();
             for (int row = 0; row < gameState.getBoardHeight(); row++) {
@@ -107,7 +120,13 @@ public class BoardRenderer {
             if (gameState.getCurrentTetromino() != null) {
                 drawCurrentTetromino(gameState);
             }
-        });
+        };
+        
+        if (Platform.isFxApplicationThread()) {
+            drawTask.run();
+        } else {
+            Platform.runLater(drawTask);
+        }
     }
     
     /**
@@ -210,12 +229,18 @@ public class BoardRenderer {
         
         javafx.scene.layout.StackPane parentPane = (javafx.scene.layout.StackPane) rect.getParent();
         
-        // StackPane의 자식 노드 중 ImageView가 있고, 같은 itemType이면 스킵
+        // StackPane의 자식 노드 중 ImageView/Text가 있고, 같은 itemType이면 스킵
         for (javafx.scene.Node node : parentPane.getChildren()) {
             if (node instanceof javafx.scene.image.ImageView) {
                 javafx.scene.image.ImageView existingView = (javafx.scene.image.ImageView) node;
                 if (existingView.getId() != null && existingView.getId().equals(itemType.name())) {
                     // 이미 동일한 아이템 마커가 있으므로 스킵 (로그 없음)
+                    return;
+                }
+            } else if (node instanceof javafx.scene.text.Text) {
+                javafx.scene.text.Text existingText = (javafx.scene.text.Text) node;
+                if (existingText.getId() != null && existingText.getId().equals(itemType.name())) {
+                    // 이미 동일한 텍스트 마커가 있으므로 스킵 (로그 없음)
                     return;
                 }
             }
@@ -255,8 +280,19 @@ public class BoardRenderer {
         // ImageView 또는 Text 생성 및 추가
         if (imagePath != null) {
             try {
-                String imageUrl = getClass().getResource(imagePath).toExternalForm();
-                javafx.scene.image.Image image = new javafx.scene.image.Image(imageUrl);
+                // 🚀 이미지 캐싱 적용 (메모리/IO 최적화)
+                javafx.scene.image.Image image = IMAGE_CACHE.computeIfAbsent(imagePath, path -> {
+                    try {
+                        String imageUrl = getClass().getResource(path).toExternalForm();
+                        return new javafx.scene.image.Image(imageUrl);
+                    } catch (Exception e) {
+                        System.err.println("⚠️ [BoardRenderer] Failed to load image: " + path);
+                        return null;
+                    }
+                });
+                
+                if (image == null) return; // 로드 실패 시 중단
+
                 javafx.scene.image.ImageView imageView = new javafx.scene.image.ImageView(image);
                 
                 // 🔥 FIX: 이미지를 정확히 정사각형으로 만들어 대각선 문제 해결
@@ -320,11 +356,9 @@ public class BoardRenderer {
         if (rect.getParent() instanceof javafx.scene.layout.StackPane) {
             javafx.scene.layout.StackPane parentPane = (javafx.scene.layout.StackPane) rect.getParent();
             
-            // 🔥 FIX: StackPane에서 Rectangle을 제외한 모든 노드(ImageView, Text) 제거
-            parentPane.getChildren().removeIf(node -> 
-                node instanceof javafx.scene.image.ImageView || 
-                node instanceof javafx.scene.text.Text
-            );
+            // 🔥 FIX: StackPane에서 Rectangle(배경)을 제외한 모든 노드 제거 (확실한 청소)
+            // ImageView, Text 등 모든 오버레이를 제거하여 잔상을 방지함
+            parentPane.getChildren().removeIf(node -> node != rect);
             
             rect.setUserData(null);
         }
@@ -341,9 +375,12 @@ public class BoardRenderer {
     private void updateCellInternal(int row, int col, Cell cell) {
         Rectangle rect = cellRectangles[row][col];
         
-        // 🔥 FIX: Lock된 셀에 남아있는 아이템 마커 오버레이 제거 (메모리 누수 방지)
-        // itemMarker 필드는 GameState에 남아있지만, UI 오버레이는 제거됨
-        removeItemMarkerOverlay(rect);
+        // 🔍 Cell에 아이템 마커가 있으면 오버레이 표시, 없으면 제거
+        if (cell.hasItemMarker()) {
+            applyItemMarkerOverlay(rect, cell.getItemMarker());
+        } else {
+            removeItemMarkerOverlay(rect);
+        }
         
         if (cell.isOccupied()) {
             // 🔍 Cell이 점유 상태 → 블록 색상으로 렌더링
@@ -358,10 +395,6 @@ public class BoardRenderer {
             rect.setFill(ColorMapper.getEmptyCellColor());
             rect.getStyleClass().removeAll(UIConstants.ALL_TETROMINO_COLOR_CLASSES);
         }
-        
-        // 🔍 주의: Cell.itemMarker는 여기서 렌더링하지 않음
-        // - Lock된 블록의 itemMarker는 이미 블록과 함께 고정됨
-        // - 현재 떨어지는 테트로미노의 itemMarker는 drawCurrentTetromino()에서 처리
     }
     
     /**
@@ -376,34 +409,50 @@ public class BoardRenderer {
     /**
      * Hold 영역에 테트로미노를 그립니다 (아이템 정보 포함)
      * 
+     * ⚠️ Thread-safe: UI 스레드가 아니면 Platform.runLater()로 감싸서 실행
+     * 
      * @param type 테트로미노 타입 (null이면 비움)
      * @param itemType 아이템 타입 (null이면 일반 블록)
      */
     public void drawHoldPiece(TetrominoType type, seoultech.se.core.engine.item.ItemType itemType) {
-        Platform.runLater(() -> {
+        Runnable drawTask = () -> {
             // 모든 셀 초기화
             clearPreviewGrid(holdCellRectangles);
             
             if (type != null) {
                 drawPreviewPiece(holdCellRectangles, type, itemType);
             }
-        });
+        };
+        
+        if (Platform.isFxApplicationThread()) {
+            drawTask.run();
+        } else {
+            Platform.runLater(drawTask);
+        }
     }
     
     /**
      * Next 영역에 테트로미노를 그립니다
      * 
+     * ⚠️ Thread-safe: UI 스레드가 아니면 Platform.runLater()로 감싸서 실행
+     * 
      * @param type 테트로미노 타입 (null이면 비움)
      */
     public void drawNextPiece(TetrominoType type) {
-        Platform.runLater(() -> {
+        Runnable drawTask = () -> {
             // 모든 셀 초기화
             clearPreviewGrid(nextCellRectangles);
             
             if (type != null) {
                 drawPreviewPiece(nextCellRectangles, type);
             }
-        });
+        };
+        
+        if (Platform.isFxApplicationThread()) {
+            drawTask.run();
+        } else {
+            Platform.runLater(drawTask);
+        }
     }
     
     /**

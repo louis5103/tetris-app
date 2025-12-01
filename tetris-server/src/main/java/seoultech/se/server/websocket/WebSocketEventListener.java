@@ -63,7 +63,16 @@ public class WebSocketEventListener {
 
         if (playerId != null && sessionId != null) {
             sessionPlayerMap.put(sessionId, playerId);
-            log.info("✅ [WebSocket] Player connected: {} (session: {})", playerId, sessionId);
+            
+            // 플레이어 재연결 처리 (오프라인 상태 해제)
+            String gameSessionId = playerSessionMap.get(playerId);
+            if (gameSessionId != null) {
+                gameSessionManager.setPlayerOnline(gameSessionId, playerId, true);
+                log.info("✅ [WebSocket] Player reconnected: {} (session: {}, game session: {})", 
+                    playerId, sessionId, gameSessionId);
+            } else {
+                log.info("✅ [WebSocket] Player connected: {} (session: {})", playerId, sessionId);
+            }
         }
     }
 
@@ -85,6 +94,12 @@ public class WebSocketEventListener {
         if (playerId != null) {
             log.warn("⚠️ [WebSocket] Player disconnected: {} (session: {}). Grace period: {} seconds",
                 playerId, sessionId, DISCONNECT_GRACE_PERIOD_MS / 1000);
+            
+            // 플레이어를 오프라인으로 표시 (게임 틱 일시정지용)
+            String gameSessionId = playerSessionMap.get(playerId);
+            if (gameSessionId != null) {
+                gameSessionManager.setPlayerOnline(gameSessionId, playerId, false);
+            }
 
             // 30초 유예 기간 스케줄링
             schedulePlayerRemoval(sessionId, playerId);

@@ -236,11 +236,13 @@ class LineClearItemTest {
     @Test
     @DisplayName("apply() - 지정된 줄의 블록 삭제 및 점수 계산")
     void testApplyMethod() {
-        // Given: 19번째 줄에 5개 블록
+        // Given: 19번째 줄에 5개 블록 + 'L' 마커 추가
         int row = 19;
         for (int col = 0; col < 5; col++) {
             gameState.getGrid()[row][col].setOccupied(true);
         }
+        // 'L' 마커 추가 (마커가 없으면 apply()가 아무것도 찾지 못함)
+        gameState.getGrid()[row][0].setItemMarker(ItemType.LINE_CLEAR);
         
         // When: apply() 호출
         ItemEffect effect = lineClearItem.apply(gameState, row, 0);
@@ -260,13 +262,14 @@ class LineClearItemTest {
     @Test
     @DisplayName("apply() - 빈 줄 삭제 시 0점")
     void testApplyOnEmptyLine() {
-        // Given: 19번째 줄이 비어있음
+        // Given: 19번째 줄이 비어있음 + 'L' 마커 추가
         int row = 19;
+        gameState.getGrid()[row][0].setItemMarker(ItemType.LINE_CLEAR);
         
         // When: apply() 호출
         ItemEffect effect = lineClearItem.apply(gameState, row, 0);
         
-        // Then: 성공하지만 0개 블록, 0점
+        // Then: 성공, 블록과 점수는 0
         assertTrue(effect.isSuccess());
         assertEquals(0, effect.getBlocksCleared());
         assertEquals(0, effect.getBonusScore());
@@ -369,5 +372,167 @@ class LineClearItemTest {
                     "Row " + row + " col " + col + " should be empty");
             }
         }
+    }
+    
+    @Test
+    @DisplayName("LINE_CLEAR + 일반 클리어 동시 발생 시나리오")
+    void testLineClearWithRegularClearSimultaneous() {
+        // Given: 복잡한 시나리오 설정
+        // 15번째 줄: 빈 줄
+        // 16번째 줄: 완전히 채워진 줄 (10개) - 나중에 내려올 예정
+        for (int col = 0; col < 10; col++) {
+            gameState.getGrid()[16][col].setOccupied(true);
+        }
+        
+        // 17번째 줄: 'L' 마커 + 8개 블록 (부분적으로 채워짐) - 삭제 대상
+        for (int col = 0; col < 8; col++) {
+            gameState.getGrid()[17][col].setOccupied(true);
+        }
+        gameState.getGrid()[17][3].setItemMarker(ItemType.LINE_CLEAR);
+        
+        // 18번째 줄: 일반 블록 5개
+        for (int col = 0; col < 5; col++) {
+            gameState.getGrid()[18][col].setOccupied(true);
+        }
+        
+        // 19번째 줄: 완전히 채워진 줄 (10개)
+        for (int col = 0; col < 10; col++) {
+            gameState.getGrid()[19][col].setOccupied(true);
+        }
+        
+        // When: Step 1 - LINE_CLEAR 마커가 있는 줄 먼저 처리 (ArcadeGameEngine 순서 시뮬레이션)
+        List<Integer> markedRows = LineClearItem.findAndClearMarkedLines(gameState);
+        assertEquals(1, markedRows.size());
+        assertEquals(17, markedRows.get(0));
+        
+        int blocksCleared = LineClearItem.clearLines(gameState, markedRows);
+        assertEquals(8, blocksCleared, "Should clear 8 blocks from row 17");
+        
+        // Then: Step 1 검증 - 17번째 줄 삭제 후 중력 적용된 상태
+        // 중력 적용 후:
+        // - 16번째 줄(10개) → 17번째로 이동
+        // - 18번째 줄(5개) → 18번째로 이동
+        // - 19번째 줄(10개) → 19번째에 유지
+        // - 16번째 줄 → 빈 줄
+        
+        // 17번째 줄: 10개 블록 (16번째에서 내려옴)
+        for (int col = 0; col < 10; col++) {
+            assertTrue(gameState.getGrid()[17][col].isOccupied(), 
+                "Row 17 col " + col + " should be occupied (from previous row 16)");
+        }
+        
+        // 18번째 줄: 5개 블록 (기존 18번째)
+        for (int col = 0; col < 5; col++) {
+            assertTrue(gameState.getGrid()[18][col].isOccupied(), 
+                "Row 18 col " + col + " should be occupied");
+        }
+        for (int col = 5; col < 10; col++) {
+            assertFalse(gameState.getGrid()[18][col].isOccupied(), 
+                "Row 18 col " + col + " should be empty");
+        }
+        
+        // 19번째 줄: 10개 블록 유지
+        for (int col = 0; col < 10; col++) {
+            assertTrue(gameState.getGrid()[19][col].isOccupied(), 
+                "Row 19 col " + col + " should be occupied");
+        }
+        
+        // When: Step 2 - 일반 라인 클리어 체크 (ClassicGameEngine.checkAndClearLines 시뮬레이션)
+        List<Integer> fullLines = new java.util.ArrayList<>();
+        for (int row = gameState.getBoardHeight() - 1; row >= 0; row--) {
+            boolean isFullLine = true;
+            for (int col = 0; col < gameState.getBoardWidth(); col++) {
+                if (!gameState.getGrid()[row][col].isOccupied()) {
+                    isFullLine = false;
+                    break;
+                }
+            }
+            if (isFullLine) {
+                fullLines.add(row);
+            }
+        }
+        
+        // Then: Step 2 검증 - 17번, 19번째 줄이 완전히 채워짐
+        assertEquals(2, fullLines.size());
+        assertTrue(fullLines.contains(17), "Row 17 should be full (10 blocks from row 16)");
+        assertTrue(fullLines.contains(19), "Row 19 should be full (original 10 blocks)");
+        
+        // 18번째 줄은 부분적(5개)이므로 일반 클리어 대상 아님
+        assertFalse(fullLines.contains(18), "Row 18 should NOT be full (only 5 blocks)");
+        
+        // 최종 검증: LINE_CLEAR 마커가 일반 클리어 로직과 충돌하지 않음
+        // 17번째 줄의 마커는 이미 제거되었으므로, 일반 클리어에서 발견되지 않음
+        for (int row : fullLines) {
+            boolean hasLineClearMarker = false;
+            for (int col = 0; col < gameState.getBoardWidth(); col++) {
+                if (gameState.getGrid()[row][col].hasItemMarker() && 
+                    gameState.getGrid()[row][col].getItemMarker() == ItemType.LINE_CLEAR) {
+                    hasLineClearMarker = true;
+                    break;
+                }
+            }
+            assertFalse(hasLineClearMarker, 
+                "Full line at row " + row + " should NOT have LINE_CLEAR marker " +
+                "(should have been cleared earlier)");
+        }
+    }
+    
+    @Test
+    @DisplayName("LINE_CLEAR 처리 후 생성된 완전한 줄은 일반 클리어 대상")
+    void testLineClearCreatesNewFullLine() {
+        // Given: 중력 적용 후 완전한 줄이 생성되는 시나리오
+        // 16번째 줄: 10개 블록 (완전)
+        for (int col = 0; col < 10; col++) {
+            gameState.getGrid()[16][col].setOccupied(true);
+        }
+        
+        // 17번째 줄: 'L' 마커 + 2개 블록
+        gameState.getGrid()[17][0].setOccupied(true);
+        gameState.getGrid()[17][1].setOccupied(true);
+        gameState.getGrid()[17][0].setItemMarker(ItemType.LINE_CLEAR);
+        
+        // 18번째 줄: 10개 블록 (완전)
+        for (int col = 0; col < 10; col++) {
+            gameState.getGrid()[18][col].setOccupied(true);
+        }
+        
+        // 19번째 줄: 5개 블록
+        for (int col = 0; col < 5; col++) {
+            gameState.getGrid()[19][col].setOccupied(true);
+        }
+        
+        // When: Step 1 - LINE_CLEAR 처리
+        List<Integer> markedRows = LineClearItem.findAndClearMarkedLines(gameState);
+        LineClearItem.clearLines(gameState, markedRows);
+        
+        // When: Step 2 - 일반 라인 클리어 체크
+        List<Integer> fullLines = new java.util.ArrayList<>();
+        for (int row = gameState.getBoardHeight() - 1; row >= 0; row--) {
+            boolean isFullLine = true;
+            for (int col = 0; col < gameState.getBoardWidth(); col++) {
+                if (!gameState.getGrid()[row][col].isOccupied()) {
+                    isFullLine = false;
+                    break;
+                }
+            }
+            if (isFullLine) {
+                fullLines.add(row);
+            }
+        }
+        
+        // Then: 17번, 18번째 줄이 완전히 채워져 있어야 함
+        // (16번째 줄 → 17번째, 18번째 줄 → 18번째로 이동)
+        assertEquals(2, fullLines.size());
+        assertTrue(fullLines.contains(17));
+        assertTrue(fullLines.contains(18));
+        
+        // 19번째 줄은 부분적 (5개)
+        int occupiedCount = 0;
+        for (int col = 0; col < 10; col++) {
+            if (gameState.getGrid()[19][col].isOccupied()) {
+                occupiedCount++;
+            }
+        }
+        assertEquals(5, occupiedCount, "Row 19 should have 5 blocks");
     }
 }

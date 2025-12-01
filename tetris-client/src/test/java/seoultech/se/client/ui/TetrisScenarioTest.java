@@ -26,7 +26,7 @@ import javafx.scene.input.KeyCode;
 import javafx.stage.Stage;
 import seoultech.se.client.TetrisApplication;
 import seoultech.se.client.config.ApplicationContextProvider;
-import seoultech.se.client.controller.GameController;
+import seoultech.se.client.controller.SingleGameController;
 
 /**
  * 🧪 JavaFX + TestFX E2E 시나리오 테스트
@@ -402,7 +402,7 @@ public class TetrisScenarioTest extends ApplicationTest {
      * 흐름:
      * 1. 메인 → 싱글 플레이 → 아케이드 모드(#arcadeButton) 진입
      * 2. 게임 화면 및 아이템 인벤토리(#itemInventoryContainer) 확인
-     * 3. ApplicationContextProvider로 GameController를 가져온 뒤,
+     * 3. ApplicationContextProvider로 SingleGameController를 가져온 뒤,
      *    Reflection을 사용하여 processGameOver(1000L) 메서드를 강제 호출
      * 4. 게임 오버 팝업(#gameOverOverlay) 및 점수(#finalScoreLabel) 확인
      * 5. 팝업 내 'Main' 버튼(텍스트가 "Main"인 버튼) 클릭
@@ -448,19 +448,19 @@ public class TetrisScenarioTest extends ApplicationTest {
                    info -> info.append("아이템 인벤토리가 보여야 합니다"));
         System.out.println("   ✓ 아이템 인벤토리 확인");
         
-        // 6. GameController를 Spring Context에서 가져오기
-        GameController gameController = ApplicationContextProvider
+        // 6. SingleGameController를 Spring Context에서 가져오기
+        SingleGameController gameController = ApplicationContextProvider
                 .getApplicationContext()
-                .getBean(GameController.class);
-        System.out.println("   ✓ GameController 빈 획득 완료");
+                .getBean(SingleGameController.class);
+        System.out.println("   ✓ SingleGameController 빈 획득 완료");
         
         // 7. Reflection을 사용하여 processGameOver 메서드 강제 호출
-        // (private 메서드이므로 setAccessible(true) 필요)
+        // (BaseGameController에 정의된 private 메서드이므로 setAccessible(true) 필요)
         CountDownLatch latch = new CountDownLatch(1);
         
         interact(() -> {
             try {
-                Method processGameOverMethod = GameController.class
+                Method processGameOverMethod = seoultech.se.client.controller.BaseGameController.class
                         .getDeclaredMethod("processGameOver", long.class);
                 processGameOverMethod.setAccessible(true);
                 processGameOverMethod.invoke(gameController, 1000L);

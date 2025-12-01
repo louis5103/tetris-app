@@ -110,12 +110,13 @@ public class MatchmakingService {
                 waitingPlayers.remove(player1.getPlayerId());
                 waitingPlayers.remove(player2.getPlayerId());
 
-                // 게임 세션 생성
+                // 게임 세션 생성 (멀티플레이 타입)
                 String sessionId = UUID.randomUUID().toString();
                 GameSession session = gameSessionManager.createSession(
                     sessionId,
                     player1.getGameplayType(),
-                    player1.getDifficulty()
+                    player1.getDifficulty(),
+                    seoultech.se.server.game.SessionType.MULTI // 멀티플레이 세션
                 );
 
                 // 플레이어 참여

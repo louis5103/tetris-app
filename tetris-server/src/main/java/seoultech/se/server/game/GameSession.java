@@ -62,6 +62,21 @@ public class GameSession {
      */
     private volatile long lastActivityTime;
 
+    /**
+     * 세션 타입 (SINGLE/MULTI)
+     * - SINGLE: 클라이언트가 모든 로직 처리, 서버는 상태만 저장
+     * - MULTI: 서버가 자동 게임 루프 실행, 클라이언트는 입력만 전송
+     */
+    private final SessionType sessionType;
+
+    /**
+     * 마지막 틱 시간 (멀티플레이용)
+     * - 서버 게임 루프에서 자동 중력 적용 시 사용
+     * - 각 플레이어마다 독립적인 틱 시간 관리
+     */
+    private final Map<String, Long> lastTickTimes = new ConcurrentHashMap<>();
+    private final java.util.Set<String> offlinePlayers = ConcurrentHashMap.newKeySet(); // 연결 끊긴 플레이어 추적
+
     private final Object lock = new Object(); // 동기화를 위한 락 객체
 
     /**
@@ -69,12 +84,15 @@ public class GameSession {
      *
      * @param sessionId 세션 ID
      * @param gameEngine 싱글톤 GameEngine (GameEnginePool에서 제공)
+     * @param sessionType 세션 타입 (SINGLE/MULTI)
      */
-    public GameSession(String sessionId, GameEngine gameEngine) {
+    public GameSession(String sessionId, GameEngine gameEngine, SessionType sessionType) {
         this.sessionId = sessionId;
         this.gameEngine = gameEngine;
+        this.sessionType = sessionType;
         this.lastActivityTime = System.currentTimeMillis(); // 생성 시점을 마지막 활동 시간으로 초기화
         System.out.println("✅ [GameSession] Created: " + sessionId +
+            ", Type: " + sessionType +
             ", Engine: " + (gameEngine != null ? gameEngine.getClass().getSimpleName() : "null"));
     }
 
@@ -107,6 +125,12 @@ public class GameSession {
             playerStates.put(playerId, initialState);
             lastSequences.put(playerId, 0L); // 초기 시퀀스 번호
             pendingAttackLines.put(playerId, 0); // 대기 중인 공격 라인 초기화
+            offlinePlayers.remove(playerId); // 온라인 상태로 전환
+
+            // 멀티플레이 세션인 경우 틱 시간 초기화
+            if (sessionType == SessionType.MULTI) {
+                lastTickTimes.put(playerId, System.currentTimeMillis());
+            }
 
             // Phase 1: 활동 시간 갱신
             updateLastActivityTime();
@@ -150,6 +174,7 @@ public class GameSession {
                 lastSequences.remove(playerId);
                 pendingAttackLines.remove(playerId);
                 playerGenerators.remove(playerId); // 블록 생성기도 제거
+                offlinePlayers.remove(playerId); // 오프라인 목록에서도 제거
 
                 System.out.println("👋 [GameSession] Player removed: " + playerId +
                     " (" + playerStates.size() + " players remaining)");
@@ -165,6 +190,41 @@ public class GameSession {
 
             return removed;
         }
+    }
+    
+    /**
+     * 플레이어 온라인 상태 설정
+     * 
+     * @param playerId 플레이어 ID
+     * @param isOnline 온라인 여부
+     */
+    public void setPlayerOnline(String playerId, boolean isOnline) {
+        if (isOnline) {
+            offlinePlayers.remove(playerId);
+        } else {
+            offlinePlayers.add(playerId);
+        }
+    }
+    
+    /**
+     * 플레이어 온라인 여부 확인
+     * 
+     * @param playerId 플레이어 ID
+     * @return 온라인이면 true
+     */
+    public boolean isPlayerOnline(String playerId) {
+        return !offlinePlayers.contains(playerId);
+    }
+    
+    /**
+     * 활성 플레이어가 있는지 확인
+     * 
+     * @return 최소 1명의 플레이어가 온라인이면 true
+     */
+    public boolean hasActivePlayers() {
+        // 등록된 플레이어 중 오프라인이 아닌 플레이어가 1명이라도 있으면 true
+        return playerStates.keySet().stream()
+            .anyMatch(id -> !offlinePlayers.contains(id));
     }
 
     /**
@@ -335,7 +395,6 @@ public class GameSession {
             }
 
             // 2. 서버 권한으로 로직 실행
-            boolean needsNewTetromino = currentState.getCurrentTetromino() != null;
             GameState nextState = gameEngine.executeCommand(input.getCommand(), currentState);
 
             // nextState가 null이면 명령 실행 실패
@@ -344,8 +403,8 @@ public class GameSession {
                 return null;
             }
 
-            // GameEngine이 currentTetromino를 null로 설정했다면 새 블록 생성
-            if (needsNewTetromino && nextState.getCurrentTetromino() == null && !nextState.isGameOver()) {
+            // 블록이 잠긴 경우 (currentTetromino가 null) 새 블록 생성
+            if (nextState.getCurrentTetromino() == null && !nextState.isGameOver()) {
                 TetrominoGenerator generator = playerGenerators.get(playerId);
                 if (generator != null) {
                     spawnNewTetromino(nextState, generator);
@@ -389,7 +448,14 @@ public class GameSession {
             int attackReceived = pendingAttackLines.getOrDefault(playerId, 0);
             if (attackReceived > 0) {
                 pendingAttackLines.put(playerId, 0); // 처리했으므로 초기화
-                System.out.println("🛡️ [GameSession] " + playerId + " received " + attackReceived + " attack lines");
+                
+                // ✨ 중요: 서버 상태에 실제로 방해 라인 적용 (Server Authoritative)
+                boolean gameOver = currentState.addGarbageLines(attackReceived);
+                if (gameOver) {
+                    System.out.println("💀 [GameSession] Player " + playerId + " Game Over by attack");
+                }
+                
+                System.out.println("🛡️ [GameSession] " + playerId + " received and APPLIED " + attackReceived + " attack lines");
             }
 
             return ServerStateDto.builder()
@@ -400,5 +466,161 @@ public class GameSession {
                     .attackLinesReceived(attackReceived)
                     .build();
         }
+    }
+
+    /**
+     * 자동 중력 적용 (멀티플레이 서버 게임 루프용)
+     *
+     * @param playerId 플레이어 ID
+     * @param currentTime 현재 시간 (밀리초)
+     * @return 업데이트된 ServerStateDto (상태가 변경된 경우) 또는 null (틱 간격 미도달)
+     */
+    public ServerStateDto applyGravity(String playerId, long currentTime) {
+        synchronized (lock) {
+            // 1. 세션 타입 검증
+            if (sessionType != SessionType.MULTI) {
+                System.err.println("⚠️ [GameSession] applyGravity called on non-MULTI session");
+                return null;
+            }
+
+            // 2. 플레이어 상태 확인
+            GameState currentState = playerStates.get(playerId);
+            if (currentState == null) {
+                System.err.println("⚠️ [GameSession] No state for player: " + playerId);
+                return null;
+            }
+
+            // 3. 게임 오버 체크
+            if (currentState.isGameOver()) {
+                return null; // 게임 오버 상태에서는 중력 적용 안함
+            }
+
+            // 4. 틱 간격 계산 (레벨에 따른 낙하 속도)
+            long lastTickTime = lastTickTimes.getOrDefault(playerId, currentTime);
+            int level = currentState.getLevel();
+            long tickInterval = calculateTickInterval(level); // 레벨에 따른 간격
+
+            // 5. 틱 간격이 아직 도달하지 않았으면 스킵
+            if (currentTime - lastTickTime < tickInterval) {
+                return null;
+            }
+
+            // 6. 자동 중력 적용 (DOWN 명령 실행)
+            seoultech.se.core.command.MoveCommand downCommand =
+                new seoultech.se.core.command.MoveCommand(seoultech.se.core.command.Direction.DOWN);
+
+            GameState nextState = gameEngine.executeCommand(downCommand, currentState);
+
+            // 7. 명령 실행 실패 시
+            if (nextState == null) {
+                System.err.println("❌ [GameSession] Gravity application failed for player: " + playerId);
+                return null;
+            }
+
+            // 8. 블록이 잠긴 경우 새 블록 생성
+            // 블록이 없고 게임 오버가 아니면 새 블록 생성
+            if (nextState.getCurrentTetromino() == null && !nextState.isGameOver()) {
+                TetrominoGenerator generator = playerGenerators.get(playerId);
+                if (generator != null) {
+                    spawnNewTetromino(nextState, generator);
+                    updateNextQueue(nextState, generator);
+                }
+            }
+
+            // 9. 상태 업데이트
+            playerStates.put(playerId, nextState);
+            lastTickTimes.put(playerId, currentTime); // 틱 시간 갱신
+            updateLastActivityTime();
+
+            // 10. 상대방 ID 찾기
+            String opponentId = playerStates.keySet().stream()
+                    .filter(id -> !id.equals(playerId))
+                    .findFirst()
+                    .orElse(null);
+
+            // 11. 이벤트 감지 및 공격 로직
+            List<String> events = new ArrayList<>();
+            int linesCleared = nextState.getLastLinesCleared();
+
+            if (linesCleared > 0) {
+                events.add("LINE_CLEAR");
+
+                // 상대방에게 공격 라인 추가
+                if (opponentId != null && linesCleared > 1) {
+                    int attackLines = linesCleared - 1;
+                    int currentPending = pendingAttackLines.getOrDefault(opponentId, 0);
+                    pendingAttackLines.put(opponentId, currentPending + attackLines);
+                    events.add("ATTACK_SENT:" + attackLines);
+                }
+            }
+
+            // 12. 나에게 대기 중인 공격 라인 가져오기
+            int attackReceived = pendingAttackLines.getOrDefault(playerId, 0);
+            if (attackReceived > 0) {
+                pendingAttackLines.put(playerId, 0);
+                
+                // ✨ 중요: 서버 상태에 실제로 방해 라인 적용 (Server Authoritative)
+                boolean gameOver = currentState.addGarbageLines(attackReceived);
+                if (gameOver) {
+                    System.out.println("💀 [GameSession] Player " + playerId + " Game Over by attack (gravity tick)");
+                }
+                
+                System.out.println("🛡️ [GameSession] " + playerId + " received and APPLIED " + attackReceived + " attack lines (gravity tick)");
+            }
+
+            // 13. 응답 생성
+            return ServerStateDto.builder()
+                    .lastProcessedSequence(0L) // 자동 틱이므로 시퀀스 없음
+                    .myGameState(nextState)
+                    .opponentGameState(opponentId != null ? playerStates.get(opponentId) : null)
+                    .events(events)
+                    .attackLinesReceived(attackReceived)
+                    .build();
+        }
+    }
+
+    /**
+     * 레벨에 따른 틱 간격 계산
+     *
+     * @param level 현재 레벨
+     * @return 틱 간격 (밀리초)
+     */
+    private long calculateTickInterval(int level) {
+        // 레벨에 따라 블록 낙하 속도 조절
+        // 레벨 1: 1000ms, 레벨 10: 100ms
+        long baseInterval = 1000L; // 1초
+        long minInterval = 100L;   // 0.1초
+        long decrement = 100L;     // 레벨당 100ms 감소
+
+        long interval = baseInterval - ((level - 1) * decrement);
+        return Math.max(interval, minInterval);
+    }
+
+    /**
+     * 세션 타입 조회
+     *
+     * @return 세션 타입
+     */
+    public SessionType getSessionType() {
+        return sessionType;
+    }
+
+    /**
+     * 특정 플레이어의 게임 상태 조회
+     *
+     * @param playerId 플레이어 ID
+     * @return 게임 상태 (없으면 null)
+     */
+    public GameState getStateForPlayer(String playerId) {
+        return playerStates.get(playerId);
+    }
+
+    /**
+     * 세션 ID 조회
+     *
+     * @return 세션 ID
+     */
+    public String getSessionId() {
+        return sessionId;
     }
 }
