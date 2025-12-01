@@ -56,9 +56,7 @@ public class SingleGameController extends BaseGameController {
             gameLoopManager.stop();
             gameLoopManager = null;
         }
-        if (inputHandler != null) {
-            inputHandler.setInputEnabled(false);
-        }
+        // ✅ 입력 차단 제거: cleanup()은 게임 종료 시 호출되며, InputHandler의 isGameOver() 체크로 자동 차단됨
     }
 
     @Override
@@ -98,17 +96,8 @@ public class SingleGameController extends BaseGameController {
         boardController.executeCommand(new seoultech.se.core.command.ResumeCommand());
     }
     
-    @Override
-    protected void onLineClearAnimationStart() {
-        if (gameLoopManager != null) gameLoopManager.pause();
-    }
-    
-    @Override
-    protected void onLineClearAnimationEnd() {
-        if (gameLoopManager != null && !boardController.getGameState().isPaused()) {
-            gameLoopManager.resume();
-        }
-    }
+    // ✅ 애니메이션 훅 제거: 애니메이션은 이제 UI 전용이므로 게임 루프를 차단하지 않음
+    // onLineClearAnimationStart(), onLineClearAnimationEnd() 오버라이드 제거됨
 
     // 아이템 시스템: autoUse=true로 설정되어 있어 자동으로 즉시 적용됨
 }

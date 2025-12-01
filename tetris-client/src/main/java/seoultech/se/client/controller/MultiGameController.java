@@ -86,9 +86,7 @@ public class MultiGameController extends BaseGameController {
         if (executionStrategy != null) {
             executionStrategy.cleanup();
         }
-        if (inputHandler != null) {
-            inputHandler.setInputEnabled(false);
-        }
+        // ✅ 입력 차단 제거: cleanup()은 게임 종료 시 호출되며, InputHandler의 isGameOver() 체크로 자동 차단됨
     }
 
     @Override

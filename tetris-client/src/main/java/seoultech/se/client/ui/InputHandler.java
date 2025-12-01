@@ -65,8 +65,8 @@ public class InputHandler {
     private InputCallback callback;
     private GameStateProvider gameStateProvider;
 
-    // 🔒 PRIORITY 3: 입력 활성화 상태 (애니메이션 중 비활성화)
-    private volatile boolean inputEnabled = true;
+    // ✅ 입력 차단 로직 제거: 애니메이션은 이제 UI 전용이므로 입력 차단 불필요
+    // private volatile boolean inputEnabled = true; // REMOVED
 
     // 멀티플레이 모드 플래그 (pause 비활성화용)
     private boolean isMultiplayerMode = false;
@@ -101,16 +101,12 @@ public class InputHandler {
     /**
      * 키 입력을 처리하고 Command로 변환합니다
      * 
-     * 🔒 PRIORITY 3: 애니메이션 중 입력 차단
+     * ✅ 입력 차단 제거: 애니메이션 중에도 입력 허용
      * 
      * @param event 키보드 이벤트
      */
     public void handleKeyPress(KeyEvent event) {
-        // 🔒 입력 비활성화 상태이면 무시
-        if (!inputEnabled) {
-            System.out.println("🚫 [InputHandler] Input blocked (animation in progress)");
-            return;
-        }
+        // ✅ 입력 차단 로직 제거됨
         
         // 게임 오버 상태 체크
         if (gameStateProvider != null && gameStateProvider.isGameOver()) {
@@ -213,20 +209,10 @@ public class InputHandler {
     }
     
     /**
-     * 🔒 PRIORITY 3: 입력 활성화/비활성화 설정
-     *
-     * 애니메이션 중 입력을 차단하기 위해 사용
-     *
-     * @param enabled true면 입력 활성화, false면 비활성화
+     * ✅ 입력 활성화/비활성화 메서드 제거됨
+     * 애니메이션은 이제 UI 전용이므로 입력 차단이 불필요합니다.
      */
-    public void setInputEnabled(boolean enabled) {
-        this.inputEnabled = enabled;
-        if (!enabled) {
-            System.out.println("🔒 [InputHandler] Input disabled");
-        } else {
-            System.out.println("✅ [InputHandler] Input enabled");
-        }
-    }
+    // public void setInputEnabled(boolean enabled) { ... } // REMOVED
 
     /**
      * 멀티플레이 모드 설정

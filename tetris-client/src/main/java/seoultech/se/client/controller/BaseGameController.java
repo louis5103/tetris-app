@@ -168,12 +168,12 @@ public abstract class BaseGameController {
                 checkGameState(oldState, newState);
             };
 
-            // 라인 클리어 또는 아이템 효과 애니메이션 처리
+            // 라인 클리어 또는 아이템 효과 애니메이션 처리 (UI 전용, 게임 로직 차단 없음)
             if (shouldAnimate) {
-                if (inputHandler != null) inputHandler.setInputEnabled(false);
-                onLineClearAnimationStart(); // 자식 클래스 훅 (예: 게임루프 일시정지)
+                // ✅ 입력 차단 제거 - 게임 로직은 계속 진행
+                // ✅ 게임 루프 일시정지 제거 - onLineClearAnimationStart() 호출 안 함
                 
-                System.out.println("🎨 [Animation] Starting animation sequence");
+                System.out.println("🎨 [Animation] Starting UI-only animation sequence");
                 System.out.println("   hasLineClearRows: " + hasLineClearRows + " (rows: " + (hasLineClearRows ? newState.getLastClearedRows().length : 0) + ")");
                 System.out.println("   hasItemEffectCells: " + hasItemEffectCells + " (cells: " + (hasItemEffectCells ? newState.getItemEffectClearedCells().size() : 0) + ")");
                 
@@ -215,13 +215,10 @@ public abstract class BaseGameController {
                                     CompletableFuture.delayedExecutor(UIConstants.LINE_CLEAR_ANIMATION_MS, TimeUnit.MILLISECONDS).execute(() -> {
                                         Platform.runLater(() -> {
                                             System.out.println("🎨 [Animation] Step 3: Full UI update (lines removed)");
-                                            // 애니메이션 데이터 클리어 (다음 렌더링에서 재트리거 방지)
-                                            newState.setItemEffectClearedCells(new java.util.ArrayList<>());
-                                            newState.setLastClearedCells(new java.util.ArrayList<>());
-                                            newState.setLastClearedRows(new int[0]);
+                                            // ✅ 애니메이션 데이터 클리어 제거: 다음 executeCommand()에서 새로운 상태로 교체됨
+                                            // 동시성 문제 방지 - newState는 이미 구버전일 수 있음
                                             uiUpdateTask.run();
-                                            if (inputHandler != null) inputHandler.setInputEnabled(true);
-                                            onLineClearAnimationEnd();
+                                            System.out.println("🎨 [Animation] UI-only sequence completed\n");
                                         });
                                     });
                                 });
@@ -244,13 +241,10 @@ public abstract class BaseGameController {
                             CompletableFuture.delayedExecutor(UIConstants.LINE_CLEAR_ANIMATION_MS, TimeUnit.MILLISECONDS).execute(() -> {
                                 Platform.runLater(() -> {
                                     System.out.println("🎨 [Animation] Step 3: Full UI update (lines removed)");
-                                    // 애니메이션 데이터 클리어 (다음 렌더링에서 재트리거 방지)
-                                    newState.setItemEffectClearedCells(new java.util.ArrayList<>());
-                                    newState.setLastClearedCells(new java.util.ArrayList<>());
-                                    newState.setLastClearedRows(new int[0]);
+                                    // ✅ 애니메이션 데이터 클리어 제거: 다음 executeCommand()에서 새로운 상태로 교체됨
+                                    // 동시성 문제 방지 - newState는 이미 구버전일 수 있음
                                     uiUpdateTask.run();
-                                    if (inputHandler != null) inputHandler.setInputEnabled(true);
-                                    onLineClearAnimationEnd();
+                                    System.out.println("🎨 [Animation] UI-only sequence completed\n");
                                 });
                             });
                         }
@@ -313,7 +307,7 @@ public abstract class BaseGameController {
 
     protected void processGameOver(long finalScore) {
         System.out.println("💥 [BaseGameController] Game Over");
-        if (inputHandler != null) inputHandler.setInputEnabled(false);
+        // ✅ 입력 차단 제거: 게임 오버 시 InputHandler의 isGameOver() 체크로 자동 차단됨
         if (gameOverLabel != null) gameOverLabel.setVisible(true);
         
         boolean isItemMode = gameModeConfig != null && gameModeConfig.isItemSystemEnabled();
