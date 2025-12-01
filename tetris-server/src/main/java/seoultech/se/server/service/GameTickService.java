@@ -8,6 +8,7 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import seoultech.se.backend.mapper.GameStateMapper;
 import seoultech.se.core.dto.ServerStateDto;
 import seoultech.se.server.game.GameSession;
 import seoultech.se.server.game.GameSessionManager;
@@ -36,17 +37,20 @@ public class GameTickService {
 
     private final GameSessionManager sessionManager;
     private final SimpMessagingTemplate messagingTemplate;
+    private final GameStateMapper gameStateMapper;
 
     /**
      * 생성자
      *
      * @param sessionManager 게임 세션 관리자
      * @param messagingTemplate WebSocket 메시지 전송 템플릿
+     * @param gameStateMapper GameState를 GameStateDto로 변환하는 매퍼
      */
     @Autowired
-    public GameTickService(GameSessionManager sessionManager, SimpMessagingTemplate messagingTemplate) {
+    public GameTickService(GameSessionManager sessionManager, SimpMessagingTemplate messagingTemplate, GameStateMapper gameStateMapper) {
         this.sessionManager = sessionManager;
         this.messagingTemplate = messagingTemplate;
+        this.gameStateMapper = gameStateMapper;
         System.out.println("✅ [GameTickService] Created - Server game loop enabled for multiplayer");
     }
 
@@ -108,14 +112,14 @@ public class GameTickService {
             for (String playerId : playerIds) {
                 try {
                     // 자동 중력 적용
-                    ServerStateDto stateUpdate = session.applyGravity(playerId, currentTime);
+                    ServerStateDto stateUpdate = session.applyGravity(playerId, currentTime, gameStateMapper);
 
                     // 상태가 변경된 경우에만 브로드캐스트
                     if (stateUpdate != null) {
-                        // 1. 해당 플레이어(Active)에게 업데이트 전송
+                        // 1. 해당 플레이어(Active)에게 업데이트 전송 (통합된 토픽 사용)
                         messagingTemplate.convertAndSendToUser(
                             playerId,
-                            "/queue/game-state",
+                            "/topic/game/state",
                             stateUpdate
                         );
 
@@ -131,18 +135,19 @@ public class GameTickService {
                             .orElse(null);
 
                         if (opponentId != null) {
-                            // Opponent 기준 DTO 생성 (Swap)
+                            // Opponent 기준 DTO 생성 (GameStateDto Swap)
                             ServerStateDto opponentUpdate = ServerStateDto.builder()
                                 .lastProcessedSequence(0)
                                 .myGameState(stateUpdate.getOpponentGameState()) // 상대 입장에서의 나 = 원래 상대
                                 .opponentGameState(stateUpdate.getMyGameState()) // 상대 입장에서의 상대 = 원래 나 (움직인 사람)
                                 .events(stateUpdate.getEvents())
                                 .attackLinesReceived(0)
+                                .gameOver(stateUpdate.isGameOver()) // 게임 오버 상태도 전달
                                 .build();
 
                             messagingTemplate.convertAndSendToUser(
                                 opponentId,
-                                "/queue/game-state",
+                                "/topic/game/state",
                                 opponentUpdate
                             );
                         }

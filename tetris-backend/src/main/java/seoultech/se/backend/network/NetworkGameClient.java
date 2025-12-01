@@ -5,6 +5,7 @@ import java.util.function.Consumer;
 import org.springframework.stereotype.Component;
 
 import lombok.RequiredArgsConstructor;
+import seoultech.se.backend.mapper.GameStateDtoToGameStateMapper;
 import seoultech.se.core.GameState;
 import seoultech.se.core.command.GameCommand;
 import seoultech.se.core.dto.PlayerInputDto;
@@ -28,6 +29,7 @@ import seoultech.se.core.dto.ServerStateDto;
 @RequiredArgsConstructor
 public class NetworkGameClient {
     private final NetworkTemplate networkClient;
+    private final GameStateDtoToGameStateMapper dtoToStateMapper;
 
     private long localSequence = 0;
     private GameState clientState; // 서버로부터 받은 최신 상태 (렌더링용)
@@ -46,15 +48,11 @@ public class NetworkGameClient {
         this.sessionId = sessionId;
         this.clientState = initialState;
 
-        // 1. 사용자 입력에 대한 서버 응답 구독 (/user/topic/game/sync)
-        networkClient.subscribeToSync(this::onServerUpdate);
-
-        // 2. 서버 자동 게임 루프(GameTickService)로부터 상태 업데이트 구독 (/user/queue/game-state)
+        // 통합된 게임 상태 구독 (입력 응답 및 자동 낙하 모두 포함)
         networkClient.subscribeToGameState(this::onServerUpdate);
 
         System.out.println("✅ [NetworkGameClient] Initialized - Session: " + sessionId);
-        System.out.println("   - Subscribed to /user/topic/game/sync (input responses)");
-        System.out.println("   - Subscribed to /user/queue/game-state (server gravity)");
+        System.out.println("   - Subscribed to /user/topic/game/state (unified: input responses + server gravity)");
     }
 
     /**
@@ -114,30 +112,41 @@ public class NetworkGameClient {
         // Performance: 로그 출력 최소화 (틱마다 발생하므로)
         // System.out.println("📥 [NetworkGameClient] ========== SERVER UPDATE RECEIVED ==========");
         
-        // 1. 서버의 권위 있는 상태를 그대로 저장 (Reconciliation 없음)
-        this.clientState = serverState.getMyGameState();
-
-        if (this.clientState == null) {
+        // 1. GameStateDto를 GameState로 변환
+        GameState myState = dtoToStateMapper.toGameState(serverState.getMyGameState());
+        if (myState == null) {
             System.err.println("❌ [NetworkGameClient] ERROR: Server sent NULL game state!");
             return;
         }
 
-        // 2. ✨ 자신의 보드 상태 업데이트 (렌더링 트리거)
+        // 2. 서버의 권위 있는 상태를 그대로 저장 (Reconciliation 없음)
+        this.clientState = myState;
+
+        // 3. 게임 오버 체크 및 명령 차단 (서버에서 게임 오버 상태 수신 시)
+        if (serverState.isGameOver()) {
+            System.out.println("💀 [NetworkGameClient] Game Over received from server");
+            // 게임 오버 상태는 clientState에도 반영됨
+        }
+
+        // 4. ✨ 자신의 보드 상태 업데이트 (렌더링 트리거)
         if (myStateCallback != null) {
             myStateCallback.accept(this.clientState);
         } else {
             System.err.println("❌ [NetworkGameClient] ERROR: myStateCallback is NULL!");
         }
 
-        // 3. 공격 라인 처리
+        // 5. 공격 라인 처리
         if (serverState.getAttackLinesReceived() > 0 && attackLinesCallback != null) {
             attackLinesCallback.accept(serverState.getAttackLinesReceived());
             System.out.println("⚔️ [NetworkGameClient] Attack lines: " + serverState.getAttackLinesReceived());
         }
 
-        // 4. 상대방 상태는 콜백으로 전달
+        // 6. 상대방 상태는 콜백으로 전달 (GameStateDto → GameState 변환)
         if (serverState.getOpponentGameState() != null && opponentStateCallback != null) {
-            opponentStateCallback.accept(serverState.getOpponentGameState());
+            GameState opponentState = dtoToStateMapper.toGameState(serverState.getOpponentGameState());
+            if (opponentState != null) {
+                opponentStateCallback.accept(opponentState);
+            }
         }
     }
 

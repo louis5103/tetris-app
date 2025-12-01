@@ -119,8 +119,7 @@ public class GameSession {
 
             // 초기 상태 생성 및 첫 블록 스폰
             GameState initialState = new GameState(10, 20);
-            spawnNewTetromino(initialState, generator); // 첫 블록 생성
-            updateNextQueue(initialState, generator); // Next Queue 업데이트
+            spawnNextBlock(initialState, playerId); // 첫 블록 생성 및 Next Queue 업데이트
 
             playerStates.put(playerId, initialState);
             lastSequences.put(playerId, 0L); // 초기 시퀀스 번호
@@ -330,12 +329,19 @@ public class GameSession {
     }
 
     /**
-     * 새 테트로미노 생성
+     * 다음 블록 생성 및 스폰 (통합 메서드)
      *
      * @param state 게임 상태 (변경됨)
-     * @param generator 블록 생성기
+     * @param playerId 플레이어 ID
      */
-    private void spawnNewTetromino(GameState state, TetrominoGenerator generator) {
+    private void spawnNextBlock(GameState state, String playerId) {
+        TetrominoGenerator generator = playerGenerators.get(playerId);
+        if (generator == null) {
+            System.err.println("❌ [GameSession] No generator for player: " + playerId);
+            return;
+        }
+
+        // 새 테트로미노 생성
         TetrominoType nextType = generator.next();
         Tetromino newTetromino = new Tetromino(nextType);
 
@@ -352,24 +358,94 @@ public class GameSession {
         state.setCurrentItemType(state.getNextBlockItemType());
         state.setNextBlockItemType(null);
         state.setWeightBombLocked(false); // 무게추 초기화
-    }
 
-    /**
-     * Next Queue 업데이트
-     *
-     * @param state 게임 상태 (변경됨)
-     * @param generator 블록 생성기
-     */
-    private void updateNextQueue(GameState state, TetrominoGenerator generator) {
+        // Next Queue 업데이트 (표시용)
         TetrominoType[] queue = state.getNextQueue();
-        // TetrominoGenerator는 peekNext 메서드가 없으므로 간단히 next()를 미리 호출하지 않음
-        // 대신 클라이언트에서 표시용으로만 사용하므로 빈 큐로 둠
+        // TetrominoGenerator는 peekNext 메서드가 없으므로 간단히 기본값으로 설정
+        // 클라이언트에서 표시용으로만 사용
         for (int i = 0; i < queue.length; i++) {
             queue[i] = TetrominoType.I; // 기본값
         }
     }
 
-    public ServerStateDto processInput(String playerId, PlayerInputDto input){
+    /**
+     * 공격 라인 처리 결과를 담는 내부 클래스
+     */
+    private static class AttackResult {
+        private final List<String> events;
+        private final int attackLinesReceived;
+        private final boolean gameOver;
+
+        public AttackResult(List<String> events, int attackLinesReceived, boolean gameOver) {
+            this.events = events;
+            this.attackLinesReceived = attackLinesReceived;
+            this.gameOver = gameOver;
+        }
+
+        public List<String> getEvents() {
+            return events;
+        }
+
+        public int getAttackLinesReceived() {
+            return attackLinesReceived;
+        }
+
+        public boolean isGameOver() {
+            return gameOver;
+        }
+    }
+
+    /**
+     * 공격 라인 처리 로직 (공통 메서드)
+     * 
+     * @param state 게임 상태 (라인 클리어 정보 포함)
+     * @param playerId 플레이어 ID
+     * @param opponentId 상대방 ID
+     * @param currentState 현재 상태 (공격 라인 적용용)
+     * @return 공격 처리 결과
+     */
+    private AttackResult processAttackLines(GameState state, String playerId, String opponentId, GameState currentState) {
+        List<String> events = new ArrayList<>();
+        int linesCleared = state.getLastLinesCleared();
+
+        // 라인 클리어 이벤트
+        if (linesCleared > 0) {
+            events.add("LINE_CLEAR");
+
+            // 상대방에게 공격 라인 추가 (라인 수 - 1)
+            if (opponentId != null && linesCleared > 1) {
+                int attackLines = linesCleared - 1; // 2줄 → 1줄, 3줄 → 2줄, 4줄 → 3줄
+
+                // 상대방의 대기 중인 공격 라인에 누적
+                int currentPending = pendingAttackLines.getOrDefault(opponentId, 0);
+                pendingAttackLines.put(opponentId, currentPending + attackLines);
+
+                events.add("ATTACK_SENT:" + attackLines);
+                System.out.println("⚔️ [GameSession] Attack: " + playerId +
+                    " → " + opponentId + " (" + attackLines + " lines, total pending: " +
+                    (currentPending + attackLines) + ")");
+            }
+        }
+
+        // 나에게 대기 중인 공격 라인 가져오기 및 초기화
+        int attackReceived = pendingAttackLines.getOrDefault(playerId, 0);
+        boolean gameOver = false;
+        if (attackReceived > 0) {
+            pendingAttackLines.put(playerId, 0); // 처리했으므로 초기화
+            
+            // ✨ 중요: 서버 상태에 실제로 방해 라인 적용 (Server Authoritative)
+            gameOver = currentState.addGarbageLines(attackReceived);
+            if (gameOver) {
+                System.out.println("💀 [GameSession] Player " + playerId + " Game Over by attack");
+            }
+            
+            System.out.println("🛡️ [GameSession] " + playerId + " received and APPLIED " + attackReceived + " attack lines");
+        }
+
+        return new AttackResult(events, attackReceived, gameOver);
+    }
+
+    public ServerStateDto processInput(String playerId, PlayerInputDto input, seoultech.se.backend.mapper.GameStateMapper gameStateMapper){
         synchronized(lock){
             GameState currentState = playerStates.get(playerId);
 
@@ -405,11 +481,7 @@ public class GameSession {
 
             // 블록이 잠긴 경우 (currentTetromino가 null) 새 블록 생성
             if (nextState.getCurrentTetromino() == null && !nextState.isGameOver()) {
-                TetrominoGenerator generator = playerGenerators.get(playerId);
-                if (generator != null) {
-                    spawnNewTetromino(nextState, generator);
-                    updateNextQueue(nextState, generator);
-                }
+                spawnNextBlock(nextState, playerId);
             }
 
             // 3. 상태 업데이트
@@ -422,48 +494,20 @@ public class GameSession {
                     .findFirst()
                     .orElse(null);
 
-            // 5. 이벤트 감지 및 공격 로직
-            List<String> events = new ArrayList<>();
-            int linesCleared = nextState.getLastLinesCleared();
+            // 5. 공격 라인 처리 (공통 메서드 사용)
+            AttackResult attackResult = processAttackLines(nextState, playerId, opponentId, currentState);
+            
+            // 게임 오버 체크 (명령 실행으로 인한 게임 오버도 확인)
+            boolean gameOver = nextState.isGameOver() || attackResult.isGameOver();
 
-            if (linesCleared > 0) {
-                events.add("LINE_CLEAR");
-
-                // 6. 상대방에게 공격 라인 추가 (라인 수 - 1)
-                if (opponentId != null && linesCleared > 1) {
-                    int attackLines = linesCleared - 1; // 2줄 → 1줄, 3줄 → 2줄, 4줄 → 3줄
-
-                    // 상대방의 대기 중인 공격 라인에 누적
-                    int currentPending = pendingAttackLines.getOrDefault(opponentId, 0);
-                    pendingAttackLines.put(opponentId, currentPending + attackLines);
-
-                    events.add("ATTACK_SENT:" + attackLines);
-                    System.out.println("⚔️ [GameSession] Attack: " + playerId +
-                        " → " + opponentId + " (" + attackLines + " lines, total pending: " +
-                        (currentPending + attackLines) + ")");
-                }
-            }
-
-            // 7. 나에게 대기 중인 공격 라인 가져오기 및 초기화
-            int attackReceived = pendingAttackLines.getOrDefault(playerId, 0);
-            if (attackReceived > 0) {
-                pendingAttackLines.put(playerId, 0); // 처리했으므로 초기화
-                
-                // ✨ 중요: 서버 상태에 실제로 방해 라인 적용 (Server Authoritative)
-                boolean gameOver = currentState.addGarbageLines(attackReceived);
-                if (gameOver) {
-                    System.out.println("💀 [GameSession] Player " + playerId + " Game Over by attack");
-                }
-                
-                System.out.println("🛡️ [GameSession] " + playerId + " received and APPLIED " + attackReceived + " attack lines");
-            }
-
+            // GameState를 GameStateDto로 변환
             return ServerStateDto.builder()
                     .lastProcessedSequence(input.getSequenceId())
-                    .myGameState(nextState)
-                    .opponentGameState(opponentId != null ? playerStates.get(opponentId) : null)
-                    .events(events)
-                    .attackLinesReceived(attackReceived)
+                    .myGameState(gameStateMapper.toDto(nextState, (int)input.getSequenceId()))
+                    .opponentGameState(opponentId != null ? gameStateMapper.toDto(playerStates.get(opponentId), 0) : null)
+                    .events(attackResult.getEvents())
+                    .attackLinesReceived(attackResult.getAttackLinesReceived())
+                    .gameOver(gameOver)
                     .build();
         }
     }
@@ -473,9 +517,10 @@ public class GameSession {
      *
      * @param playerId 플레이어 ID
      * @param currentTime 현재 시간 (밀리초)
+     * @param gameStateMapper GameState를 GameStateDto로 변환하는 매퍼
      * @return 업데이트된 ServerStateDto (상태가 변경된 경우) 또는 null (틱 간격 미도달)
      */
-    public ServerStateDto applyGravity(String playerId, long currentTime) {
+    public ServerStateDto applyGravity(String playerId, long currentTime, seoultech.se.backend.mapper.GameStateMapper gameStateMapper) {
         synchronized (lock) {
             // 1. 세션 타입 검증
             if (sessionType != SessionType.MULTI) {
@@ -520,11 +565,7 @@ public class GameSession {
             // 8. 블록이 잠긴 경우 새 블록 생성
             // 블록이 없고 게임 오버가 아니면 새 블록 생성
             if (nextState.getCurrentTetromino() == null && !nextState.isGameOver()) {
-                TetrominoGenerator generator = playerGenerators.get(playerId);
-                if (generator != null) {
-                    spawnNewTetromino(nextState, generator);
-                    updateNextQueue(nextState, generator);
-                }
+                spawnNextBlock(nextState, playerId);
             }
 
             // 9. 상태 업데이트
@@ -538,43 +579,20 @@ public class GameSession {
                     .findFirst()
                     .orElse(null);
 
-            // 11. 이벤트 감지 및 공격 로직
-            List<String> events = new ArrayList<>();
-            int linesCleared = nextState.getLastLinesCleared();
+            // 11. 공격 라인 처리 (공통 메서드 사용)
+            AttackResult attackResult = processAttackLines(nextState, playerId, opponentId, currentState);
+            
+            // 게임 오버 체크 (중력 적용으로 인한 게임 오버도 확인)
+            boolean gameOver = nextState.isGameOver() || attackResult.isGameOver();
 
-            if (linesCleared > 0) {
-                events.add("LINE_CLEAR");
-
-                // 상대방에게 공격 라인 추가
-                if (opponentId != null && linesCleared > 1) {
-                    int attackLines = linesCleared - 1;
-                    int currentPending = pendingAttackLines.getOrDefault(opponentId, 0);
-                    pendingAttackLines.put(opponentId, currentPending + attackLines);
-                    events.add("ATTACK_SENT:" + attackLines);
-                }
-            }
-
-            // 12. 나에게 대기 중인 공격 라인 가져오기
-            int attackReceived = pendingAttackLines.getOrDefault(playerId, 0);
-            if (attackReceived > 0) {
-                pendingAttackLines.put(playerId, 0);
-                
-                // ✨ 중요: 서버 상태에 실제로 방해 라인 적용 (Server Authoritative)
-                boolean gameOver = currentState.addGarbageLines(attackReceived);
-                if (gameOver) {
-                    System.out.println("💀 [GameSession] Player " + playerId + " Game Over by attack (gravity tick)");
-                }
-                
-                System.out.println("🛡️ [GameSession] " + playerId + " received and APPLIED " + attackReceived + " attack lines (gravity tick)");
-            }
-
-            // 13. 응답 생성
+            // 12. 응답 생성 (GameState를 GameStateDto로 변환)
             return ServerStateDto.builder()
                     .lastProcessedSequence(0L) // 자동 틱이므로 시퀀스 없음
-                    .myGameState(nextState)
-                    .opponentGameState(opponentId != null ? playerStates.get(opponentId) : null)
-                    .events(events)
-                    .attackLinesReceived(attackReceived)
+                    .myGameState(gameStateMapper.toDto(nextState, 0))
+                    .opponentGameState(opponentId != null ? gameStateMapper.toDto(playerStates.get(opponentId), 0) : null)
+                    .events(attackResult.getEvents())
+                    .attackLinesReceived(attackResult.getAttackLinesReceived())
+                    .gameOver(gameOver)
                     .build();
         }
     }

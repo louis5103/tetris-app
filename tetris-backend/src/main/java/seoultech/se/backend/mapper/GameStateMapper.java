@@ -1,7 +1,7 @@
 package seoultech.se.backend.mapper;
 
 import org.springframework.stereotype.Component;
-import seoultech.se.backend.dto.GameStateDto;
+import seoultech.se.core.dto.GameStateDto;
 import seoultech.se.core.GameState;
 import seoultech.se.core.model.Cell;
 import seoultech.se.core.model.Tetromino;

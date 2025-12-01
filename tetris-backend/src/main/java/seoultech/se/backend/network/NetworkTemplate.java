@@ -111,9 +111,14 @@ public class NetworkTemplate {
         }
     }
 
-    public void subscribeToSync(Consumer<ServerStateDto> callback) {
+    /**
+     * 통합된 게임 상태 구독 (입력 응답 및 자동 낙하 모두 포함)
+     *
+     * @param callback 상태 업데이트 시 호출될 콜백
+     */
+    public void subscribeToGameState(Consumer<ServerStateDto> callback) {
         if (session != null && session.isConnected()) {
-            session.subscribe("/user/topic/game/sync", new StompFrameHandler() {
+            session.subscribe("/user/topic/game/state", new StompFrameHandler() {
                 @Override
                 public Type getPayloadType(StompHeaders headers) {
                     return ServerStateDto.class;
@@ -124,35 +129,18 @@ public class NetworkTemplate {
                     callback.accept((ServerStateDto) payload);
                 }
             });
-            System.out.println("✅ [NetworkTemplate] Subscribed to /user/topic/game/sync");
+            System.out.println("✅ [NetworkTemplate] Subscribed to /user/topic/game/state (unified)");
         } else {
             System.out.println("Not connected to server");
         }
     }
 
     /**
-     * 서버 자동 게임 루프(GameTickService) 상태 업데이트 구독
-     *
-     * @param callback 상태 업데이트 시 호출될 콜백
+     * @deprecated Use subscribeToGameState() instead. 통합된 토픽 사용
      */
-    public void subscribeToGameState(Consumer<ServerStateDto> callback) {
-        if (session != null && session.isConnected()) {
-            session.subscribe("/user/queue/game-state", new StompFrameHandler() {
-                @Override
-                public Type getPayloadType(StompHeaders headers) {
-                    return ServerStateDto.class;
-                }
-
-                @Override
-                public void handleFrame(StompHeaders headers, Object payload) {
-                    System.out.println("⏬ [NetworkTemplate] Game state update received from server");
-                    callback.accept((ServerStateDto) payload);
-                }
-            });
-            System.out.println("✅ [NetworkTemplate] Subscribed to /user/queue/game-state");
-        } else {
-            System.out.println("Not connected to server");
-        }
+    @Deprecated
+    public void subscribeToSync(Consumer<ServerStateDto> callback) {
+        subscribeToGameState(callback);
     }
 
     /**

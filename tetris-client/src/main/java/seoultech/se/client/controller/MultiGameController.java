@@ -5,6 +5,7 @@ import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
 import javafx.application.Platform;
+import seoultech.se.backend.mapper.GameStateDtoToGameStateMapper;
 import seoultech.se.client.service.GameApiService;
 import seoultech.se.client.strategy.NetworkExecutionStrategy;
 import seoultech.se.client.ui.OpponentBoardView;
@@ -18,6 +19,9 @@ public class MultiGameController extends BaseGameController {
     @Autowired
     private GameApiService gameApiService;
 
+    @Autowired(required = false)
+    private GameStateDtoToGameStateMapper dtoToStateMapper;
+
     private NetworkExecutionStrategy executionStrategy;
     private OpponentBoardView opponentBoardView;
     private String sessionId;
@@ -29,10 +33,36 @@ public class MultiGameController extends BaseGameController {
         this.executionStrategy = strategy;
         this.sessionId = sessionId;
         
+        // 서버에서 초기 상태 받아오기
+        GameState initialState = boardController.getGameState(); // 기본값
+        if (gameApiService != null && dtoToStateMapper != null) {
+            seoultech.se.core.dto.ServerStateDto initialServerState = gameApiService.getInitialState(sessionId);
+            if (initialServerState != null && initialServerState.getMyGameState() != null) {
+                // GameStateDto를 GameState로 변환
+                GameState serverInitialState = dtoToStateMapper.toGameState(initialServerState.getMyGameState());
+                if (serverInitialState != null) {
+                    initialState = serverInitialState;
+                    // BoardController에 초기 상태 설정
+                    boardController.setGameState(initialState);
+                    System.out.println("✅ [MultiGameController] Initial state received and set from server");
+                    
+                    // 상대방 초기 상태도 설정
+                    if (initialServerState.getOpponentGameState() != null) {
+                        GameState opponentInitialState = dtoToStateMapper.toGameState(initialServerState.getOpponentGameState());
+                        if (opponentInitialState != null && opponentBoardView != null) {
+                            Platform.runLater(() -> {
+                                opponentBoardView.update(opponentInitialState);
+                            });
+                        }
+                    }
+                }
+            }
+        }
+        
         // NetworkCallback 연결
         strategy.setupMultiplayMode(
             sessionId,
-            boardController.getGameState(),
+            initialState,
             this::onMyStateUpdate,
             this::onOpponentStateUpdate,
             this::onAttackLinesReceived
@@ -90,13 +120,42 @@ public class MultiGameController extends BaseGameController {
 
     @Override
     protected void handleCommand(GameCommand command) {
-        // Client-side Prediction (NetworkExecutionStrategy가 처리)
-        GameState oldState = boardController.getGameState().deepCopy(); // 예측용 복사본은 불필요할 수 있으나 UI 갱신용
-        // executeCommand 내부에서 서버 전송 및 로컬 예측 상태 반환
-        GameState predictedState = boardController.executeCommand(command);
+        // 게임 오버 체크
+        if (boardController.getGameState().isGameOver()) {
+            return; // 게임 오버 시 명령 무시
+        }
+
+        // 명령 필터링: MOVE, ROTATE, HARD_DROP, HOLD만 허용
+        seoultech.se.core.command.CommandType commandType = command.getType();
+        boolean isAllowed = false;
         
-        // 로컬 예측 렌더링 (반응성 향상)
-        updateUI(oldState, predictedState);
+        if (commandType == seoultech.se.core.command.CommandType.MOVE) {
+            // MOVE 명령은 모든 방향 허용 (LEFT, RIGHT, DOWN은 자동 낙하로 서버 처리)
+            isAllowed = true;
+        } else if (commandType == seoultech.se.core.command.CommandType.ROTATE) {
+            isAllowed = true;
+        } else if (commandType == seoultech.se.core.command.CommandType.HARD_DROP) {
+            isAllowed = true;
+        } else if (commandType == seoultech.se.core.command.CommandType.HOLD) {
+            isAllowed = true;
+        }
+        
+        if (!isAllowed) {
+            // 허용되지 않은 명령은 무시 (PAUSE, RESUME, SOFT_DROP 등)
+            System.out.println("🚫 [MultiGameController] Command filtered: " + commandType);
+            return;
+        }
+
+        // 서버에 명령 전송 (Client-side prediction 제거)
+        // executeCommand 내부에서 서버 전송만 수행
+        GameState oldState = boardController.getGameState();
+        GameState newState = boardController.executeCommand(command);
+        
+        // 서버 응답 대기 중에는 이전 상태 유지
+        // 서버 응답은 onMyStateUpdate()에서 처리됨
+        if (newState != null && newState != oldState) {
+            updateUI(oldState, newState);
+        }
     }
 
     // --- Network Callbacks ---

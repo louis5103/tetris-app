@@ -13,8 +13,8 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
  * - 데이터베이스 연결
  */
 @Configuration
-@EnableJpaRepositories(basePackages = "seoultech.se.backend")
-@EntityScan(basePackages = "seoultech.se.backend")
+@EnableJpaRepositories(basePackages = "seoultech.se")
+@EntityScan(basePackages = "seoultech.se")
 public class DatabaseConfig {
     // JPA 관련 설정이 필요한 경우 여기에 추가
 }
