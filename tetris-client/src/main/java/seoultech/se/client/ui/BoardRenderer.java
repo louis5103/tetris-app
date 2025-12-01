@@ -560,5 +560,130 @@ public class BoardRenderer {
             // 3. 상대방의 현재 테트로미노도 표시
         });
     }
+    
+    /**
+     * 락된 테트로미노만 그립니다 (동기 버전 - 애니메이션용)
+     * 
+     * ⚠️ UI 스레드에서만 호출해야 합니다!
+     * ⚠️ 전체 보드를 다시 그리지 않고 락된 테트로미노 셀들만 업데이트합니다.
+     * 
+     * @param oldState 락 직전 상태 (사용 안 함, 호환성 유지)
+     * @param newState 라인 제거 후 상태 (lastLockedTetromino 정보 포함)
+     */
+    public void drawBoardWithLockedPieceSync(GameState oldState, GameState newState) {
+        System.out.println("🎨 [BoardRenderer] drawBoardWithLockedPieceSync called");
+        
+        // 락된 테트로미노만 그립니다 (나머지 보드는 건드리지 않음)
+        Tetromino lockedTetromino = newState.getLastLockedTetromino();
+        
+        if (lockedTetromino == null) {
+            System.out.println("   ⚠️ lastLockedTetromino is NULL! Cannot draw locked piece.");
+            return;
+        }
+        
+        int lockedX = newState.getLastLockedX();
+        int lockedY = newState.getLastLockedY();
+        int[][] shape = lockedTetromino.getCurrentShape();
+        int pivotX = lockedTetromino.getPivotX();
+        int pivotY = lockedTetromino.getPivotY();
+        seoultech.se.core.model.enumType.Color color = lockedTetromino.getColor();
+        
+        System.out.println("   ✅ Drawing locked tetromino at (" + lockedY + ", " + lockedX + ") with color " + color);
+        
+        for (int row = 0; row < shape.length; row++) {
+            for (int col = 0; col < shape[0].length; col++) {
+                if (shape[row][col] == 1) {
+                    int absoluteX = lockedX + (col - pivotX);
+                    int absoluteY = lockedY + (row - pivotY);
+                    
+                    if (absoluteY >= 0 && absoluteY < newState.getBoardHeight() &&
+                        absoluteX >= 0 && absoluteX < newState.getBoardWidth()) {
+                        Rectangle rect = cellRectangles[absoluteY][absoluteX];
+                        rect.setFill(ColorMapper.toJavaFXColor(color));
+                        rect.getStyleClass().removeAll(UIConstants.ALL_TETROMINO_COLOR_CLASSES);
+                        String colorClass = ColorMapper.toCssClass(color, currentColorBlindMode);
+                        if (colorClass != null) {
+                            rect.getStyleClass().add(colorClass);
+                        }
+                    }
+                }
+            }
+        }
+        
+        System.out.println("   ✅ Locked tetromino drawing completed");
+    }
+    
+    /**
+     * 셀을 직접 업데이트 (내부 헬퍼 메서드)
+     */
+    private void updateCellDirect(int row, int col, Cell cell) {
+        Rectangle rect = cellRectangles[row][col];
+        
+        if (cell.isOccupied()) {
+            rect.setFill(ColorMapper.toJavaFXColor(cell.getColor()));
+            String colorClass = ColorMapper.toCssClass(cell.getColor(), currentColorBlindMode);
+            rect.getStyleClass().removeAll(UIConstants.ALL_TETROMINO_COLOR_CLASSES);
+            if (colorClass != null) {
+                rect.getStyleClass().add(colorClass);
+            }
+        } else {
+            rect.setFill(ColorMapper.getEmptyCellColor());
+            rect.getStyleClass().removeAll(UIConstants.ALL_TETROMINO_COLOR_CLASSES);
+        }
+    }
+    
+    /**
+     * 제거될 셀들을 흰색으로 하이라이트 표시 (동기 버전 - 애니메이션용)
+     * 
+     * ⚠️ UI 스레드에서만 호출해야 합니다!
+     * 
+     * @param clearedCells 제거될 셀들의 좌표 [[row1, col1], [row2, col2], ...]
+     */
+    public void highlightClearedCellsSync(java.util.List<int[]> clearedCells) {
+        if (clearedCells == null || clearedCells.isEmpty()) {
+            return;
+        }
+        
+        System.out.println("🎨 [BoardRenderer] highlightClearedCellsSync - highlighting " + clearedCells.size() + " cells");
+        
+        for (int[] cell : clearedCells) {
+            int row = cell[0];
+            int col = cell[1];
+            
+            if (row >= 0 && row < cellRectangles.length && 
+                col >= 0 && col < cellRectangles[0].length) {
+                Rectangle rect = cellRectangles[row][col];
+                
+                System.out.println("   Setting cell [" + row + "," + col + "] to WHITE");
+                
+                // 흰색으로 변경
+                rect.setFill(Color.WHITE);
+                rect.getStyleClass().removeAll(UIConstants.ALL_TETROMINO_COLOR_CLASSES);
+            }
+        }
+        
+        System.out.println("🎨 [BoardRenderer] highlightClearedCellsSync - completed");
+    }
+    
+    /**
+     * 제거될 셀들을 흰색으로 하이라이트 표시 (비동기 버전)
+     * 
+     * @param clearedCells 제거될 셀들의 좌표 [[row1, col1], [row2, col2], ...]
+     */
+    public void highlightClearedCells(java.util.List<int[]> clearedCells) {
+        if (clearedCells == null || clearedCells.isEmpty()) {
+            return;
+        }
+        
+        Runnable highlightTask = () -> {
+            highlightClearedCellsSync(clearedCells);
+        };
+        
+        if (Platform.isFxApplicationThread()) {
+            highlightTask.run();
+        } else {
+            Platform.runLater(highlightTask);
+        }
+    }
 
 }

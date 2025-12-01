@@ -121,6 +121,9 @@ public class GameState {
     
     // Phase 3: 아이템 수집 이벤트 (Controller가 소비)
     private ItemType collectedItem;
+    
+    // 애니메이션용: 제거될 셀들의 좌표 (row, col)
+    private java.util.List<int[]> lastClearedCells;  // [[row1, col1], [row2, col2], ...]
 
 
     // 생성자
@@ -190,6 +193,7 @@ public class GameState {
         this.lastScoreEarned = 0;
         this.lastIsPerfectClear = false;
         this.lastLeveledUp = false;
+        this.lastClearedCells = new java.util.ArrayList<>();
     }
     
     // 깊은 복사.
@@ -266,6 +270,16 @@ public class GameState {
         copy.lastScoreEarned = this.lastScoreEarned;
         copy.lastIsPerfectClear = this.lastIsPerfectClear;
         copy.lastLeveledUp = this.lastLeveledUp;
+        
+        // 제거될 셀 좌표 복사
+        if (this.lastClearedCells != null) {
+            copy.lastClearedCells = new java.util.ArrayList<>();
+            for (int[] cell : this.lastClearedCells) {
+                copy.lastClearedCells.add(cell.clone());
+            }
+        } else {
+            copy.lastClearedCells = new java.util.ArrayList<>();
+        }
         
         return copy;
     }

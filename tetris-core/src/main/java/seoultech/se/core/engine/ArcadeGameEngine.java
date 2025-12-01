@@ -584,4 +584,34 @@ public class ArcadeGameEngine extends ClassicGameEngine {
 
         return newState;
     }
+    
+    /**
+     * 아케이드 모드에서는 아이템 효과 셀 + 라인 클리어 셀을 누적합니다.
+     * ClassicGameEngine의 checkAndClearLines를 오버라이드하여
+     * lastClearedCells를 덮어쓰지 않고 추가합니다.
+     */
+    @Override
+    protected void checkAndClearLines(GameState state, boolean isTSpin, boolean isTSpinMini) {
+        // 기존 lastClearedCells 백업 (아이템 효과 셀)
+        java.util.List<int[]> existingCells = state.getLastClearedCells();
+        
+        // 부모 클래스 호출 (새로운 리스트로 덮어씀)
+        super.checkAndClearLines(state, isTSpin, isTSpinMini);
+        
+        // 아이템 효과 셀 + 라인 클리어 셀 합치기
+        if (existingCells != null && !existingCells.isEmpty()) {
+            java.util.List<int[]> lineClearCells = state.getLastClearedCells();
+            if (lineClearCells == null) {
+                lineClearCells = new java.util.ArrayList<>();
+            }
+            
+            // 아이템 효과 셀을 앞에 추가 (먼저 표시됨)
+            java.util.List<int[]> combined = new java.util.ArrayList<>(existingCells);
+            combined.addAll(lineClearCells);
+            state.setLastClearedCells(combined);
+            
+            System.out.println("🎨 [ArcadeGameEngine] Combined cleared cells: " + 
+                existingCells.size() + " (item) + " + lineClearCells.size() + " (lines) = " + combined.size());
+        }
+    }
 }

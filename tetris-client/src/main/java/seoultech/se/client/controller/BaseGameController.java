@@ -167,18 +167,52 @@ public abstract class BaseGameController {
                 if (inputHandler != null) inputHandler.setInputEnabled(false);
                 onLineClearAnimationStart(); // 자식 클래스 훅 (예: 게임루프 일시정지)
                 
-                // 애니메이션용 임시 렌더링 (흰색 깜빡임 등)
-                // ... (간소화를 위해 생략, 기존 로직과 동일)
-
-                // ⚠️ CRITICAL: CompletableFuture.delayedExecutor는 백그라운드 스레드에서 실행
-                // 따라서 Platform.runLater() 필요!
-                CompletableFuture.delayedExecutor(UIConstants.LINE_CLEAR_ANIMATION_MS, TimeUnit.MILLISECONDS).execute(() -> {
+                System.out.println("🎨 [Animation] Starting line clear animation");
+                System.out.println("   lastClearedCells size: " + 
+                    (newState.getLastClearedCells() != null ? newState.getLastClearedCells().size() : 0));
+                
+                // Step 1: oldState + 락된 테트로미노로 락 직후 상태를 그림
+                Runnable step1 = () -> {
+                    System.out.println("🎨 [Animation] Step 1: Drawing locked state (oldState + locked piece)");
+                    boardRenderer.drawBoardWithLockedPieceSync(oldState, newState);
+                    
+                    // Step 2: 다음 프레임에 제거될 셀들을 흰색으로 하이라이트
                     Platform.runLater(() -> {
-                        uiUpdateTask.run();
-                        if (inputHandler != null) inputHandler.setInputEnabled(true);
-                        onLineClearAnimationEnd(); // 자식 클래스 훅
+                        System.out.println("🎨 [Animation] Step 2: Highlighting cleared cells in white");
+                        
+                        if (newState.getLastClearedCells() != null && !newState.getLastClearedCells().isEmpty()) {
+                            System.out.println("   Highlighting " + newState.getLastClearedCells().size() + " cells from lastClearedCells");
+                            boardRenderer.highlightClearedCellsSync(newState.getLastClearedCells());
+                        } else if (newState.getLastClearedRows() != null && newState.getLastClearedRows().length > 0) {
+                            // fallback: lastClearedRows만 있는 경우, 해당 행의 모든 셀을 하이라이트
+                            java.util.List<int[]> cells = new java.util.ArrayList<>();
+                            for (int row : newState.getLastClearedRows()) {
+                                for (int col = 0; col < newState.getBoardWidth(); col++) {
+                                    cells.add(new int[]{row, col});
+                                }
+                            }
+                            System.out.println("   Highlighting " + cells.size() + " cells from lastClearedRows (fallback)");
+                            boardRenderer.highlightClearedCellsSync(cells);
+                        }
+                        
+                        // Step 3: 300ms 후 전체 UI 업데이트 (라인 제거 후 상태)
+                        System.out.println("🎨 [Animation] Step 3: Scheduling full UI update in 300ms");
+                        CompletableFuture.delayedExecutor(UIConstants.LINE_CLEAR_ANIMATION_MS, TimeUnit.MILLISECONDS).execute(() -> {
+                            Platform.runLater(() -> {
+                                System.out.println("🎨 [Animation] Step 4: Full UI update (lines removed)");
+                                uiUpdateTask.run(); // 라인 제거 후 상태로 전체 업데이트
+                                if (inputHandler != null) inputHandler.setInputEnabled(true);
+                                onLineClearAnimationEnd(); // 자식 클래스 훅
+                            });
+                        });
                     });
-                });
+                };
+                
+                if (Platform.isFxApplicationThread()) {
+                    step1.run();
+                } else {
+                    Platform.runLater(step1);
+                }
             } else {
                 uiUpdateTask.run();
             }

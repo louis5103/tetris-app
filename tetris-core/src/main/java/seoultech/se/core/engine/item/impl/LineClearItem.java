@@ -146,6 +146,21 @@ public class LineClearItem extends AbstractItem {
         // 삭제할 줄들을 Set으로 변환 (O(1) 조회)
         java.util.Set<Integer> rowsSet = new java.util.HashSet<>(rowsToRemove);
         
+        // ✨ 제거될 셀들의 좌표 수집 (애니메이션용)
+        // LINE_CLEAR: 행 전체(빈 칸 포함)를 수집
+        // 아케이드에서는 이후 일반 라인 클리어가 추가될 수 있음
+        java.util.List<int[]> clearedCells = gameState.getLastClearedCells();
+        if (clearedCells == null) {
+            clearedCells = new java.util.ArrayList<>();
+        }
+        
+        for (int row : rowsToRemove) {
+            for (int col = 0; col < boardWidth; col++) {
+                clearedCells.add(new int[]{row, col});
+            }
+        }
+        gameState.setLastClearedCells(clearedCells);
+        
         // 디버그: 삭제 전 보드 상태 출력
         System.out.println("Ⓛ [LineClearItem] 🔍 BEFORE CLEAR - Board state (rows with blocks):");
         for (int row = 0; row < boardHeight; row++) {

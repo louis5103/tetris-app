@@ -64,11 +64,15 @@ public class PlusItem extends AbstractItem {
         System.out.println("➕ [PlusItem] Applying PLUS effect at (" + row + ", " + col + ")");
         System.out.println("   - Board size: " + boardHeight + "x" + boardWidth);
         
+        // ✨ 제거될 셀들의 좌표 수집 (애니메이션용)
+        java.util.List<int[]> clearedCells = new java.util.ArrayList<>();
+        
         // 행 제거 - 지정된 행의 모든 블록 제거
         int rowBlocks = 0;
         for (int c = 0; c < boardWidth; c++) {
             if (grid[row][c] != null && grid[row][c].isOccupied()) {
                 rowBlocks++;
+                clearedCells.add(new int[]{row, c});
             }
         }
         System.out.println("   - Clearing row " + row + " (" + rowBlocks + " blocks)");
@@ -84,6 +88,7 @@ public class PlusItem extends AbstractItem {
         for (int r = 0; r < boardHeight; r++) {
             if (r != row && grid[r][col] != null && grid[r][col].isOccupied()) {
                 colBlocks++;
+                clearedCells.add(new int[]{r, col});
             }
         }
         System.out.println("   - Clearing column " + col + " (" + colBlocks + " blocks, excluding intersection)");
@@ -93,6 +98,9 @@ public class PlusItem extends AbstractItem {
                 blocksCleared++;
             }
         }
+        
+        // 애니메이션용 좌표 저장
+        gameState.setLastClearedCells(clearedCells);
         
         int linesCleared = 0;
         

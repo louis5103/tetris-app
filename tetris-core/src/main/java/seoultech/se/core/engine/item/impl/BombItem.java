@@ -86,6 +86,17 @@ public class BombItem extends AbstractItem {
         System.out.println("   - Explosion area: rows " + startRow + "-" + endRow + 
             ", cols " + startCol + "-" + endCol + " (" + areaBlocks + " blocks)");
         
+        // ✨ 제거될 셀들의 좌표 수집 (애니메이션용)
+        java.util.List<int[]> clearedCells = new java.util.ArrayList<>();
+        for (int r = startRow; r <= endRow; r++) {
+            for (int c = startCol; c <= endCol; c++) {
+                if (grid[r][c] != null && grid[r][c].isOccupied()) {
+                    clearedCells.add(new int[]{r, c});
+                }
+            }
+        }
+        gameState.setLastClearedCells(clearedCells);
+        
         // 블록 제거 - 폭발 범위 내의 모든 블록 제거
         for (int r = startRow; r <= endRow; r++) {
             for (int c = startCol; c <= endCol; c++) {

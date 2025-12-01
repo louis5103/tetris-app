@@ -790,6 +790,18 @@ public class ClassicGameEngine implements GameEngine {
             return;
         }
 
+        // ✨ 제거될 셀들의 좌표 수집 (애니메이션용)
+        // 클래식 모드: 제거될 행 전체(빈 칸 포함)를 새로 수집
+        // 아케이드 모드에서는 오버라이드하여 기존 셀에 추가
+        java.util.List<int[]> clearedCells = new java.util.ArrayList<>();
+        
+        for (int row : clearedRowsList) {
+            for (int col = 0; col < state.getBoardWidth(); col++) {
+                clearedCells.add(new int[]{row, col});
+            }
+        }
+        state.setLastClearedCells(clearedCells);
+        
         // 라인 클리어 실행
         java.util.Set<Integer> clearedRowsSet = new java.util.HashSet<>(clearedRowsList);
         
