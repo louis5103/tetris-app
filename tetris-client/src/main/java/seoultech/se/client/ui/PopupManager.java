@@ -60,6 +60,7 @@ public class PopupManager {
     private final VBox gameOverOverlay;
 
     // 게임 오버 화면의 UI 요소 (final 제거)
+    private Label gameOverTitleLabel;
     private Label finalScoreLabel;
     private TextField usernameInput;
     private TableView<Map<String, Object>> scoreBoardTable;
@@ -99,6 +100,7 @@ public class PopupManager {
 
         // lookup을 사용하여 필요한 UI 요소들을 gameOverOverlay 내에서 찾아서 초기화
         if (gameOverOverlay != null) {
+            this.gameOverTitleLabel = (Label) gameOverOverlay.lookup("#gameOverTitleLabel");
             this.finalScoreLabel = (Label) gameOverOverlay.lookup("#finalScoreLabel");
             this.usernameInput = (TextField) gameOverOverlay.lookup("#usernameInput");
             this.scoreBoardTable = (TableView<Map<String, Object>>) gameOverOverlay.lookup("#scoreBoardTable");
@@ -178,6 +180,18 @@ public class PopupManager {
      * @param difficulty 난이도
      */
     public void showGameOverPopup(long finalScore, boolean isItemMode, seoultech.se.core.model.enumType.Difficulty difficulty) {
+        showGameOverPopup(finalScore, isItemMode, difficulty, "GAME OVER");
+    }
+
+    /**
+     * 게임 오버 팝업을 표시하고 관련 로직을 모두 처리합니다. (제목 지정 가능)
+     * 
+     * @param finalScore 최종 점수
+     * @param isItemMode 아이템 모드 여부
+     * @param difficulty 난이도
+     * @param title 팝업 제목 (예: "GAME OVER", "YOU WIN", "YOU LOSE")
+     */
+    public void showGameOverPopup(long finalScore, boolean isItemMode, seoultech.se.core.model.enumType.Difficulty difficulty, String title) {
         this.currentScore = finalScore;
         this.isItemMode = isItemMode;
         this.difficulty = difficulty;
@@ -185,6 +199,17 @@ public class PopupManager {
         Platform.runLater(() -> {
             if (finalScoreLabel != null) {
                 finalScoreLabel.setText(String.valueOf(finalScore));
+            }
+            if (gameOverTitleLabel != null) {
+                gameOverTitleLabel.setText(title);
+                // 승리 시 녹색, 패배 시 빨간색 등 스타일 변경 가능
+                if ("YOU WIN".equals(title)) {
+                    gameOverTitleLabel.setStyle("-fx-text-fill: #44FF44;"); // Green
+                } else if ("YOU LOSE".equals(title)) {
+                    gameOverTitleLabel.setStyle("-fx-text-fill: #FF4444;"); // Red
+                } else {
+                    gameOverTitleLabel.setStyle(""); // Default
+                }
             }
         });
         

@@ -185,7 +185,49 @@ public class MultiGameController extends BaseGameController {
         });
     }
     
-    // 멀티플레이는 Pause 불가
-    @Override protected void onPause() {}
-    @Override protected void onResume() {}
+    @Override
+    protected void processGameOver(long finalScore) {
+        System.out.println("💥 [MultiGameController] Game Over. Score: " + finalScore);
+        if (gameOverLabel != null) gameOverLabel.setVisible(true);
+        
+        // 승리/패배 판정
+        // 1. 서버가 강제로 게임 오버를 보냄
+        // 2. 내 보드가 실제로 꽉 찼는지 확인 (BLOCK_OUT)
+        // 3. 내 보드가 괜찮은데 게임 오버라면 상대방이 죽은 것 -> 승리
+        
+        String title = "GAME OVER";
+        GameState state = boardController.getGameState();
+        
+        // GameOverReason이 "GAME_OVER"이고 (서버 강제 종료),
+        // 내 보드가 꽉 찬게 아니라면 (BLOCK_OUT이 아님), 승리로 간주
+        // 주의: 서버에서 "GAME_OVER"를 보낼 때의 조건을 명확히 해야 함
+        // 현재는 상대방 죽음 -> 나에게 GAME_OVER 전송 -> 내 보드 멀쩡함 -> 승리
+        
+        if (state.getGameOverReason() != null && state.getGameOverReason().equals("GAME_OVER")) {
+             // 서버가 보낸 일반 게임 종료 신호 (상대방 사망 등)
+             // 내가 죽어서 끝난건지 확인
+             if (isMyBoardFull(state)) {
+                 title = "YOU LOSE";
+             } else {
+                 title = "YOU WIN";
+             }
+        } else {
+            // 로컬에서 죽은 경우 (BLOCK_OUT)
+            title = "YOU LOSE";
+        }
+        
+        System.out.println("🏆 [MultiGameController] Result: " + title + " (Reason: " + state.getGameOverReason() + ")");
+
+        boolean isItemMode = gameModeConfig != null && gameModeConfig.isItemSystemEnabled();
+        popupManager.showGameOverPopup(finalScore, isItemMode, settingsService.getCurrentDifficulty(), title);
+        
+        cleanup();
+    }
+    
+    private boolean isMyBoardFull(GameState state) {
+        // 간단한 판정: 현재 블록이 null이거나, spawn 위치에서 충돌했거나
+        // GameState.isGameOver()는 이미 true임
+        // gameOverReason이 "BLOCK_OUT"이면 확실히 패배
+        return "BLOCK_OUT".equals(state.getGameOverReason()) || "LOCK_OUT".equals(state.getGameOverReason());
+    }
 }

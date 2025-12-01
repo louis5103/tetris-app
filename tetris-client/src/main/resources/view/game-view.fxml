@@ -129,7 +129,7 @@
                           managed="false"
                           StackPane.alignment="CENTER">
                         <VBox alignment="CENTER" styleClass="popup-container" prefWidth="400">
-                            <Label text="GAME OVER" styleClass="popup-title"/>
+                            <Label fx:id="gameOverTitleLabel" text="GAME OVER" styleClass="popup-title"/>
                             <Label text="Your Score" styleClass="popup-label"/>
                             <Label fx:id="finalScoreLabel" text="0" styleClass="popup-score"/>
 
