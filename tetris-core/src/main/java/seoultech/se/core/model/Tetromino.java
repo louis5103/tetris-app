@@ -66,11 +66,13 @@ public class Tetromino {
     public void rotate() {
         if (type == TetrominoType.O) return ;
 
-        int size = this.currentShape.length;
-        int[][] rotatedShape = new int[size][size];
-        for (int row=0; row < size; row++) {
-            for (int col = 0; col < size; col++) {
-                rotatedShape[col][size - 1 - row] = this.currentShape[row][col];
+        int height = this.currentShape.length;
+        int width = this.currentShape[0].length;
+        int[][] rotatedShape = new int[width][height];
+        
+        for (int row = 0; row < height; row++) {
+            for (int col = 0; col < width; col++) {
+                rotatedShape[col][height - 1 - row] = this.currentShape[row][col];
             }
         }
         this.currentShape = rotatedShape;
@@ -98,25 +100,28 @@ public class Tetromino {
 
         // ✅ 아이템 마커 인덱스 보존
         Tetromino rotatedTetromino = new Tetromino(this.type, this.itemMarkerBlockIndex);
-        int size = this.currentShape.length;
-        int[][] rotatedShape = new int[size][size];
+        int height = this.currentShape.length;
+        int width = this.currentShape[0].length;
 
         if (direction == RotationDirection.CLOCKWISE) {
-            for (int row = 0; row < size; row++) {
-                for (int col = 0; col < size; col++) {
-                    rotatedShape[col][size - 1 - row] = this.currentShape[row][col];
+            int[][] rotatedShape = new int[width][height];
+            for (int row = 0; row < height; row++) {
+                for (int col = 0; col < width; col++) {
+                    rotatedShape[col][height - 1 - row] = this.currentShape[row][col];
                 }
             }
+            rotatedTetromino.currentShape = rotatedShape;
             rotatedTetromino.rotationState = this.rotationState.rotateClockwise();
         } else {
-            for (int row = 0; row < size; row++) {
-                for (int col = 0; col < size; col++) {
-                    rotatedShape[size - 1 - col][row] = this.currentShape[row][col];
+            int[][] rotatedShape = new int[width][height];
+            for (int row = 0; row < height; row++) {
+                for (int col = 0; col < width; col++) {
+                    rotatedShape[width - 1 - col][row] = this.currentShape[row][col];
                 }
             }
+            rotatedTetromino.currentShape = rotatedShape;
             rotatedTetromino.rotationState = this.rotationState.rotateCounterClockwise();
         }
-        rotatedTetromino.currentShape = rotatedShape;
         return rotatedTetromino;
     }
 

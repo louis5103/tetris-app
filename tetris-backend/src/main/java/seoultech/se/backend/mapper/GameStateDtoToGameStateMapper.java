@@ -49,9 +49,9 @@ public class GameStateDtoToGameStateMapper {
             for (int row = 0; row < height && row < 20; row++) {
                 for (int col = 0; col < width && col < 10; col++) {
                     int cellValue = dto.getGrid()[row][col];
-                    if (cellValue > 0 && cellValue < Color.values().length) {
-                        // Color의 ordinal()로 변환 (0-7 → Color enum)
-                        Color color = Color.values()[cellValue];
+                    // Server sends ordinal() + 1. So 0 is empty, 1 is ordinal 0 (RED).
+                    if (cellValue > 0 && cellValue <= Color.values().length) {
+                        Color color = Color.values()[cellValue - 1];
                         state.getGrid()[row][col] = Cell.of(color, true);
                     } else {
                         state.getGrid()[row][col] = Cell.empty();

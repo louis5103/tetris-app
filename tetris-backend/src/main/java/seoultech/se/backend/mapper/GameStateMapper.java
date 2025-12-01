@@ -79,8 +79,8 @@ public class GameStateMapper {
                     result[row][col] = 0;
                 } else {
                     // Color의 ordinal() + 1로 블록 색상 표현
-                    // NONE=0, 기타 색상=1~7
-                    result[row][col] = cell.getColor().ordinal();
+                    // NONE=0 (empty), RED=1, ...
+                    result[row][col] = cell.getColor().ordinal() + 1;
                 }
             }
         }

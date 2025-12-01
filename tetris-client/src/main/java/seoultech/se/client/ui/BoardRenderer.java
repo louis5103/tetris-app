@@ -31,7 +31,7 @@ public class BoardRenderer {
     private ColorBlindMode currentColorBlindMode = ColorBlindMode.NORMAL;
     
     // 🚀 이미지 캐시 (정적 필드)
-    private static final java.util.Map<String, javafx.scene.image.Image> IMAGE_CACHE = new java.util.HashMap<>();
+    private static final java.util.Map<String, javafx.scene.image.Image> IMAGE_CACHE = new java.util.concurrent.ConcurrentHashMap<>();
     
     // ⚡ 성능 최적화: 이전 테트로미노 위치 저장 (차분 업데이트용)
     private Tetromino previousTetromino = null;
