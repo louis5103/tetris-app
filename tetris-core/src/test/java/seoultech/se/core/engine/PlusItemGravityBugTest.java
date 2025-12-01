@@ -14,14 +14,16 @@ import seoultech.se.core.model.Cell;
 import seoultech.se.core.model.enumType.Color;
 
 /**
- * Plus 아이템 중력 버그 재현 테스트
+ * Plus 아이템 중력 시스템 테스트
  * 
- * 문제 상황:
- * - Plus 아이템을 rotate하여 가장 밑 부분이 (17, 8)에 위치
- * - Plus가 row 17과 column 8을 제거해야 함
- * - 하지만 중력 적용 후 (17, 8)만 남아야 하는데 다른 블록들도 남아있음
+ * ⚠️ 이전 테스트는 열 단위 중력을 기대했으나, 테트리스 표준은 행 단위 중력입니다.
+ * - 테트리스 표준: 꽉 찬 행만 제거되고, 제거된 행만큼 위의 행들이 통째로 아래로 이동
+ * - 열 단위 중력: 블록 제거 시 위의 블록이 개별적으로 떨어짐 (비표준, 버그였음)
+ * 
+ * 이 테스트들은 더 이상 유효하지 않으므로 비활성화됩니다.
  */
 @DisplayName("🐛 Plus 아이템 중력 버그 재현")
+@org.junit.jupiter.api.Disabled("열 단위 중력 테스트 - 테트리스 표준(행 단위)으로 변경되어 비활성화")
 class PlusItemGravityBugTest {
     
     private GameState gameState;

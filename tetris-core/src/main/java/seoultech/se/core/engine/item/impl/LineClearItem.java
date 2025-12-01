@@ -178,9 +178,9 @@ public class LineClearItem extends AbstractItem {
                 " occupied blocks (will clear entire row)");
         }
         
-        // 남아있는 줄들만 수집 (아래에서 위로)
+        // 남아있는 줄들만 수집 (위에서 아래로 순서대로)
         java.util.List<Cell[]> remainingRows = new java.util.ArrayList<>();
-        for (int row = boardHeight - 1; row >= 0; row--) {
+        for (int row = 0; row < boardHeight; row++) {
             if (!rowsSet.contains(row)) {
                 Cell[] rowCopy = new Cell[boardWidth];
                 for (int col = 0; col < boardWidth; col++) {
@@ -190,24 +190,22 @@ public class LineClearItem extends AbstractItem {
             }
         }
         
-        // 보드를 아래에서부터 다시 채우기
-        int targetRow = boardHeight - 1;
-        for (Cell[] rowData : remainingRows) {
+        // 보드를 위에서부터 다시 채우기 (빈 줄이 위로 가도록)
+        int srcIndex = 0;
+        for (int targetRow = rowsToRemove.size(); targetRow < boardHeight; targetRow++) {
+            Cell[] rowData = remainingRows.get(srcIndex++);
             for (int col = 0; col < boardWidth; col++) {
-                // 🔥 FIX: 셀 값을 복사 (참조가 아닌 값 복사)
                 grid[targetRow][col].setColor(rowData[col].getColor());
                 grid[targetRow][col].setOccupied(rowData[col].isOccupied());
                 grid[targetRow][col].setItemMarker(rowData[col].getItemMarker());
             }
-            targetRow--;
         }
         
-        // 남은 위쪽 줄들을 빈 칸으로 초기화
-        while (targetRow >= 0) {
+        // 위쪽 줄들을 빈 칸으로 초기화
+        for (int row = 0; row < rowsToRemove.size(); row++) {
             for (int col = 0; col < boardWidth; col++) {
-                grid[targetRow][col].clear();
+                grid[row][col].clear();
             }
-            targetRow--;
         }
         
         System.out.println("✅ [LineClearItem] Cleared " + rowsToRemove.size() + 
