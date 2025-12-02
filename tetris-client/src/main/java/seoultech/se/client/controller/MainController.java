@@ -590,19 +590,33 @@ public class MainController extends BaseController {
             
             popup.setOnHost(() -> {
                 p2pStage.close();
-                if (p2pController != null) {
-                    p2pController.handleHostGame();
-                    transitionToP2PGame(true);
+                
+                if (popup.isRelayMode()) {
+                    // 릴레이 모드
+                    handleRelayMode(popup, isHostMode, true);
+                } else {
+                    // 직접 P2P 모드
+                    if (p2pController != null) {
+                        p2pController.handleHostGame();
+                        transitionToP2PGame(true);
+                    }
                 }
             });
             
             popup.setOnConnect(() -> {
-                String ip = popup.getIpAddress();
-                String port = popup.getPort();
                 p2pStage.close();
-                if (p2pController != null) {
-                    p2pController.connectToGame(ip, port);
-                    transitionToP2PGame(false);
+                
+                if (popup.isRelayMode()) {
+                    // 릴레이 모드
+                    handleRelayMode(popup, isHostMode, false);
+                } else {
+                    // 직접 P2P 모드
+                    String ip = popup.getIpAddress();
+                    String port = popup.getPort();
+                    if (p2pController != null) {
+                        p2pController.connectToGame(ip, port);
+                        transitionToP2PGame(false);
+                    }
                 }
             });
             
@@ -615,6 +629,39 @@ public class MainController extends BaseController {
         } catch (Exception e) {
             e.printStackTrace();
             // showErrorAlert("오류", "P2P 모드 실행 중 오류 발생: " + e.getMessage());
+        }
+    }
+    
+    private void handleRelayMode(seoultech.se.client.ui.P2PModeSelectionPopup popup, 
+                                  boolean isHostMode, boolean isHost) {
+        String relayServerIp = popup.getRelayServerIp();
+        String relayServerPort = popup.getRelayServerPort();
+        String sessionId = popup.getSessionId();
+        
+        if (relayServerIp.isEmpty() || relayServerPort.isEmpty() || sessionId.isEmpty()) {
+            System.err.println("❌ [Relay] Missing relay server configuration");
+            return;
+        }
+        
+        try {
+            int relayPort = Integer.parseInt(relayServerPort);
+            String playerId = isHost ? "player-host" : "player-guest";
+            
+            System.out.println("🔄 [Relay] Connecting via relay server:");
+            System.out.println("   └ Server: " + relayServerIp + ":" + relayPort);
+            System.out.println("   └ Session: " + sessionId);
+            System.out.println("   └ Player: " + playerId);
+            
+            // 릴레이 서버를 통한 연결
+            if (p2pService != null) {
+                p2pService.connectViaRelay(relayServerIp, relayPort, sessionId, playerId);
+            }
+            
+            // 게임 화면으로 전환
+            transitionToP2PGame(isHost);
+            
+        } catch (NumberFormatException e) {
+            System.err.println("❌ [Relay] Invalid port number: " + relayServerPort);
         }
     }
 

@@ -58,6 +58,13 @@ server:
     max-binary-message-buffer-size: 1048576  # 1MB (바이너리 메시지)
 
 # ===============================================================================
+# P2P Relay Server Configuration
+# ===============================================================================
+relay:
+  udp:
+    port: 9090  # UDP 릴레이 포트
+
+# ===============================================================================
 # WebSocket Configuration
 # ===============================================================================
 websocket:
@@ -205,6 +212,8 @@ server:
 logging:
   level:
     seoultech.se.server: DEBUG
+    seoultech.se.server.service.P2PRelayService: INFO
+    seoultech.se.server.controller.P2PRelayController: INFO
     org.springframework.messaging: DEBUG
     org.springframework.web.socket: DEBUG
 
