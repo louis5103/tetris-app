@@ -108,6 +108,9 @@ public class MainController extends BaseController {
 
     @Autowired
     private seoultech.se.client.controller.P2PModeSelectionController p2pController;
+    
+    @Autowired(required = false)
+    private seoultech.se.backend.network.P2PService p2pService;
 
     /**
      * UI 초기화 메서드
@@ -571,6 +574,13 @@ public class MainController extends BaseController {
     private void showP2PPopup(boolean isHostMode) {
         try {
             seoultech.se.client.ui.P2PModeSelectionPopup popup = new seoultech.se.client.ui.P2PModeSelectionPopup();
+            
+            // 호스트 정보를 팝업에 표시
+            if (p2pService != null) {
+                String myIp = seoultech.se.client.util.NetworkUtils.getLocalIpAddress();
+                int myPort = p2pService.getLocalPort();
+                popup.setHostInfo(myIp, myPort);
+            }
             
             Stage p2pStage = new Stage();
             Scene scene = new Scene(popup);

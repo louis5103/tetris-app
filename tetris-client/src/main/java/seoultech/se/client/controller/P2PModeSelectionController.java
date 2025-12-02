@@ -26,9 +26,17 @@ public class P2PModeSelectionController extends BaseController {
 
     @FXML
     public void initialize() {
+        // 네트워크 디버깅 정보 출력
+        NetworkUtils.printNetworkInterfaces();
+        
         String myIp = NetworkUtils.getLocalIpAddress();
-        // TODO: P2PService에서 포트를 가져와서 보여주면 좋을듯
-        System.out.println("My IP: " + myIp);
+        int myPort = p2pService.getLocalPort();
+        
+        System.out.println("=== P2P Connection Info ===");
+        System.out.println("Your IP: " + myIp);
+        System.out.println("Your Port: " + myPort);
+        System.out.println("Share this info with the other player!");
+        System.out.println("===========================");
     }
 
     @FXML

@@ -41,12 +41,15 @@ public class P2PService {
     @PostConstruct
     public void init() {
         try {
-            // 빈 포트 자동 할당
-            this.socket = new DatagramSocket();
+            // 모든 네트워크 인터페이스(0.0.0.0)에서 수신하도록 명시적 바인딩
+            this.socket = new DatagramSocket(null);
+            this.socket.setReuseAddress(true);
+            this.socket.bind(new java.net.InetSocketAddress("0.0.0.0", 0));
             this.localPort = socket.getLocalPort();
             this.isRunning = true;
             
-            System.out.println("🔹 [P2P] UDP Socket bound to port: " + localPort);
+            System.out.println("🔹 [P2P] UDP Socket bound to 0.0.0.0:" + localPort);
+            System.out.println("🔹 [P2P] Make sure this port is accessible from other devices");
             
             // 수신 스레드 시작
             Thread receiverThread = new Thread(this::listen);
