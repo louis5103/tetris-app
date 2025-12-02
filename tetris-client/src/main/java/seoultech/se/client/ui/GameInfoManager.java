@@ -1,6 +1,5 @@
 package seoultech.se.client.ui;
 
-import javafx.application.Platform;
 import javafx.scene.control.Label;
 import seoultech.se.core.GameState;
 
@@ -38,72 +37,98 @@ public class GameInfoManager {
     /**
      * 게임 상태로부터 모든 정보 레이블을 업데이트합니다
      * 
+     * ⚠️ Thread-safe: UI 스레드가 아니면 Platform.runLater()로 감싸서 실행
+     * 
      * @param gameState 현재 게임 상태
      */
     public void updateAll(GameState gameState) {
-        Platform.runLater(() -> {
+        Runnable updateTask = () -> {
             updateScore(gameState.getScore());
             updateLevel(gameState.getLevel());
             updateLines(gameState.getLinesCleared());
-        });
+        };
+        
+        if (javafx.application.Platform.isFxApplicationThread()) {
+            updateTask.run();
+        } else {
+            javafx.application.Platform.runLater(updateTask);
+        }
     }
     
     /**
      * 점수 레이블을 업데이트합니다
      * 
+     * ⚠️ Thread-safe: UI 스레드가 아니면 Platform.runLater()로 감싸서 실행
+     * 
      * @param score 점수
      */
     public void updateScore(long score) {
-        Platform.runLater(() -> {
-            scoreLabel.setText(String.valueOf(score));
-        });
+        Runnable updateTask = () -> scoreLabel.setText(String.valueOf(score));
+        
+        if (javafx.application.Platform.isFxApplicationThread()) {
+            updateTask.run();
+        } else {
+            javafx.application.Platform.runLater(updateTask);
+        }
     }
     
     /**
      * 레벨 레이블을 업데이트합니다
      * 
+     * ⚠️ Thread-safe: UI 스레드가 아니면 Platform.runLater()로 감싸서 실행
+     * 
      * @param level 레벨
      */
     public void updateLevel(int level) {
-        Platform.runLater(() -> {
-            levelLabel.setText(String.valueOf(level));
-        });
+        Runnable updateTask = () -> levelLabel.setText(String.valueOf(level));
+        
+        if (javafx.application.Platform.isFxApplicationThread()) {
+            updateTask.run();
+        } else {
+            javafx.application.Platform.runLater(updateTask);
+        }
     }
     
     /**
      * 라인 수 레이블을 업데이트합니다
      * 
+     * ⚠️ Thread-safe: UI 스레드가 아니면 Platform.runLater()로 감싸서 실행
+     * 
      * @param lines 클리어한 라인 수
      */
     public void updateLines(int lines) {
-        Platform.runLater(() -> {
-            linesLabel.setText(String.valueOf(lines));
-        });
+        Runnable updateTask = () -> linesLabel.setText(String.valueOf(lines));
+        
+        if (javafx.application.Platform.isFxApplicationThread()) {
+            updateTask.run();
+        } else {
+            javafx.application.Platform.runLater(updateTask);
+        }
     }
     
     /**
      * 모든 레이블을 초기화합니다 (0으로 설정)
+     * 
+     * ⚠️ Platform.runLater 제거: 호출자가 이미 UI 스레드에서 호출함
      */
     public void reset() {
-        Platform.runLater(() -> {
-            scoreLabel.setText("0");
-            levelLabel.setText("1");
-            linesLabel.setText("0");
-        });
+        scoreLabel.setText("0");
+        levelLabel.setText("1");
+        linesLabel.setText("0");
     }
     
     /**
      * 특정 값으로 모든 레이블을 설정합니다
+     * 
+     * ⚠️ Platform.runLater 제거: 호출자가 이미 UI 스레드에서 호출함
      * 
      * @param score 점수
      * @param level 레벨
      * @param lines 라인 수
      */
     public void setAll(long score, int level, int lines) {
-        Platform.runLater(() -> {
-            scoreLabel.setText(String.valueOf(score));
-            levelLabel.setText(String.valueOf(level));
-            linesLabel.setText(String.valueOf(lines));
-        });
+        scoreLabel.setText(String.valueOf(score));
+        levelLabel.setText(String.valueOf(level));
+        linesLabel.setText(String.valueOf(lines));
     }
 }

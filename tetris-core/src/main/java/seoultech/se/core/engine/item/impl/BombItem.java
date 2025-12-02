@@ -74,8 +74,28 @@ public class BombItem extends AbstractItem {
         int startCol = Math.max(0, col - EXPLOSION_RADIUS);
         int endCol = Math.min(boardWidth - 1, col + EXPLOSION_RADIUS);
         
+        int areaBlocks = 0;
+        for (int r = startRow; r <= endRow; r++) {
+            for (int c = startCol; c <= endCol; c++) {
+                if (grid[r][c] != null && grid[r][c].isOccupied()) {
+                    areaBlocks++;
+                }
+            }
+        }
+        
         System.out.println("   - Explosion area: rows " + startRow + "-" + endRow + 
-            ", cols " + startCol + "-" + endCol);
+            ", cols " + startCol + "-" + endCol + " (" + areaBlocks + " blocks)");
+        
+        // ✨ 제거될 셀들의 좌표 수집 (애니메이션용)
+        java.util.List<int[]> clearedCells = new java.util.ArrayList<>();
+        for (int r = startRow; r <= endRow; r++) {
+            for (int c = startCol; c <= endCol; c++) {
+                if (grid[r][c] != null && grid[r][c].isOccupied()) {
+                    clearedCells.add(new int[]{r, c});
+                }
+            }
+        }
+        gameState.setItemEffectClearedCells(clearedCells);
         
         // 블록 제거 - 폭발 범위 내의 모든 블록 제거
         for (int r = startRow; r <= endRow; r++) {
@@ -107,37 +127,66 @@ public class BombItem extends AbstractItem {
     }
     
     /**
-     * 중력 적용: 빈 공간 위의 블록을 아래로 떨어뜨림
+     * 중력 적용: 행 단위로 중력 적용
      * 
-     * 블록 제거 아이템(BOMB, PLUS) 사용 시 위의 블록이 아래로 떨어지도록 함
-     * 자연스러운 게임 경험 제공
+     * 1. 빈 행(완전히 비어있는 행)을 찾음
+     * 2. 빈 행 위의 모든 행들을 아래로 이동
+     * 3. 꽉 찬 행이 있으면 라인 클리어
      * 
      * @param gameState 게임 상태
-     * @return 중력 적용 후 새로 채워진 라인 수
+     * @return 제거된 라인 수
      */
     private int applyGravity(GameState gameState) {
         Cell[][] grid = gameState.getGrid();
         int boardHeight = gameState.getBoardHeight();
         int boardWidth = gameState.getBoardWidth();
         
-        // 각 열에 대해 아래에서 위로 스캔하여 블록을 아래로 이동
-        for (int col = 0; col < boardWidth; col++) {
-            int writeRow = boardHeight - 1;  // 쓰기 위치 (아래에서 시작)
+        boolean changed = true;
+        
+        // 빈 행이 없을 때까지 반복
+        while (changed) {
+            changed = false;
             
-            // 아래에서 위로 스캔
-            for (int readRow = boardHeight - 1; readRow >= 0; readRow--) {
-                if (grid[readRow][col] != null && grid[readRow][col].isOccupied()) {
-                    // 블록을 발견하면 쓰기 위치로 이동
-                    if (readRow != writeRow) {
-                        // 블록 복사
-                        grid[writeRow][col].setColor(grid[readRow][col].getColor());
-                        grid[writeRow][col].setOccupied(true);
-                        grid[writeRow][col].setItemMarker(grid[readRow][col].getItemMarker());
-                        
-                        // 원래 위치 비우기
-                        grid[readRow][col].clear();
+            // 아래에서 위로 스캔하여 빈 행 찾기
+            for (int row = boardHeight - 1; row > 0; row--) {
+                // 현재 행이 완전히 비어있는지 확인
+                boolean isEmptyRow = true;
+                for (int col = 0; col < boardWidth; col++) {
+                    if (grid[row][col].isOccupied()) {
+                        isEmptyRow = false;
+                        break;
                     }
-                    writeRow--;  // 다음 쓰기 위치는 한 칸 위로
+                }
+                
+                // 현재 행이 비어있고, 위에 블록이 있으면 내림
+                if (isEmptyRow) {
+                    boolean hasBlockAbove = false;
+                    for (int aboveRow = row - 1; aboveRow >= 0; aboveRow--) {
+                        for (int col = 0; col < boardWidth; col++) {
+                            if (grid[aboveRow][col].isOccupied()) {
+                                hasBlockAbove = true;
+                                break;
+                            }
+                        }
+                        if (hasBlockAbove) break;
+                    }
+                    
+                    if (hasBlockAbove) {
+                        // 위의 모든 행을 한 칸씩 아래로 이동
+                        for (int moveRow = row; moveRow > 0; moveRow--) {
+                            for (int col = 0; col < boardWidth; col++) {
+                                grid[moveRow][col].setColor(grid[moveRow - 1][col].getColor());
+                                grid[moveRow][col].setOccupied(grid[moveRow - 1][col].isOccupied());
+                                grid[moveRow][col].setItemMarker(grid[moveRow - 1][col].getItemMarker());
+                            }
+                        }
+                        // 맨 위 행 비우기
+                        for (int col = 0; col < boardWidth; col++) {
+                            grid[0][col].clear();
+                        }
+                        changed = true;
+                        break;  // 다시 처음부터 검사
+                    }
                 }
             }
         }
@@ -177,14 +226,13 @@ public class BombItem extends AbstractItem {
         
         // 줄 제거 및 위의 블록 내리기
         if (!linesToClear.isEmpty()) {
-            System.out.println("💣 [BombItem] Clearing " + linesToClear.size() + " filled line(s) after gravity");
+            System.out.println("💣 [BombItem] Clearing " + linesToClear.size() + " filled line(s) after BOMB effect");
             
-            // 🔥 FIX: 제거할 줄들을 Set으로 변환하여 한번에 처리
             java.util.Set<Integer> rowsToRemove = new java.util.HashSet<>(linesToClear);
             
-            // 남아있는 줄들만 수집 (아래에서 위로)
+            // 남아있는 줄들만 수집 (위에서 아래로 순서대로)
             java.util.List<Cell[]> remainingRows = new java.util.ArrayList<>();
-            for (int row = boardHeight - 1; row >= 0; row--) {
+            for (int row = 0; row < boardHeight; row++) {
                 if (!rowsToRemove.contains(row)) {
                     Cell[] rowCopy = new Cell[boardWidth];
                     for (int col = 0; col < boardWidth; col++) {
@@ -194,23 +242,22 @@ public class BombItem extends AbstractItem {
                 }
             }
             
-            // 보드를 아래에서부터 다시 채우기
-            int targetRow = boardHeight - 1;
-            for (Cell[] rowData : remainingRows) {
+            // 보드를 위에서부터 다시 채우기 (빈 줄이 위로 가도록)
+            int srcIndex = 0;
+            for (int targetRow = linesToClear.size(); targetRow < boardHeight; targetRow++) {
+                Cell[] rowData = remainingRows.get(srcIndex++);
                 for (int col = 0; col < boardWidth; col++) {
                     grid[targetRow][col].setColor(rowData[col].getColor());
                     grid[targetRow][col].setOccupied(rowData[col].isOccupied());
                     grid[targetRow][col].setItemMarker(rowData[col].getItemMarker());
                 }
-                targetRow--;
             }
             
-            // 남은 위쪽 줄들을 빈 칸으로 초기화
-            while (targetRow >= 0) {
+            // 위쪽 줄들을 빈 칸으로 초기화
+            for (int row = 0; row < linesToClear.size(); row++) {
                 for (int col = 0; col < boardWidth; col++) {
-                    grid[targetRow][col].clear();
+                    grid[row][col].clear();
                 }
-                targetRow--;
             }
         }
         

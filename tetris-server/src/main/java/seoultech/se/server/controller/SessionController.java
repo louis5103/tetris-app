@@ -31,7 +31,9 @@ public class SessionController {
     private final GameSessionManager gameSessionManager;
 
     /**
-     * 새로운 게임 세션 생성
+     * 새로운 게임 세션 생성 (P2P 프라이빗 모드용)
+     *
+     * 참고: 일반 매칭은 /api/matchmaking/join 사용
      *
      * POST /api/session/create
      *
@@ -49,7 +51,7 @@ public class SessionController {
             if (gameplayType == null) {
                 gameplayType = GameplayType.CLASSIC;
             }
-            
+
             // 3. Difficulty 설정 (기본값: NORMAL)
             Difficulty difficulty = request.getDifficulty();
             if (difficulty == null) {
@@ -66,7 +68,7 @@ public class SessionController {
             }
 
             // 6. WebSocket URL 생성
-            String websocketUrl = "/game"; // STOMP endpoint
+            String websocketUrl = "/ws-game"; // STOMP endpoint
 
             // 7. Config를 DTO로 변환
             GameModeConfig config = session.getGameModeConfig();
@@ -74,8 +76,8 @@ public class SessionController {
 
             // 8. 응답 생성
             SessionCreateResponse response = SessionCreateResponse.success(
-                sessionId, 
-                websocketUrl, 
+                sessionId,
+                websocketUrl,
                 configDto,
                 session.getHostPlayerId()
             );
@@ -161,6 +163,7 @@ public class SessionController {
         }
     }
     
+
     /**
      * Config 업데이트 요청 DTO (내부 클래스)
      */

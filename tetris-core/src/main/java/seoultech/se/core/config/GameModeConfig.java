@@ -1,12 +1,12 @@
 package seoultech.se.core.config;
 
+import java.util.Collections;
+import java.util.Set;
+
 import lombok.Builder;
 import lombok.Getter;
 import seoultech.se.core.engine.item.ItemType;
 import seoultech.se.core.model.enumType.Difficulty;
-
-import java.util.Collections;
-import java.util.Set;
 
 /**
  * 게임 모드 설정 객체 (리팩토링 완료)
@@ -148,16 +148,26 @@ public class GameModeConfig {
      * arcade.yml의 itemAutoUse와 매핑
      */
     @Builder.Default
-    private final boolean itemAutoUse = false;
+    private final boolean itemAutoUse = true;
     
     /**
      * 활성화된 아이템 타입 목록
      * arcade.yml의 enabledItems와 매핑
+     * Note: Builder에서 null을 전달하면 빈 Set으로 초기화됨
      */
-    @Builder.Default
-    private final Set<ItemType> enabledItemTypes = Collections.emptySet();
+    private final Set<ItemType> enabledItemTypes;
     
     // ========== 헬퍼 메서드 ==========
+    
+    /**
+     * 활성화된 아이템 타입 목록 반환 (Null-safe)
+     * Lombok의 기본 getter를 오버라이드하여 null 체크 추가
+     * 
+     * @return 활성화된 아이템 타입 집합 (null인 경우 빈 집합 반환)
+     */
+    public Set<ItemType> getEnabledItemTypes() {
+        return enabledItemTypes != null ? enabledItemTypes : Collections.emptySet();
+    }
     
     /**
      * 아이템 시스템 활성화 여부 확인
@@ -165,7 +175,7 @@ public class GameModeConfig {
      * @return 아이템 시스템이 활성화되어 있으면 true
      */
     public boolean isItemSystemEnabled() {
-        return linesPerItem > 0 && !enabledItemTypes.isEmpty();
+        return linesPerItem > 0 && getEnabledItemTypes() != null && !getEnabledItemTypes().isEmpty();
     }
     
     /**
@@ -215,10 +225,10 @@ public class GameModeConfig {
             .dropSpeedMultiplier(1.0)
             .lockDelay(500)
             // 아이템 설정
-            .linesPerItem(10)
+            .linesPerItem(1)
             .itemDropRate(0.15)  // Deprecated
             .maxInventorySize(3)
-            .itemAutoUse(false)
+            .itemAutoUse(true)
             .enabledItemTypes(java.util.EnumSet.of(
                 ItemType.LINE_CLEAR,
                 ItemType.WEIGHT_BOMB,

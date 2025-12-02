@@ -44,14 +44,11 @@ public class LineClearItem extends AbstractItem {
     /**
      * 줄 삭제 효과 적용
      * 
-     * 주의: 이 메서드는 일반적으로 직접 호출되지 않습니다.
-     * 'L' 마커는 블록 고정 시 ArcadeGameEngine에서 자동으로 처리됩니다.
-     * 
-     * 이 메서드는 일관성과 테스트 목적으로 구현되었습니다.
+     * 'L' 마커가 있는 모든 줄을 찾아서 삭제합니다.
      * 
      * @param gameState 게임 상태
-     * @param row 'L' 마커가 있는 줄 번호
-     * @param col 사용하지 않음 (줄 전체 삭제)
+     * @param row 사용하지 않음 (모든 'L' 마커 줄을 찾음)
+     * @param col 사용하지 않음
      * @return 아이템 효과
      */
     @Override
@@ -60,34 +57,24 @@ public class LineClearItem extends AbstractItem {
             return ItemEffect.none();
         }
         
-        Cell[][] grid = gameState.getGrid();
-        int boardHeight = gameState.getBoardHeight();
-        int boardWidth = gameState.getBoardWidth();
+        System.out.println("Ⓛ [LineClearItem] Applying LINE_CLEAR effect - searching for 'L' markers");
         
-        // 경계 체크
-        if (row < 0 || row >= boardHeight) {
-            System.err.println("⚠️ [LineClearItem] Invalid row: " + row);
-            System.err.println("   - Board height: " + boardHeight);
+        // 'L' 마커가 있는 줄 찾기
+        java.util.List<Integer> markedLines = findAndClearMarkedLines(gameState);
+        
+        if (markedLines.isEmpty()) {
+            System.out.println("⚠️ [LineClearItem] No 'L' markers found!");
             return ItemEffect.none();
         }
         
-        int blocksCleared = 0;
-        
-        System.out.println("Ⓛ [LineClearItem] Applying LINE_CLEAR effect at row " + row);
-        
-        // 지정된 줄의 모든 블록 제거
-        for (int c = 0; c < boardWidth; c++) {
-            if (grid[row][c] != null && grid[row][c].isOccupied()) {
-                grid[row][c].clear();
-                blocksCleared++;
-            }
-        }
+        // 줄 삭제 및 중력 적용
+        int blocksCleared = clearLines(gameState, markedLines);
         
         // 점수 계산
         int bonusScore = blocksCleared * SCORE_PER_BLOCK;
         
-        String message = String.format("Ⓛ Line %d cleared by 'L' marker! %d blocks removed", 
-            row, blocksCleared);
+        String message = String.format("Ⓛ %d line(s) cleared by 'L' markers! %d blocks removed", 
+            markedLines.size(), blocksCleared);
         
         System.out.println("✅ [LineClearItem] " + message);
         
@@ -159,6 +146,28 @@ public class LineClearItem extends AbstractItem {
         // 삭제할 줄들을 Set으로 변환 (O(1) 조회)
         java.util.Set<Integer> rowsSet = new java.util.HashSet<>(rowsToRemove);
         
+        // ✨ LINE_CLEAR는 행 단위 삭제이므로 lastClearedRows를 사용
+        // ArcadeGameEngine에서 설정됨
+        
+        // 디버그: 삭제 전 보드 상태 출력
+        System.out.println("Ⓛ [LineClearItem] 🔍 BEFORE CLEAR - Board state (rows with blocks):");
+        for (int row = 0; row < boardHeight; row++) {
+            int rowBlockCount = 0;
+            StringBuilder rowStr = new StringBuilder();
+            for (int col = 0; col < boardWidth; col++) {
+                if (grid[row][col].isOccupied()) {
+                    rowBlockCount++;
+                    rowStr.append("█");
+                } else {
+                    rowStr.append("·");
+                }
+            }
+            if (rowBlockCount > 0 || rowsSet.contains(row)) {
+                String marker = rowsSet.contains(row) ? " ← TO BE CLEARED" : "";
+                System.out.println("Ⓛ   Row " + String.format("%2d", row) + ": " + rowStr + " (" + rowBlockCount + " blocks)" + marker);
+            }
+        }
+        
         // 블록 수 계산 및 디버그 로그
         for (int row : rowsToRemove) {
             int rowBlockCount = 0;
@@ -172,9 +181,9 @@ public class LineClearItem extends AbstractItem {
                 " occupied blocks (will clear entire row)");
         }
         
-        // 남아있는 줄들만 수집 (아래에서 위로)
+        // 남아있는 줄들만 수집 (위에서 아래로 순서대로)
         java.util.List<Cell[]> remainingRows = new java.util.ArrayList<>();
-        for (int row = boardHeight - 1; row >= 0; row--) {
+        for (int row = 0; row < boardHeight; row++) {
             if (!rowsSet.contains(row)) {
                 Cell[] rowCopy = new Cell[boardWidth];
                 for (int col = 0; col < boardWidth; col++) {
@@ -184,28 +193,44 @@ public class LineClearItem extends AbstractItem {
             }
         }
         
-        // 보드를 아래에서부터 다시 채우기
-        int targetRow = boardHeight - 1;
-        for (Cell[] rowData : remainingRows) {
+        // 보드를 위에서부터 다시 채우기 (빈 줄이 위로 가도록)
+        int srcIndex = 0;
+        for (int targetRow = rowsToRemove.size(); targetRow < boardHeight; targetRow++) {
+            Cell[] rowData = remainingRows.get(srcIndex++);
             for (int col = 0; col < boardWidth; col++) {
-                // 🔥 FIX: 셀 값을 복사 (참조가 아닌 값 복사)
                 grid[targetRow][col].setColor(rowData[col].getColor());
                 grid[targetRow][col].setOccupied(rowData[col].isOccupied());
                 grid[targetRow][col].setItemMarker(rowData[col].getItemMarker());
             }
-            targetRow--;
         }
         
-        // 남은 위쪽 줄들을 빈 칸으로 초기화
-        while (targetRow >= 0) {
+        // 위쪽 줄들을 빈 칸으로 초기화
+        for (int row = 0; row < rowsToRemove.size(); row++) {
             for (int col = 0; col < boardWidth; col++) {
-                grid[targetRow][col].clear();
+                grid[row][col].clear();
             }
-            targetRow--;
         }
         
         System.out.println("✅ [LineClearItem] Cleared " + rowsToRemove.size() + 
             " line(s), removed " + totalBlocksCleared + " blocks");
+        
+        // 디버그: 삭제 후 보드 상태 출력
+        System.out.println("Ⓛ [LineClearItem] 🔍 AFTER CLEAR - Board state (rows with blocks):");
+        for (int row = 0; row < boardHeight; row++) {
+            int rowBlockCount = 0;
+            StringBuilder rowStr = new StringBuilder();
+            for (int col = 0; col < boardWidth; col++) {
+                if (grid[row][col].isOccupied()) {
+                    rowBlockCount++;
+                    rowStr.append("█");
+                } else {
+                    rowStr.append("·");
+                }
+            }
+            if (rowBlockCount > 0) {
+                System.out.println("Ⓛ   Row " + String.format("%2d", row) + ": " + rowStr + " (" + rowBlockCount + " blocks)");
+            }
+        }
         
         return totalBlocksCleared;
     }

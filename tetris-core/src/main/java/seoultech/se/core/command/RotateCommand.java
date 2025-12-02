@@ -1,5 +1,7 @@
 package seoultech.se.core.command;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -41,6 +43,7 @@ import seoultech.se.core.model.enumType.RotationDirection;
 @Getter
 @AllArgsConstructor
 @NoArgsConstructor  // JSON 역직렬화를 위해 필요
+@JsonIgnoreProperties(ignoreUnknown = true)  // P2P 전송 시 추가 필드(description 등) 무시
 public class RotateCommand implements GameCommand {
     /**
      * 회전 방향

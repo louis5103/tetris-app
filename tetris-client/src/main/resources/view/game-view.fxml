@@ -22,7 +22,6 @@
 <BorderPane fx:id="rootPane"
             xmlns="http://javafx.com/javafx/21" 
             xmlns:fx="http://javafx.com/fxml/1" 
-            fx:controller="seoultech.se.client.controller.GameController"
             styleClass="game-background"
             stylesheets="@../css/application.css, @../css/game-view.css">
     
@@ -130,7 +129,7 @@
                           managed="false"
                           StackPane.alignment="CENTER">
                         <VBox alignment="CENTER" styleClass="popup-container" prefWidth="400">
-                            <Label text="GAME OVER" styleClass="popup-title"/>
+                            <Label fx:id="gameOverTitleLabel" text="GAME OVER" styleClass="popup-title"/>
                             <Label text="Your Score" styleClass="popup-label"/>
                             <Label fx:id="finalScoreLabel" text="0" styleClass="popup-score"/>
 

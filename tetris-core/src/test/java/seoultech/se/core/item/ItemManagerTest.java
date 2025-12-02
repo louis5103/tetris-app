@@ -28,9 +28,10 @@ public class ItemManagerTest {
     @BeforeEach
     public void setUp() {
         // 모든 아이템 활성화, 10% 드롭률 (하지만 카운터 기반이므로 확률은 무시됨)
-        itemManager = new ItemManager(1, EnumSet.allOf(ItemType.class));  // 테스트용: 1줄마다
+        itemManager = new ItemManager(10, EnumSet.allOf(ItemType.class));  // 테스트용: 10줄마다
         // Stateless 리팩토링: GameState 생성
         gameState = new GameState(10, 20);
+        gameState.setLinesUntilNextItem(10);
     }
 
     @Test

@@ -149,38 +149,44 @@ public class GameModeConfigFactory {
     public GameModeConfig createArcadeConfig(Difficulty difficulty) {
         // Difficulty 배율 적용
         DifficultyMultiplier multiplier = getDifficultyMultiplier(difficulty);
-        
+
         System.out.println("🏭 [GameModeConfigFactory] Creating Arcade Config");
         System.out.println("   - linesPerItem from YML: " + arcadeLinesPerItem);
         System.out.println("   - maxInventorySize from YML: " + arcadeMaxInventorySize);
-        
+        System.out.println("   - autoUse from YML: " + arcadeItemAutoUse);
+        System.out.println("   - enabledTypes from YML (raw): " + arcadeEnabledItemTypes);
+
+        Set<seoultech.se.core.engine.item.ItemType> parsedTypes = parseItemTypes(arcadeEnabledItemTypes);
+        System.out.println("   - Parsed enabledItemTypes: " + parsedTypes);
+        System.out.println("   - isItemSystemEnabled will be: " + (arcadeLinesPerItem > 0 && !parsedTypes.isEmpty()));
+
         return GameModeConfig.builder()
             .gameplayType(GameplayType.ARCADE)
             .difficulty(difficulty)
-            
+
             // 회전 시스템
             .srsEnabled(arcadeSrsEnabled)
             .rotation180Enabled(arcadeRotation180Enabled)
-            
+
             // 기능 활성화
             .hardDropEnabled(arcadeHardDropEnabled)
             .holdEnabled(arcadeHoldEnabled)
             .ghostPieceEnabled(arcadeGhostPieceEnabled)
-            
+
             // 속도 설정 (Difficulty 배율 적용)
             .dropSpeedMultiplier(arcadeDropSpeedMultiplier * multiplier.speedMultiplier)
             .softDropSpeed(arcadeSoftDropSpeed)
-            
+
             // 락 시스템 (Difficulty 배율 적용)
             .lockDelay((int)(arcadeLockDelay * multiplier.lockDelayMultiplier))
             .maxLockResets(arcadeMaxLockResets)
-            
+
             // ========== 아이템 설정 ==========
             .linesPerItem(arcadeLinesPerItem)
             .itemDropRate(arcadeItemDropRate)  // Deprecated
             .maxInventorySize(arcadeMaxInventorySize)
             .itemAutoUse(arcadeItemAutoUse)
-            .enabledItemTypes(parseItemTypes(arcadeEnabledItemTypes))
+            .enabledItemTypes(parsedTypes)  // 미리 파싱한 값 사용
             
             .build();
     }
@@ -203,9 +209,20 @@ public class GameModeConfigFactory {
      * String 리스트를 ItemType EnumSet으로 변환
      */
     private Set<seoultech.se.core.engine.item.ItemType> parseItemTypes(List<String> itemTypeStrings) {
-        return itemTypeStrings.stream()
-            .map(seoultech.se.core.engine.item.ItemType::valueOf)
+        System.out.println("🔍 [GameModeConfigFactory] Parsing item types from YML:");
+        System.out.println("   - Raw strings: " + itemTypeStrings);
+
+        Set<seoultech.se.core.engine.item.ItemType> result = itemTypeStrings.stream()
+            .map(String::trim)  // 공백 제거
+            .filter(s -> !s.isEmpty())  // 빈 문자열 제거
+            .map(s -> {
+                System.out.println("   - Parsing: '" + s + "'");
+                return seoultech.se.core.engine.item.ItemType.valueOf(s);
+            })
             .collect(Collectors.toCollection(() -> EnumSet.noneOf(seoultech.se.core.engine.item.ItemType.class)));
+
+        System.out.println("   - Parsed item types: " + result);
+        return result;
     }
     
     /**

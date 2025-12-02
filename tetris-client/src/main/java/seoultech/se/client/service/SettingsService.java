@@ -551,15 +551,15 @@ public class SettingsService {
     /**
      * GeneralSettings를 안전하게 가져오는 헬퍼 메서드
      * null일 경우 하드코딩된 기본값 반환
-     * 
+     *
      * @return GeneralSettings (null이 아님을 보장)
      */
     private GeneralSettings getDefaultSettingsSafely() {
         GeneralSettings settings = clientSettings.getSetting();
-        
+
         if (settings == null) {
             System.err.println("⚠️ ClientSettings.setting is null! Using hardcoded fallback defaults.");
-            
+
             // 하드코딩된 폴백 기본값
             GeneralSettings fallback = new GeneralSettings();
             fallback.setSoundVolume(80.0);
@@ -568,11 +568,27 @@ public class SettingsService {
             fallback.setStageWidth(500.0);
             fallback.setStageHeight(700.0);
             fallback.setDifficulty("difficultyNormal");
-            
+
             return fallback;
         }
-        
+
         return settings;
+    }
+
+    // ========== Multiplayer Server Settings ==========
+
+    /**
+     * 멀티플레이 서버 기본 URL 가져오기
+     *
+     * @return 서버 기본 URL (예: "http://localhost:8090")
+     */
+    public String getServerBaseUrl() {
+        // ClientSettings에서 서버 URL 가져오기
+        if (clientSettings.getServer() != null && clientSettings.getServer().getBaseUrl() != null) {
+            return clientSettings.getServer().getBaseUrl();
+        }
+        // 폴백 기본값
+        return "http://localhost:8090";
     }
 }
 

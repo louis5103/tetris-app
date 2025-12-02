@@ -145,12 +145,15 @@ public interface GameEngine {
                             return tryMoveRight(state);
                         case DOWN:
                             // ✨ DOWN 이동 시도 후, 실패하면 블록 고정 처리
+                            System.out.println("▶️ [GameEngine] executeCommand(DOWN) - calling tryMoveDown()...");
                             GameState newState = tryMoveDown(state, moveCmd.isSoftDrop());
                             if (newState == state) {
                                 // 이동 실패: 블록을 고정 (lockTetromino가 라인 클리어까지 처리)
                                 // 새 블록 생성은 BoardController에서 처리
+                                System.out.println("🔐 [GameEngine] tryMoveDown FAILED → calling lockTetromino()");
                                 return lockTetromino(state);
                             }
+                            System.out.println("✅ [GameEngine] tryMoveDown SUCCESS → returning new state");
                             return newState;
                         default:
                             return state;
@@ -165,6 +168,7 @@ public interface GameEngine {
                 }
                 return state;
             case HARD_DROP:
+                System.out.println("⚡ [GameEngine] executeCommand(HARD_DROP) - calling hardDrop()");
                 return hardDrop(state);
             case HOLD:
                 return tryHold(state);

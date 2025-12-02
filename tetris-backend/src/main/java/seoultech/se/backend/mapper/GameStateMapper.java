@@ -1,7 +1,7 @@
 package seoultech.se.backend.mapper;
 
 import org.springframework.stereotype.Component;
-import seoultech.se.backend.dto.GameStateDto;
+import seoultech.se.core.dto.GameStateDto;
 import seoultech.se.core.GameState;
 import seoultech.se.core.model.Cell;
 import seoultech.se.core.model.Tetromino;
@@ -79,8 +79,8 @@ public class GameStateMapper {
                     result[row][col] = 0;
                 } else {
                     // Color의 ordinal() + 1로 블록 색상 표현
-                    // NONE=0, 기타 색상=1~7
-                    result[row][col] = cell.getColor().ordinal();
+                    // NONE=0 (empty), RED=1, ...
+                    result[row][col] = cell.getColor().ordinal() + 1;
                 }
             }
         }

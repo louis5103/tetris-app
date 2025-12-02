@@ -5,6 +5,7 @@ import javafx.scene.layout.GridPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.shape.Rectangle;
 import seoultech.se.client.constants.ColorBlindMode;
+import seoultech.se.client.constants.UIConstants;
 import seoultech.se.client.util.ColorMapper;
 import seoultech.se.core.GameState;
 
@@ -20,52 +21,79 @@ import seoultech.se.core.GameState;
  * - GameController가 GameState를 전달하면 렌더링
  */
 public class OpponentBoardView extends VBox {
-    private static final int CELL_SIZE = 15; // 작은 크기
+    private static final double CELL_SIZE = UIConstants.CELL_SIZE; // 메인 보드와 동일한 크기
     private static final int BOARD_WIDTH = 10;
     private static final int BOARD_HEIGHT = 20;
 
     private final GridPane boardGrid;
+    private final GridPane holdGrid;
+    private final GridPane nextGrid;
     private final Label titleLabel;
     private final Label scoreLabel;
     private final Label levelLabel;
     private final Label linesLabel;
 
     private Rectangle[][] cellRectangles;
+    private Rectangle[][] holdCellRectangles;
+    private Rectangle[][] nextCellRectangles;
     private BoardRenderer boardRenderer;
 
     /**
      * 생성자
      */
     public OpponentBoardView() {
-        super(10); // spacing
-        this.setStyle("-fx-padding: 10; -fx-border-color: #444; -fx-border-width: 2; -fx-background-color: #1a1a1a;");
+        super(5); // spacing
+        this.setStyle("-fx-padding: 5; -fx-border-color: #444; -fx-border-width: 2; -fx-background-color: #1a1a1a;");
 
         // 타이틀
         titleLabel = new Label("OPPONENT");
-        titleLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #FFA500;");
+        titleLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: #FFA500;");
 
         // 보드 GridPane
         boardGrid = new GridPane();
         boardGrid.setHgap(0);
         boardGrid.setVgap(0);
+        
+        // Hold & Next GridPanes
+        holdGrid = new GridPane();
+        holdGrid.setHgap(0);
+        holdGrid.setVgap(0);
+        
+        nextGrid = new GridPane();
+        nextGrid.setHgap(0);
+        nextGrid.setVgap(0);
+        
+        // 미리보기 영역 레이아웃 (HBox)
+        javafx.scene.layout.HBox previewBox = new javafx.scene.layout.HBox(10);
+        previewBox.setAlignment(javafx.geometry.Pos.CENTER);
+        
+        VBox holdBox = new VBox(2, new Label("HOLD"), holdGrid);
+        holdBox.setAlignment(javafx.geometry.Pos.CENTER);
+        holdBox.getChildren().get(0).setStyle("-fx-text-fill: white; -fx-font-size: 9px;");
+        
+        VBox nextBox = new VBox(2, new Label("NEXT"), nextGrid);
+        nextBox.setAlignment(javafx.geometry.Pos.CENTER);
+        nextBox.getChildren().get(0).setStyle("-fx-text-fill: white; -fx-font-size: 9px;");
+        
+        previewBox.getChildren().addAll(holdBox, nextBox);
 
         // 정보 레이블
         scoreLabel = new Label("Score: 0");
-        scoreLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #FFFFFF;");
+        scoreLabel.setStyle("-fx-font-size: 10px; -fx-text-fill: #FFFFFF;");
 
         levelLabel = new Label("Level: 1");
-        levelLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #FFFFFF;");
+        levelLabel.setStyle("-fx-font-size: 10px; -fx-text-fill: #FFFFFF;");
 
         linesLabel = new Label("Lines: 0");
-        linesLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #FFFFFF;");
+        linesLabel.setStyle("-fx-font-size: 10px; -fx-text-fill: #FFFFFF;");
 
-        // VBox에 추가
-        this.getChildren().addAll(titleLabel, boardGrid, scoreLabel, levelLabel, linesLabel);
+        // VBox에 추가 (Preview -> Board -> Info)
+        this.getChildren().addAll(titleLabel, previewBox, boardGrid, scoreLabel, levelLabel, linesLabel);
 
         // 초기화
         initializeBoard();
 
-        System.out.println("✅ OpponentBoardView created");
+        System.out.println("✅ OpponentBoardView created with Hold/Next support");
     }
 
     /**
@@ -89,11 +117,40 @@ public class OpponentBoardView extends VBox {
                 cellRectangles[row][col] = rect;
             }
         }
+        
+        // Hold & Next 초기화 (4x4)
+        int PREVIEW_SIZE = 4;
+        double PREVIEW_CELL_SIZE = UIConstants.PREVIEW_CELL_SIZE; // 메인 프리뷰와 동일한 크기
+        
+        holdCellRectangles = new Rectangle[PREVIEW_SIZE][PREVIEW_SIZE];
+        initializePreviewGrid(holdGrid, holdCellRectangles, PREVIEW_SIZE, PREVIEW_CELL_SIZE);
+        
+        nextCellRectangles = new Rectangle[PREVIEW_SIZE][PREVIEW_SIZE];
+        initializePreviewGrid(nextGrid, nextCellRectangles, PREVIEW_SIZE, PREVIEW_CELL_SIZE);
 
-        // BoardRenderer 생성 (hold, next 없음, 색맹 모드 NORMAL)
-        boardRenderer = new BoardRenderer(cellRectangles, null, null, ColorBlindMode.NORMAL);
+        // BoardRenderer 생성 (모든 영역 연결)
+        boardRenderer = new BoardRenderer(
+            cellRectangles, 
+            holdCellRectangles, 
+            nextCellRectangles, 
+            ColorBlindMode.NORMAL
+        );
 
         System.out.println("✅ OpponentBoardView board initialized (" + BOARD_WIDTH + "x" + BOARD_HEIGHT + ")");
+    }
+    
+    private void initializePreviewGrid(GridPane grid, Rectangle[][] rects, int size, double cellSize) {
+        for (int row = 0; row < size; row++) {
+            for (int col = 0; col < size; col++) {
+                Rectangle rect = new Rectangle(cellSize, cellSize);
+                rect.setFill(ColorMapper.getEmptyCellColor());
+                rect.setStroke(ColorMapper.getCellBorderColor());
+                rect.setStrokeWidth(0.5);
+                
+                grid.add(rect, col, row);
+                rects[row][col] = rect;
+            }
+        }
     }
 
     /**
@@ -103,18 +160,23 @@ public class OpponentBoardView extends VBox {
      */
     public void update(GameState opponentState) {
         if (opponentState == null) {
-            System.out.println("⚠️ OpponentBoardView.update() called with null state");
             return;
         }
 
         // 보드 렌더링
         boardRenderer.drawBoard(opponentState);
+        
+        // Hold 업데이트
+        boardRenderer.drawHoldPiece(opponentState.getHeldPiece(), opponentState.getHeldItemType());
+        
+        // Next 업데이트
+        if (opponentState.getNextQueue() != null && opponentState.getNextQueue().length > 0) {
+            boardRenderer.drawNextPiece(opponentState.getNextQueue()[0]);
+        }
 
         // 정보 업데이트
         scoreLabel.setText("Score: " + opponentState.getScore());
         levelLabel.setText("Level: " + opponentState.getLevel());
         linesLabel.setText("Lines: " + opponentState.getLinesCleared());
-
-        System.out.println("👥 OpponentBoardView updated - Score: " + opponentState.getScore());
     }
 }

@@ -64,6 +64,12 @@ public class InputHandler {
     private final KeyMappingService keyMappingService;
     private InputCallback callback;
     private GameStateProvider gameStateProvider;
+
+    // ✅ 입력 차단 로직 제거: 애니메이션은 이제 UI 전용이므로 입력 차단 불필요
+    // private volatile boolean inputEnabled = true; // REMOVED
+
+    // 멀티플레이 모드 플래그 (pause 비활성화용)
+    private boolean isMultiplayerMode = false;
     
     /**
      * InputHandler 생성자
@@ -95,11 +101,17 @@ public class InputHandler {
     /**
      * 키 입력을 처리하고 Command로 변환합니다
      * 
+     * ✅ 입력 차단 제거: 애니메이션 중에도 입력 허용
+     * 
      * @param event 키보드 이벤트
      */
     public void handleKeyPress(KeyEvent event) {
+        // ✅ 입력 차단 로직 제거됨
+        System.out.println("⌨️ [InputHandler] Key pressed: " + event.getCode());
+        
         // 게임 오버 상태 체크
         if (gameStateProvider != null && gameStateProvider.isGameOver()) {
+            System.out.println("🚫 [InputHandler] Game over - input ignored");
             return;
         }
         
@@ -107,11 +119,19 @@ public class InputHandler {
         Optional<GameAction> actionOpt = keyMappingService.getAction(event.getCode());
         
         if (actionOpt.isEmpty()) {
+            System.out.println("⚠️ [InputHandler] Unmapped key: " + event.getCode());
             return; // 매핑되지 않은 키는 무시
         }
         
         GameAction action = actionOpt.get();
-        
+        System.out.println("✅ [InputHandler] Key mapped to action: " + action);
+
+        // 멀티플레이 모드에서는 PAUSE_RESUME 액션 차단
+        if (isMultiplayerMode && action == GameAction.PAUSE_RESUME) {
+            System.out.println("🚫 [InputHandler] Pause is disabled in multiplayer mode");
+            return;
+        }
+
         // 일시정지 상태 체크: PAUSE_RESUME 액션만 허용
         if (gameStateProvider != null && gameStateProvider.isPaused()) {
             if (action != GameAction.PAUSE_RESUME) {
@@ -123,7 +143,10 @@ public class InputHandler {
         
         // Command가 생성되었으면 콜백 호출
         if (command != null && callback != null) {
+            System.out.println("📤 [InputHandler] Sending command to controller: " + command.getType());
             callback.onCommandGenerated(command);
+        } else {
+            System.err.println("⚠️ [InputHandler] Command is null or callback is null - command: " + (command != null) + ", callback: " + (callback != null));
         }
         
         event.consume();
@@ -189,6 +212,24 @@ public class InputHandler {
                     System.out.println("⌨️  Keyboard controls enabled");
                 }
             });
+        }
+    }
+    
+    /**
+     * ✅ 입력 활성화/비활성화 메서드 제거됨
+     * 애니메이션은 이제 UI 전용이므로 입력 차단이 불필요합니다.
+     */
+    // public void setInputEnabled(boolean enabled) { ... } // REMOVED
+
+    /**
+     * 멀티플레이 모드 설정
+     *
+     * @param isMultiplayer true면 멀티플레이 모드 (pause 비활성화)
+     */
+    public void setMultiplayerMode(boolean isMultiplayer) {
+        this.isMultiplayerMode = isMultiplayer;
+        if (isMultiplayer) {
+            System.out.println("🌐 [InputHandler] Multiplayer mode enabled - Pause disabled");
         }
     }
 }

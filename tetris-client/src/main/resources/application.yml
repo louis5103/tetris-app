@@ -157,6 +157,24 @@ tetris:
     auto-save: ${TETRIS_SAVE_AUTO_SAVE:true}
     # 저장 위치
     location: ${TETRIS_SAVE_LOCATION:${user.home}/.tetris/}
+
+  # ---------------------------------------------------------------------------
+  # 멀티플레이 서버 설정 (Multiplayer Server Configuration)
+  # ---------------------------------------------------------------------------
+  server:
+    # 서버 기본 URL
+    base-url: ${TETRIS_SERVER_BASE_URL:http://localhost:8090}
+    # WebSocket URL (자동 생성: base-url + /ws-game)
+    websocket-endpoint: /ws-game
+
+  # ---------------------------------------------------------------------------
+  # 인증 서버 설정 (Authentication Server Configuration)
+  # ---------------------------------------------------------------------------
+  auth:
+    # 인증 서버 기본 URL (tetris-server와 동일)
+    base-url: ${TETRIS_AUTH_BASE_URL:http://localhost:8090}
+    # 사용자 API 엔드포인트
+    user-endpoint: /tetris/users
   
 
 

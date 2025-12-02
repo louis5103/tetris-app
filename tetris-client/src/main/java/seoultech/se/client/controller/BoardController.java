@@ -61,6 +61,9 @@ public class BoardController {
         // ✨ Phase 4: TetrominoGenerator 초기화 (결정론적 생성)
         this.tetrominoGenerator = new TetrominoGenerator(new RandomGenerator(), difficulty);
         
+        // FIX: Initialize linesUntilNextItem from config
+        this.gameState.setLinesUntilNextItem(gameModeConfig.getLinesPerItem());
+
         initializeNextQueue();
         
         System.out.println("[Controller] BoardController initialized - Mode: " + 
@@ -145,15 +148,22 @@ public class BoardController {
         // ✨ FIX: GameEngine이 이동 실패 시 원본을 반환할 수 있으므로 조건 완화
         if (newState != null) {
             this.gameState = newState;
-            
-            // ✨ PROPER FIX: Check if currentTetromino is null (locked and cleared by GameEngine)
-            boolean needsNewTetromino = (newState.getCurrentTetromino() == null);
-            
-            // GameEngine이 currentTetromino를 null로 설정했다면 새 블록 생성
-            if (needsNewTetromino && !newState.isGameOver()) {
-                spawnNewTetromino(this.gameState);
-                updateNextQueue(this.gameState);
+
+            // ✨ 멀티플레이 모드 체크: NetworkExecutionStrategy인 경우 새 블록 생성하지 않음
+            // 서버가 블록 생성을 담당하므로 클라이언트는 서버로부터 받은 상태를 그대로 사용
+            boolean isMultiplayerMode = executionStrategy instanceof seoultech.se.client.strategy.NetworkExecutionStrategy;
+
+            if (!isMultiplayerMode) {
+                // 싱글플레이 모드: 클라이언트가 블록 생성 처리
+                boolean needsNewTetromino = (newState.getCurrentTetromino() == null);
+
+                // GameEngine이 currentTetromino를 null로 설정했다면 새 블록 생성
+                if (needsNewTetromino && !newState.isGameOver()) {
+                    spawnNewTetromino(this.gameState);
+                    updateNextQueue(this.gameState);
+                }
             }
+            // 멀티플레이 모드: 서버로부터 받은 상태를 그대로 사용 (블록은 서버가 생성)
         }
 
         return this.gameState;
@@ -222,16 +232,40 @@ public class BoardController {
         state.setNextQueue(queue);
     }
     
+    /**
+     * ✨ 멀티플레이 모드: 서버로부터 받은 GameState로 동기화
+     *
+     * 서버가 권위 있는 상태를 전송하면 클라이언트는 이를 그대로 반영해야 합니다.
+     *
+     * 주의:
+     * - 멀티플레이에서만 사용
+     * - 싱글플레이에서는 executeCommand()를 통해 상태 업데이트
+     *
+     * @param newState 서버로부터 받은 GameState
+     */
+    public void setGameState(GameState newState) {
+        if (newState == null) {
+            System.err.println("⚠️ [BoardController] Attempted to set null GameState");
+            return;
+        }
+
+        this.gameState = newState;
+        System.out.println("🔄 [BoardController] GameState synchronized from server");
+    }
+
     public void resetGame() {
         this.gameState = new GameState(10, 20);
         this.gameStartTime = System.currentTimeMillis();
-        
+
+        // FIX: Initialize linesUntilNextItem from config
+        this.gameState.setLinesUntilNextItem(gameModeConfig.getLinesPerItem());
+
         // ✨ Phase 4: TetrominoGenerator 재생성
         this.tetrominoGenerator = new TetrominoGenerator(new RandomGenerator(), difficulty);
-        
+
         initializeNextQueue();
     }
-    
+
     public void cleanup() {
         // Cleanup resources if needed
     }

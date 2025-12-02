@@ -50,21 +50,24 @@ public class NetworkExecutionStrategy implements GameExecutionStrategy {
      *
      * @param sessionId STOMP 세션 ID
      * @param initialState 초기 게임 상태
+     * @param myStateCallback 자신의 보드 상태 업데이트 콜백
      * @param opponentStateCallback 상대방 상태 업데이트 콜백
      * @param attackLinesCallback 공격 라인 수신 콜백
      */
     public void setupMultiplayMode(
             String sessionId,
             GameState initialState,
+            Consumer<GameState> myStateCallback,
             Consumer<GameState> opponentStateCallback,
             Consumer<Integer> attackLinesCallback) {
         // NetworkGameClient 초기화
         networkGameClient.init(sessionId, initialState);
-        
+
         // 콜백 설정
+        networkGameClient.setMyStateCallback(myStateCallback);
         networkGameClient.setOpponentStateCallback(opponentStateCallback);
         networkGameClient.setAttackLinesCallback(attackLinesCallback);
-        
+
         System.out.println("✅ NetworkExecutionStrategy initialized - Session: " + sessionId);
     }
 
@@ -88,5 +91,22 @@ public class NetworkExecutionStrategy implements GameExecutionStrategy {
         // NetworkGameClient에 명령 전달
         // 내부적으로 Client-side prediction + 서버 전송 처리
         return networkGameClient.executeCommand(command, currentState);
+    }
+    
+    /**
+     * 리소스 정리
+     * 
+     * 게임 종료 또는 재시작 시 호출되어 네트워크 연결을 정리합니다.
+     * GameController.cleanupExecutionStrategy()에서 호출됩니다.
+     */
+    public void cleanup() {
+        System.out.println("🧹 [NetworkExecutionStrategy] Cleaning up resources...");
+        
+        // NetworkGameClient 정리
+        if (networkGameClient != null) {
+            networkGameClient.cleanup();
+        }
+        
+        System.out.println("✅ [NetworkExecutionStrategy] Cleanup complete");
     }
 }

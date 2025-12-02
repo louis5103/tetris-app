@@ -40,7 +40,7 @@ public class GameState {
 
     /**
      * 다음 아이템까지 남은 라인 수 (Arcade 모드)
-     * 10줄 클리어마다 아이템 생성 (Req2 명세)
+     * ItemManager 생성 시 linesPerItem 값으로 초기화됨
      * ItemManager의 상태를 GameState로 이동 (Stateless 리팩토링)
      */
     private int linesUntilNextItem = 1;
@@ -118,6 +118,13 @@ public class GameState {
     private long lastScoreEarned;  // 마지막 액션에서 획득한 점수
     private boolean lastIsPerfectClear;  // 마지막 액션이 Perfect Clear였는지
     private boolean lastLeveledUp;  // 마지막 액션에서 레벨업이 발생했는지
+    
+    // Phase 3: 아이템 수집 이벤트 (Controller가 소비)
+    private ItemType collectedItem;
+    
+    // 애니메이션용: 제거될 셀들의 좌표 (row, col)
+    private java.util.List<int[]> lastClearedCells;  // [[row1, col1], [row2, col2], ...] - LINE_CLEAR 또는 일반 라인 클리어용
+    private java.util.List<int[]> itemEffectClearedCells;  // [[row1, col1], [row2, col2], ...] - BOMB, PLUS 등 아이템 효과용
 
 
     // 생성자
@@ -159,7 +166,7 @@ public class GameState {
         this.currentItemType = null;
         this.nextBlockItemType = null;
         this.isWeightBombLocked = false;
-        this.linesUntilNextItem = 1;
+        this.linesUntilNextItem = 1;  // 기본값 (테스트용), BoardController에서 재설정됨
 
         // Lock Delay 초기화
         this.isLockDelayActive = false;
@@ -187,6 +194,8 @@ public class GameState {
         this.lastScoreEarned = 0;
         this.lastIsPerfectClear = false;
         this.lastLeveledUp = false;
+        this.lastClearedCells = new java.util.ArrayList<>();
+        this.itemEffectClearedCells = new java.util.ArrayList<>();
     }
     
     // 깊은 복사.
@@ -263,6 +272,26 @@ public class GameState {
         copy.lastScoreEarned = this.lastScoreEarned;
         copy.lastIsPerfectClear = this.lastIsPerfectClear;
         copy.lastLeveledUp = this.lastLeveledUp;
+        
+        // 제거될 셀 좌표 복사
+        if (this.lastClearedCells != null) {
+            copy.lastClearedCells = new java.util.ArrayList<>();
+            for (int[] cell : this.lastClearedCells) {
+                copy.lastClearedCells.add(cell.clone());
+            }
+        } else {
+            copy.lastClearedCells = new java.util.ArrayList<>();
+        }
+        
+        // 아이템 효과로 제거된 셀 좌표 복사
+        if (this.itemEffectClearedCells != null) {
+            copy.itemEffectClearedCells = new java.util.ArrayList<>();
+            for (int[] cell : this.itemEffectClearedCells) {
+                copy.itemEffectClearedCells.add(cell.clone());
+            }
+        } else {
+            copy.itemEffectClearedCells = new java.util.ArrayList<>();
+        }
         
         return copy;
     }
@@ -353,5 +382,17 @@ public class GameState {
         }
 
         return false;
+    }
+    
+    // ============================================
+    // Getter/Setter for Animation Fields
+    // ============================================
+    
+    public java.util.List<int[]> getItemEffectClearedCells() {
+        return itemEffectClearedCells;
+    }
+    
+    public void setItemEffectClearedCells(java.util.List<int[]> itemEffectClearedCells) {
+        this.itemEffectClearedCells = itemEffectClearedCells;
     }
 }

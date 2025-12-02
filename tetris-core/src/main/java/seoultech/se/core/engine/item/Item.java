@@ -40,7 +40,15 @@ public interface Item {
     /**
      * 아이템 효과를 적용합니다
      * 
-     * @param gameState 현재 게임 상태
+     * 📝 데이터 처리 방식 (통일됨):
+     * - 모든 아이템은 전달받은 GameState를 **직접 수정**합니다
+     * - deepCopy()를 사용하지 않습니다 (성능 최적화)
+     * - ArcadeGameEngine의 lockTetromino()에서 호출됩니다
+     * 
+     * 각 아이템의 apply() 메서드는 gameState의 grid를 직접 수정하며,
+     * 이는 일관된 패턴을 유지하여 코드 이해도를 높이고 성능을 향상시킵니다.
+     * 
+     * @param gameState 현재 게임 상태 (이 객체가 직접 수정됨)
      * @param row 아이템이 적용될 행 (아이템마다 의미가 다를 수 있음)
      * @param col 아이템이 적용될 열 (아이템마다 의미가 다를 수 있음)
      * @return 효과 적용 결과 (점수, 제거된 블록 수 등)

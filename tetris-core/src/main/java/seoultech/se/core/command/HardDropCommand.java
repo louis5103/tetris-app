@@ -1,5 +1,7 @@
 package seoultech.se.core.command;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
 /**
  * Hard Drop 명령
  * 
@@ -35,6 +37,7 @@ package seoultech.se.core.command;
  * GameState에 이미 현재 블록 정보가 있고,
  * GameEngine이 바닥까지의 거리를 계산하니까요.
  */
+@JsonIgnoreProperties(ignoreUnknown = true)  // P2P 전송 시 추가 필드(description 등) 무시
 public class HardDropCommand implements GameCommand {
     
     @Override

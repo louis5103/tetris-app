@@ -76,6 +76,14 @@ public final class UIConstants {
      */
     public static final long NOTIFICATION_DISPLAY_DURATION_MS = 2000L;
     
+    /**
+     * 라인 클리어 애니메이션 시간 (밀리초)
+     * 300ms
+     * 
+     * 이 값은 showUiHints()의 CompletableFuture.delayedExecutor()에서 사용됩니다.
+     */
+    public static final long LINE_CLEAR_ANIMATION_MS = 300L;
+    
     // ========== CSS 클래스 이름 ==========
     
     /**

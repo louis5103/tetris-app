@@ -5,12 +5,12 @@ import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 import seoultech.se.core.GameState;
+import seoultech.se.core.random.RandomGenerator;
 
 /**
  * 아이템 관리자 (Stateless)
@@ -57,9 +57,10 @@ public class ItemManager {
     private final Set<ItemType> enabledItemTypes;
 
     /**
-     * 랜덤 생성기 (Thread-safe)
+     * 랜덤 생성기 (Thread-safe, 재현 가능)
+     * ✅ FIX: Random 대신 RandomGenerator 사용
      */
-    private final Random random;
+    private final RandomGenerator randomGenerator;
     
     /**
      * 생성자
@@ -68,11 +69,22 @@ public class ItemManager {
      * @param enabledItemTypes 활성화할 아이템 타입들
      */
     public ItemManager(int linesPerItem, Set<ItemType> enabledItemTypes) {
+        this(linesPerItem, enabledItemTypes, new RandomGenerator());
+    }
+    
+    /**
+     * 생성자 (RandomGenerator 주입 가능)
+     *
+     * @param linesPerItem 아이템 생성 간격 (줄 수)
+     * @param enabledItemTypes 활성화할 아이템 타입들
+     * @param randomGenerator 난수 생성기 (재현 가능한 테스트 지원)
+     */
+    public ItemManager(int linesPerItem, Set<ItemType> enabledItemTypes, RandomGenerator randomGenerator) {
         this.linesPerItem = linesPerItem;
         this.itemDropRate = 1.0;  // Deprecated - 항상 100% (카운터 기반)
         this.enabledItemTypes = ConcurrentHashMap.newKeySet();
         this.enabledItemTypes.addAll(enabledItemTypes != null ? enabledItemTypes : EnumSet.allOf(ItemType.class));
-        this.random = new Random();
+        this.randomGenerator = randomGenerator;
         this.itemPrototypes = new ConcurrentHashMap<>();
 
         // 프로토타입 등록 (팩토리 패턴)
@@ -157,7 +169,7 @@ public class ItemManager {
      */
     @Deprecated
     public boolean shouldDropItem() {
-        return random.nextDouble() < itemDropRate;
+        return randomGenerator.nextDouble() < itemDropRate;
     }
     
     /**
@@ -205,6 +217,7 @@ public class ItemManager {
     /**
      * 랜덤 아이템 타입 생성
      * 활성화된 아이템 중에서 무작위로 하나를 선택합니다.
+     * ✅ FIX: RandomGenerator 사용
      * 
      * @return 생성된 아이템 타입, 활성화된 아이템이 없으면 null
      */
@@ -215,7 +228,7 @@ public class ItemManager {
         }
         
         List<ItemType> enabledList = new ArrayList<>(enabledItemTypes);
-        ItemType randomType = enabledList.get(random.nextInt(enabledList.size()));
+        ItemType randomType = enabledList.get(randomGenerator.nextInt(enabledList.size()));
         
         return randomType;
     }
