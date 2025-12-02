@@ -1,0 +1,61 @@
+# ===============================================================================
+# Embedded Server Profile - For running inside tetris-client
+# 클라이언트에 내장되어 실행될 때 사용하는 프로필
+# ===============================================================================
+
+spring:
+  application:
+    name: Tetris Embedded Server
+  
+  # ===============================================================================
+  # Web Application Type - SERVLET (HTTP 서버 활성화)
+  # ===============================================================================
+  main:
+    web-application-type: servlet  # HTTP 서버 시작 (NONE이면 비활성화됨)
+  
+  # ===============================================================================
+  # Database Configuration - H2 In-Memory (No external DB required)
+  # ===============================================================================
+  datasource:
+    url: jdbc:h2:mem:tetris-embedded;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  
+  # ===============================================================================
+  # JPA Configuration - Minimal for embedded mode
+  # ===============================================================================
+  jpa:
+    hibernate:
+      ddl-auto: create-drop  # 메모리 DB이므로 매번 새로 생성
+    show-sql: false  # 로그 최소화
+    properties:
+      hibernate:
+        format_sql: false
+        dialect: org.hibernate.dialect.H2Dialect
+  
+  # ===============================================================================
+  # SQL Initialization - DISABLE data.sql for embedded mode
+  # ===============================================================================
+  sql:
+    init:
+      mode: never  # data.sql 실행 안 함
+
+# ===============================================================================
+# Web Server Settings - Different port to avoid conflicts
+# ===============================================================================
+server:
+  port: 8091  # tetris-backend(8080)와 충돌 방지
+  servlet:
+    context-path: /
+
+# ===============================================================================
+# Logging Configuration - INFO level to see Tomcat startup
+# ===============================================================================
+logging:
+  level:
+    root: INFO
+    seoultech.se.server: INFO
+    org.springframework.boot.web: INFO  # Tomcat 시작 로그 표시
+    org.springframework.web: INFO
+    org.hibernate: WARN

@@ -70,7 +70,7 @@ public class TetrisApplication extends Application {
         SettingsService settingsService = springContext.getBean(SettingsService.class);
         settingsService.setPrimaryStage(primaryStage);
 
-        FXMLLoader loader = new FXMLLoader(TetrisApplication.class.getResource("/view/login-view.fxml"));
+        FXMLLoader loader = new FXMLLoader(TetrisApplication.class.getResource("/view/main-view.fxml"));
         loader.setControllerFactory(springContext::getBean);
         Parent root = loader.load();
         Scene scene = new Scene(root, settingsService.getStageWidth(), settingsService.getStageHeight());
@@ -84,7 +84,7 @@ public class TetrisApplication extends Application {
         
         primaryStage.show();
 
-        System.out.println("✅ JavaFX UI started with login-view.fxml");
+        System.out.println("✅ JavaFX UI started with main-view.fxml");
     }
 
     /**
