@@ -169,6 +169,40 @@ public class NetworkTemplate {
     }
 
     /**
+     * P2P 연결 정보(Offer/Answer)를 전송합니다.
+     */
+    public void sendP2PSignal(seoultech.se.core.dto.P2PConnectionDto signal) {
+        if (session != null && session.isConnected()) {
+            session.send("/app/game/p2p/signal", signal);
+        } else {
+            System.out.println("Not connected to server (P2P Signal)");
+        }
+    }
+
+    /**
+     * P2P 신호 수신을 구독합니다.
+     */
+    public void subscribeToP2PSignal(Consumer<seoultech.se.core.dto.P2PConnectionDto> callback) {
+        if (session != null && session.isConnected()) {
+            session.subscribe("/user/topic/game/p2p/signal", new StompFrameHandler() {
+                @Override
+                public Type getPayloadType(StompHeaders headers) {
+                    return seoultech.se.core.dto.P2PConnectionDto.class;
+                }
+
+                @Override
+                public void handleFrame(StompHeaders headers, Object payload) {
+                    System.out.println("📡 [NetworkTemplate] P2P Signal received");
+                    callback.accept((seoultech.se.core.dto.P2PConnectionDto) payload);
+                }
+            });
+            System.out.println("✅ [NetworkTemplate] Subscribed to P2P signals");
+        } else {
+            System.out.println("❌ [NetworkTemplate] Not connected to server - cannot subscribe to P2P signals");
+        }
+    }
+
+    /**
      * Phase 1: 자동 재연결 시도 (Exponential Backoff)
      *
      * 재연결 간격:

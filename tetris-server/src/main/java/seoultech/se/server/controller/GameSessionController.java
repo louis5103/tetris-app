@@ -162,4 +162,42 @@ public class GameSessionController {
             );
         }
     }
+
+    /**
+     * P2P 연결 정보 중계 (Signaling)
+     * 
+     * 클라이언트 A가 자신의 IP/Port를 보내면,
+     * 서버는 같은 세션의 클라이언트 B에게 이를 전달합니다.
+     */
+    @MessageMapping("/game/p2p/signal")
+    public void handleP2PSignal(seoultech.se.core.dto.P2PConnectionDto signal, Principal principal) {
+        String playerId = (principal != null) ? principal.getName() : "anonymous";
+        
+        GameSession session = gameSessionManager.getSession(signal.getSessionId());
+        if (session == null) {
+            return;
+        }
+        
+        // 상대방 ID 찾기
+        java.util.List<String> players = session.getPlayerIds();
+        String opponentId = players.stream()
+            .filter(id -> !id.equals(playerId))
+            .findFirst()
+            .orElse(null);
+            
+        if (opponentId != null) {
+            System.out.println("📡 [P2P Signal] Relay: " + playerId + " -> " + opponentId + 
+                " (" + signal.getType() + ": " + signal.getIpAddress() + ":" + signal.getPort() + ")");
+                
+            // 상대방에게 P2P 정보 전송
+            // signal 객체에 playerId를 sender로 설정하여 누가 보냈는지 알 수 있게 함
+            signal.setPlayerId(playerId);
+            
+            messagingTemplate.convertAndSendToUser(
+                opponentId,
+                "/topic/game/p2p/signal",
+                signal
+            );
+        }
+    }
 }

@@ -17,7 +17,13 @@ import seoultech.se.core.command.GameCommand;
 public class MultiGameController extends BaseGameController {
 
     @Autowired
-    private GameApiService gameApiService;
+    private seoultech.se.client.util.NetworkUtils networkUtils; // 유틸리티 클래스 주입 (빈 등록 필요 또는 static 사용)
+    
+    @Autowired(required = false)
+    private seoultech.se.backend.network.P2PService p2pService;
+    
+    @Autowired(required = false)
+    private seoultech.se.backend.network.NetworkTemplate networkTemplate;
 
     @Autowired(required = false)
     private GameStateDtoToGameStateMapper dtoToStateMapper;
@@ -32,6 +38,44 @@ public class MultiGameController extends BaseGameController {
     public void initMultiplayer(seoultech.se.client.strategy.NetworkExecutionStrategy strategy, String sessionId) {
         this.executionStrategy = strategy;
         this.sessionId = sessionId;
+        
+        // 1. P2P 초기화 및 시그널링
+        if (p2pService != null && networkTemplate != null) {
+            // P2P 소켓 바인딩
+            // p2pService.init(); // @PostConstruct로 이미 실행됨
+            
+            String myIp = seoultech.se.client.util.NetworkUtils.getLocalIpAddress();
+            int myPort = p2pService.getLocalPort();
+            
+            System.out.println("🔹 [MultiGameController] Initializing P2P: " + myIp + ":" + myPort);
+            
+            // 상대방 P2P 정보 수신 구독
+            networkTemplate.subscribeToP2PSignal(signal -> {
+                System.out.println("📡 [P2P] Received peer info: " + signal.getIpAddress() + ":" + signal.getPort());
+                // 상대방에게 연결 (UDP 대상 설정 & Hole Punching)
+                p2pService.connectToPeer(signal.getIpAddress(), signal.getPort());
+                
+                // 내가 OFFER를 받았다면, ANSWER를 보내야 함
+                if ("OFFER".equals(signal.getType())) {
+                    seoultech.se.core.dto.P2PConnectionDto answer = seoultech.se.core.dto.P2PConnectionDto.builder()
+                        .sessionId(sessionId)
+                        .ipAddress(myIp)
+                        .port(myPort)
+                        .type("ANSWER")
+                        .build();
+                    networkTemplate.sendP2PSignal(answer);
+                }
+            });
+            
+            // 나의 P2P 정보 전송 (OFFER)
+            seoultech.se.core.dto.P2PConnectionDto offer = seoultech.se.core.dto.P2PConnectionDto.builder()
+                .sessionId(sessionId)
+                .ipAddress(myIp)
+                .port(myPort)
+                .type("OFFER")
+                .build();
+            networkTemplate.sendP2PSignal(offer);
+        }
         
         // 서버에서 초기 상태 받아오기
         GameState initialState = boardController.getGameState(); // 기본값
@@ -144,6 +188,17 @@ public class MultiGameController extends BaseGameController {
             // 허용되지 않은 명령은 무시 (PAUSE, RESUME, SOFT_DROP 등)
             System.out.println("🚫 [MultiGameController] Command filtered: " + commandType);
             return;
+        }
+
+        // P2P로 입력 전송 (가능한 경우)
+        if (p2pService != null) {
+            long seq = 0; // P2P용 시퀀스는 별도 관리하거나 NetworkGameClient와 공유 필요 (일단 0)
+            seoultech.se.core.dto.PlayerInputDto inputDto = seoultech.se.core.dto.PlayerInputDto.builder()
+                .sessionId(sessionId)
+                .command(command)
+                .sequenceId(seq) 
+                .build();
+            p2pService.sendInput(inputDto);
         }
 
         // 서버에 명령 전송 (Client-side prediction 제거)
