@@ -35,6 +35,13 @@ public class P2PService {
     private volatile boolean isRunning = false;
     private volatile boolean autoConnectLocked = false; // 명시적 재연결 후 자동 연결 방지
     
+    // 릴레이 모드
+    private volatile boolean relayMode = false;
+    private InetAddress relayServerIp;
+    private int relayServerPort;
+    private String relaySessionId;
+    private String myPlayerId;
+    
     private final ObjectMapper objectMapper = new ObjectMapper();
     private Consumer<P2PPacket> onPacketReceived;
 
@@ -63,20 +70,48 @@ public class P2PService {
     }
 
     /**
-     * 상대방 연결 정보 설정
+     * 상대방 연결 정보 설정 (직접 P2P)
      */
     public void connectToPeer(String ip, int port) {
         try {
+            this.relayMode = false;
             this.opponentIp = InetAddress.getByName(ip);
             this.opponentPort = port;
             this.isConnected = true;
             this.autoConnectLocked = true; // 명시적 연결 후 자동 연결 차단
             
-            System.out.println("🔹 [P2P] Target set to: " + ip + ":" + port);
+            System.out.println("🔹 [P2P] Direct mode - Target set to: " + ip + ":" + port);
             sendPing();
             
         } catch (Exception e) {
             System.err.println("❌ [P2P] Invalid peer address: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * 릴레이 서버를 통한 연결 설정
+     */
+    public void connectViaRelay(String relayServerIp, int relayServerPort, 
+                                String sessionId, String playerId) {
+        try {
+            this.relayMode = true;
+            this.relayServerIp = InetAddress.getByName(relayServerIp);
+            this.relayServerPort = relayServerPort;
+            this.relaySessionId = sessionId;
+            this.myPlayerId = playerId;
+            this.isConnected = true;
+            this.autoConnectLocked = true;
+            
+            System.out.println("🔄 [P2P] Relay mode - Connected to relay server: " + 
+                relayServerIp + ":" + relayServerPort);
+            System.out.println("   └ Session: " + sessionId);
+            System.out.println("   └ Player: " + playerId);
+            
+            // 릴레이 서버에 연결 등록
+            sendRelayConnect();
+            
+        } catch (Exception e) {
+            System.err.println("❌ [P2P] Failed to connect to relay: " + e.getMessage());
         }
     }
 
@@ -84,6 +119,12 @@ public class P2PService {
      * 패킷 전송 (공통)
      */
     public void sendPacket(P2PPacket packet) {
+        if (relayMode) {
+            sendPacketViaRelay(packet);
+            return;
+        }
+        
+        // 직접 P2P 모드
         // HANDSHAKE는 초기 연결용이므로 isConnected 체크 우회
         boolean isHandshake = "HANDSHAKE".equals(packet.getType());
         if (!isHandshake && (!isConnected || socket == null || opponentIp == null)) {
@@ -110,6 +151,63 @@ public class P2PService {
         } catch (Exception e) {
             System.err.println("❌ [P2P] Send error: " + e.getMessage());
             e.printStackTrace();
+        }
+    }
+    
+    /**
+     * 릴레이 서버를 통한 패킷 전송
+     */
+    private void sendPacketViaRelay(P2PPacket packet) {
+        if (socket == null || relayServerIp == null) {
+            System.err.println("⚠️ [Relay] Cannot send packet - not connected");
+            return;
+        }
+        
+        try {
+            // P2P 패킷을 릴레이 패킷으로 래핑
+            byte[] p2pData = objectMapper.writeValueAsBytes(packet);
+            
+            String relayPacketJson = String.format(
+                "{\"type\":\"DATA\",\"sessionId\":\"%s\",\"playerId\":\"%s\",\"payload\":%s}",
+                relaySessionId, myPlayerId, new String(p2pData)
+            );
+            
+            byte[] data = relayPacketJson.getBytes();
+            DatagramPacket udpPacket = new DatagramPacket(
+                data, data.length, relayServerIp, relayServerPort
+            );
+            socket.send(udpPacket);
+            
+            System.out.println("🔄 [Relay] Packet sent via relay:");
+            System.out.println("   └ Type: " + packet.getType());
+            System.out.println("   └ Size: " + data.length + " bytes");
+            
+        } catch (Exception e) {
+            System.err.println("❌ [Relay] Send error: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+    
+    /**
+     * 릴레이 서버에 연결 등록
+     */
+    private void sendRelayConnect() {
+        try {
+            String connectPacket = String.format(
+                "{\"type\":\"CONNECT\",\"sessionId\":\"%s\",\"playerId\":\"%s\"}",
+                relaySessionId, myPlayerId
+            );
+            
+            byte[] data = connectPacket.getBytes();
+            DatagramPacket packet = new DatagramPacket(
+                data, data.length, relayServerIp, relayServerPort
+            );
+            socket.send(packet);
+            
+            System.out.println("🔗 [Relay] Connection registered with relay server");
+            
+        } catch (Exception e) {
+            System.err.println("❌ [Relay] Failed to register: " + e.getMessage());
         }
     }
 
@@ -162,6 +260,22 @@ public class P2PService {
                     packet.getAddress().getHostAddress() + ":" + packet.getPort() + 
                     " (" + packet.getLength() + " bytes)");
                 
+                // 릴레이 모드에서는 P2P 패킷 직접 처리
+                if (relayMode) {
+                    if (json.equals("PING")) continue;
+                    if (onPacketReceived != null) {
+                        try {
+                            P2PPacket p2pPacket = objectMapper.readValue(json, P2PPacket.class);
+                            System.out.println("✅ [Relay] Packet received: type=" + p2pPacket.getType());
+                            onPacketReceived.accept(p2pPacket);
+                        } catch (Exception e) {
+                            System.err.println("❌ [Relay] Parse error: " + e.getMessage());
+                        }
+                    }
+                    continue;
+                }
+                
+                // 직접 P2P 모드
                 // 🔧 송신자 주소 저장 (HANDSHAKE 패킷용 - 재연결에 필요한 IP 저장)
                 // HANDSHAKE는 임시 포트로 올 수 있으므로 IP만 저장하고 포트는 재연결 시 업데이트
                 if (json.contains("\"type\":\"HANDSHAKE\"") && opponentIp == null) {
