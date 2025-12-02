@@ -35,15 +35,15 @@
 # Gradle and Maven with auto-import
 # When using Gradle or Maven with auto-import, you should exclude module files,
 # since they will be recreated, and may cause churn.  Uncomment if using
-auto-import.
-.idea/artifacts
-.idea/compiler.xml
-.idea/jarRepositories.xml
-.idea/modules.xml
-.idea/*.iml
-.idea/modules
-*.iml
-*.ipr
+# auto-import.
+# .idea/artifacts
+# .idea/compiler.xml
+# .idea/jarRepositories.xml
+# .idea/modules.xml
+# .idea/*.iml
+# .idea/modules
+# *.iml
+# *.ipr
 
 # CMake
 cmake-build-*/
@@ -259,141 +259,3 @@ gradle-app.setting
 *.hprof
 
 # End of https://www.toptal.com/developers/gitignore/api/macos,windows,linux,intellij+all,visualstudiocode,gradle,java,ssh,maven
-
-# ===============================================================================
-# Tetris Project - Additional Cross-Platform Ignore Rules
-# ===============================================================================
-
-# 개인 환경 설정 파일 (팀원별로 다름)
-gradle.properties.local
-local.properties
-
-# 환경변수 파일들 (실제 값이 들어있는 파일들)
-.env
-.env.local
-.env.development
-.env.production
-# 예외: 예시 파일은 Git에 포함
-!.env.example
-
-# Gradle 개인 설정 및 캐시
-.gradle/
-**/gradle-app.setting
-gradle-app.setting
-!gradle/wrapper/gradle-wrapper.jar
-
-# Maven 로컬 설정
-.mvn/
-!.mvn/wrapper/maven-wrapper.jar
-!**/src/main/**/target/
-!**/src/test/**/target/
-
-# Spring Boot 개발자 도구 설정
-.spring-boot-devtools.properties
-
-# Database 파일들 (로컬 개발용)
-*.db
-*.db-shm
-*.db-wal
-*.sqlite
-*.sqlite3
-h2/
-
-# VS Code 개인 설정
-.vscode/settings.json
-.vscode/launch.json
-.vscode/c_cpp_properties.json
-
-# IDE별 개인 프로젝트 설정 (하드코딩된 Java Home 경로 충돌 방지)
-.project
-.classpath
-.factorypath
-.settings/
-**/.settings/
-*.iml
-*.ipr
-*.iws
-
-# Eclipse IDE 생성 파일들 (Java Home 관련 설정 포함)
-**/org.eclipse.buildship.core.prefs
-**/org.eclipse.jdt.core.prefs
-**/org.eclipse.jdt.apt.core.prefs
-**/org.eclipse.core.resources.prefs
-
-# Eclipse 빌드 출력 폴더
-bin/
-**/bin/
-
-# IntelliJ IDEA 설정 파일들 (개인 환경별로 다름)
-.idea/workspace.xml
-.idea/tasks.xml
-.idea/dictionaries/
-.idea/shelf/
-.idea/libraries/
-.idea/compiler.xml
-.idea/jarRepositories.xml
-.idea/modules/
-.idea/codeStyles/
-.idea/misc.xml
-.idea/gradle.xml
-
-# NetBeans IDE
-nbproject/
-build/
-nbbuild/
-dist/
-nbdist/
-
-# VS Code 개인 설정 (워크스페이스 설정은 유지)
-.vscode/settings.json
-.vscode/launch.json
-.vscode/tasks.json
-.vscode/extensions.json
-
-# 빌드 및 테스트 결과물 (절대경로 포함)
-**/build/reports/
-**/build/test-results/
-**/bin/
-
-# 운영체제별 임시 파일
-.DS_Store
-Thumbs.db
-Desktop.ini
-
-# 개발자별 로그 파일
-*.log
-logs/
-
-# 기타 설정 파일들
-tetris_settings
-
-
-# Docker Compose 파일 (실제 설정 포함)
-docker-compose.yml
-docker-compose.override.yml
-# 예외: 예시 파일은 Git에 포함
-!docker-compose.yml.example
-
-# Spring Boot Properties 파일
-# application.properties는 Git에 포함 (환경변수로 값 참조)
-# 민감한 정보가 직접 들어가는 별도 properties만 제외
-*-local.properties
-*-secret.properties
-
-# Obsidian 메모
-.obsidian
-
-# macOS 자동 복제 파일 제외
-* 2/
-*2/
-* 2
-*2
-tetris-client/custom_settings.properties
-
-gradlew
-
-gradlew.bat
-
-gradle/wrapper/gradle-wrapper.jar
-
-*.properties
