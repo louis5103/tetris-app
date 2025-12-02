@@ -1,0 +1,53 @@
+# ===============================================
+# Tetris Backend - Application Properties 예시
+# ===============================================
+# 이 파일을 application.properties로 복사하여 사용하세요
+# 환경변수는 프로젝트 루트의 .env 파일에서 관리됩니다
+
+# ===============================================
+# Server Configuration
+# ===============================================
+server.port=${BACKEND_PORT:8080}
+server.servlet.context-path=${BACKEND_CONTEXT_PATH:/api}
+
+# ===============================================
+# Database Configuration (MySQL)
+# ===============================================
+spring.datasource.url=jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:tetris_dev}?useSSL=false&serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+spring.datasource.username=${DB_USERNAME:team9}
+spring.datasource.password=${DB_PASSWORD:sexy-tetris}
+spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
+
+# ===============================================
+# JPA / Hibernate Configuration
+# ===============================================
+spring.jpa.hibernate.ddl-auto=${JPA_DDL_AUTO:update}
+spring.jpa.show-sql=${JPA_SHOW_SQL:true}
+spring.jpa.properties.hibernate.format_sql=true
+spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.MySQL8Dialect
+spring.jpa.properties.hibernate.use_sql_comments=true
+
+# ===============================================
+# Logging Configuration
+# ===============================================
+logging.level.org.hibernate.SQL=DEBUG
+logging.level.org.hibernate.type.descriptor.sql.BasicBinder=TRACE
+logging.level.seoultech.se.backend=DEBUG
+
+# ===============================================
+# Spring Profile
+# ===============================================
+spring.profiles.active=${SPRING_PROFILE:dev}
+
+# ===============================================
+# Security Configuration
+# ===============================================
+# JWT 설정 (필요한 경우)
+jwt.secret=${JWT_SECRET}
+jwt.expiration=${JWT_EXPIRATION:86400000}
+
+# ===============================================
+# Spring Boot Actuator
+# ===============================================
+management.endpoints.web.exposure.include=health,info,metrics
+management.endpoint.health.show-details=when-authorized

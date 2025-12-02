@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.RadioButton?>
+<?import javafx.scene.control.Slider?>
+<?import javafx.scene.control.Tab?>
+<?import javafx.scene.control.TabPane?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.ToggleGroup?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
+
+<BorderPane fx:id="rootPane" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="seoultech.se.client.controller.SettingSceneController" stylesheets="@../css/application.css, @../css/setting-view.css, @../css/key-setting-view.css, @../css/custom-setting-view.css">
+    <top>
+        <Label styleClass="title-label" text="Setting" BorderPane.alignment="TOP_CENTER" />
+    </top>
+    <center>
+        <TabPane tabClosingPolicy="UNAVAILABLE">
+            <tabs>
+                <Tab text="General">
+                    <content>
+                        <VBox fx:id="settingBox" styleClass="center-box" alignment="CENTER">
+                            <children>
+                                <HBox fx:id="soundBox" styleClass="sound-box" alignment="CENTER_LEFT">
+                                    <children>
+                                        <Label styleClass="setting-label" text="Sound" />
+                                        <Slider fx:id="soundSlider" styleClass="sound-slider" />
+                                    </children>
+                                </HBox>
+                                <HBox fx:id="screenSizeBox" styleClass="radio-box" alignment="CENTER_LEFT">
+                                    <children>
+                                        <Label styleClass="setting-label" text="Screen Size" />
+                                        <RadioButton fx:id="screenSizeXS" styleClass="radio-label" onAction="#handleScreenSizeChange" text="XS">
+                                            <toggleGroup>
+                                                <ToggleGroup fx:id="screenSize" />
+                                            </toggleGroup>
+                                        </RadioButton>
+                                        <RadioButton fx:id="screenSizeS" styleClass="radio-label" onAction="#handleScreenSizeChange" text="S" toggleGroup="$screenSize" />
+                                        <RadioButton fx:id="screenSizeM" styleClass="radio-label" onAction="#handleScreenSizeChange" text="M" toggleGroup="$screenSize" />
+                                        <RadioButton fx:id="screenSizeL" styleClass="radio-label" onAction="#handleScreenSizeChange" text="L" toggleGroup="$screenSize" />
+                                        <RadioButton fx:id="screenSizeXL" styleClass="radio-label" onAction="#handleScreenSizeChange" text="XL" toggleGroup="$screenSize" />
+                                    </children>
+                                </HBox>
+                                <HBox fx:id="difficultyBox" styleClass="radio-box" alignment="CENTER_LEFT">
+                                    <children>
+                                        <Label styleClass="setting-label" text="Difficulty" />
+                                        <RadioButton fx:id="difficultyEasy" styleClass="radio-label" onAction="#handleDifficultyChange" text="Easy">
+                                            <toggleGroup>
+                                                <ToggleGroup fx:id="difficulty" />
+                                            </toggleGroup>
+                                        </RadioButton>
+                                        <RadioButton fx:id="difficultyNormal" styleClass="radio-label" onAction="#handleDifficultyChange" text="Normal" toggleGroup="$difficulty" />
+                                        <RadioButton fx:id="difficultyHard" styleClass="radio-label" onAction="#handleDifficultyChange" text="Hard" toggleGroup="$difficulty" />
+                                    </children>
+                                </HBox>
+                                <HBox fx:id="colorModeBox" styleClass="radio-box" alignment="CENTER_LEFT">
+                                    <children>
+                                        <Label styleClass="setting-label" text="Color Mode" />
+                                        <RadioButton fx:id="colorModeDefault" styleClass="radio-label" onAction="#handleColorModeChange" text="Default">
+                                            <toggleGroup>
+                                                <ToggleGroup fx:id="colorMode" />
+                                            </toggleGroup>
+                                        </RadioButton>
+                                        <RadioButton fx:id="colorModeRGBlind" styleClass="radio-label" onAction="#handleColorModeChange" text="RG-Blind" toggleGroup="$colorMode" />
+                                        <RadioButton fx:id="colorModeBYBlind" styleClass="radio-label" onAction="#handleColorModeChange" text="BY-Blind" toggleGroup="$colorMode" />
+                                    </children>
+                                </HBox>
+                                <Button fx:id="clearScoreBoardButton" styleClass="menu-button-middle" onAction="#handleClearScoreBoardButton" text="Clear Score Board" />
+                            </children>
+                        </VBox>
+                    </content>
+                </Tab>
+                <Tab text="Key Binding">
+                    <content>
+                        <GridPane styleClass="center-pane">
+                            <columnConstraints>
+                                <ColumnConstraints halignment="LEFT" />
+                                <ColumnConstraints hgrow="ALWAYS" />
+                                <ColumnConstraints halignment="RIGHT" />
+                            </columnConstraints>
+                            <Label styleClass="key-label" text="left: " GridPane.rowIndex="0" GridPane.columnIndex="0" />
+                            <Button fx:id="leftButton" onAction="#handleLeftButton" styleClass="key-binding-button" text="default" alignment="CENTER" GridPane.rowIndex="0" GridPane.columnIndex="2" />
+                            <Label styleClass="key-label" text="right: " GridPane.rowIndex="1" GridPane.columnIndex="0" />
+                            <Button fx:id="rightButton" onAction="#handleRightButton" styleClass="key-binding-button" text="default" alignment="CENTER" GridPane.rowIndex="1" GridPane.columnIndex="2" />
+                            <Label styleClass="key-label" text="down: " GridPane.rowIndex="2" GridPane.columnIndex="0" />
+                            <Button fx:id="downButton" onAction="#handleDownButton" styleClass="key-binding-button" text="default" alignment="CENTER" GridPane.rowIndex="2" GridPane.columnIndex="2" />
+                            <Label styleClass="key-label" text="floor: " GridPane.rowIndex="3" GridPane.columnIndex="0" />
+                            <Button fx:id="floorButton" onAction="#handleFloorButton" styleClass="key-binding-button" text="default" alignment="CENTER" GridPane.rowIndex="3" GridPane.columnIndex="2" />
+                            <Label styleClass="key-label" text="rotate: " GridPane.rowIndex="4" GridPane.columnIndex="0" />
+                            <Button fx:id="rotateButton" onAction="#handleRotateButton" styleClass="key-binding-button" text="default" alignment="CENTER" GridPane.rowIndex="4" GridPane.columnIndex="2" />
+                        </GridPane>
+                    </content>
+                </Tab>
+                <Tab text="Custom">
+                    <content>
+                        <BorderPane>
+                            <center>
+                                <VBox fx:id="settingContainer" styleClass="center-box" alignment="TOP_CENTER" />
+                            </center>
+                            <bottom>
+                                <HBox styleClass="bottom-box, bottom-box-custom">
+                                    <children>
+                                        <Button fx:id="saveCustomButton" onAction="#handleSaveCustomButton" styleClass="menu-button-small" text="Save" />
+                                        <Button fx:id="deleteCustomButton" onAction="#handleDeleteCustomButton" styleClass="menu-button-small" text="Delete" />
+                                    </children>
+                                </HBox>
+                            </bottom>
+                        </BorderPane>
+                    </content>
+                </Tab>
+            </tabs>
+        </TabPane>
+    </center>
+    <bottom>
+        <HBox styleClass="bottom-box">
+            <children>
+                <Button fx:id="resetButton" styleClass="menu-button-small" onAction="#handleResetButton" text="Reset" />
+                <Region HBox.hgrow="ALWAYS" />
+                <Button fx:id="logoutButton" styleClass="menu-button-small" onAction="#handleLogoutButton" text="Logout" />
+                <Button fx:id="backButton" styleClass="menu-button-small" onAction="#handleBackButton" text="Back" />
+            </children>
+        </HBox>
+    </bottom>
+</BorderPane>

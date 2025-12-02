@@ -1,0 +1,46 @@
+tetris:
+  modes:
+    classic:
+      # 회전 시스템
+      srsEnabled: true
+      rotation180Enabled: false
+      
+      # 기능 활성화
+      hardDropEnabled: true
+      holdEnabled: true
+      ghostPieceEnabled: true
+      
+      # 속도 설정
+      dropSpeedMultiplier: 1.0
+      softDropSpeed: 20
+      
+      # 락 시스템
+      lockDelay: 500
+      maxLockResets: 15
+    
+    arcade:
+      # 회전 시스템
+      srsEnabled: true
+      rotation180Enabled: false
+      
+      # 기능 활성화
+      hardDropEnabled: true
+      holdEnabled: true
+      ghostPieceEnabled: true
+      
+      # 속도 설정
+      dropSpeedMultiplier: 1.0
+      softDropSpeed: 20
+      
+      # 락 시스템
+      lockDelay: 500
+      
+      maxLockResets: 15
+      
+      # 아이템 설정
+      item:
+        linesPerItem: 1  # 1줄 클리어마다 아이템 생성 (테스트용)
+        dropRate: 0.15  # Deprecated - 하위 호환성을 위해 유지
+        maxInventorySize: 3
+        autoUse: true  # 아이템 즉시 적용 (인벤토리 사용 안 함)
+        enabledTypes: LINE_CLEAR,WEIGHT_BOMB,PLUS,SPEED_RESET,BONUS_SCORE,BOMB

@@ -1,0 +1,538 @@
+.game-box {
+    -fx-spacing: 0.8em;
+    -fx-padding: 1em;
+}
+
+.score-pane {
+    -fx-background-color: #4a4a4a;
+    -fx-background-radius: 0.4em;
+    -fx-padding: 0.5em 1em 0.5em 1em;
+}
+
+.score-label {
+    -fx-text-fill: white;
+    -fx-font-size: 1.5em;
+    -fx-font-family: "System Bold";
+}
+
+.right-box {
+    -fx-border-color: #606060;
+    -fx-border-width: 0 0 0 0.083em;
+    -fx-padding: 2em 1em 1em 1em;
+    -fx-spacing: 1em;
+}
+
+.next-block-box {
+    -fx-border-color: #606060;
+    -fx-border-width: 1;
+    -fx-border-radius: 0.4em;
+    -fx-padding: 0.5em;
+    -fx-spacing: 1em;
+}
+
+.next-label {
+    -fx-font-size: 1.3em;
+    -fx-font-family: "System Bold";
+}
+
+/* ========== 게임 화면 ========== */
+.game-background {
+    -fx-background-color: #1a1a1a;
+}
+
+/* ========== 레이아웃 스타일 ========== */
+/* 메인 컨테이너 여백 */
+.game-main-container {
+    -fx-spacing: 3.333em;
+    -fx-padding: 1.667em;
+}
+
+/* Hold 영역 */
+.hold-container {
+    -fx-spacing: 0.833em;
+}
+
+/* 이벤트 알림 영역 */
+.event-notification-container {
+    -fx-spacing: 0.667em;
+    -fx-padding: 2.5em 0 0 0;
+}
+
+.event-line-container {
+    -fx-spacing: 2.5em;
+}
+
+/* 팝업 오버레이 */
+.popup-content {
+    -fx-spacing: 1.25em;
+}
+
+.gameover-buttons {
+    -fx-spacing: 1.25em;
+}
+
+/* 오른쪽 정보 영역 */
+.info-panel {
+    -fx-spacing: 2.5em;
+}
+
+.info-section {
+    -fx-spacing: 0.417em;
+}
+
+.controls-section {
+    -fx-spacing: 0.417em;
+}
+
+
+
+.game-title {
+    -fx-font-size: 4em;
+    -fx-font-family: "Impact";
+    -fx-text-fill: linear-gradient(from 0% 0% to 100% 200%, repeat, aqua 0%, red 50%);
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.8), 0.833em, 0, 0.25em, 0.25em);
+    -fx-padding: 1.667em 0 0 0;
+}
+
+/* ========== 게임 보드 ========== */
+.game-board {
+    -fx-background-color: #0a0a0a;
+    -fx-border-color: #444444;
+    -fx-border-width: 0.25em;
+    -fx-padding: 0;
+    -fx-hgap: 0;
+    -fx-vgap: 0;
+    -fx-grid-lines-visible: false;
+}
+
+/* 게임 보드의 각 셀 */
+.board-cell {
+    -fx-fill: #1a1a1a;
+    -fx-stroke: #333333;
+    -fx-stroke-width: 0.5;
+    -fx-smooth: false;
+}
+
+/* ========== 테트로미노 색상 ========== */
+/* 각 테트로미노 타입별로 다른 색상을 가집니다 */
+
+.tetromino-red {
+    -fx-fill: linear-gradient(to bottom, #ff4444, #cc0000);
+    -fx-stroke: #ff6666;
+    -fx-stroke-width: 0.5;
+    -fx-effect: innershadow(gaussian, rgba(0,0,0,0.5), 0.25em, 0, 0, 0.083em);
+    -fx-smooth: false;
+}
+
+.tetromino-green {
+    -fx-fill: linear-gradient(to bottom, #44ff44, #00cc00);
+    -fx-stroke: #66ff66;
+    -fx-stroke-width: 0.5;
+    -fx-effect: innershadow(gaussian, rgba(0,0,0,0.5), 0.25em, 0, 0, 0.083em);
+    -fx-smooth: false;
+}
+
+.tetromino-blue {
+    -fx-fill: linear-gradient(to bottom, #4444ff, #0000cc);
+    -fx-stroke: #6666ff;
+    -fx-stroke-width: 0.5;
+    -fx-effect: innershadow(gaussian, rgba(0,0,0,0.5), 0.25em, 0, 0, 0.083em);
+    -fx-smooth: false;
+}
+
+.tetromino-yellow {
+    -fx-fill: linear-gradient(to bottom, #ffff44, #cccc00);
+    -fx-stroke: #ffff66;
+    -fx-stroke-width: 0.5;
+    -fx-effect: innershadow(gaussian, rgba(0,0,0,0.5), 0.25em, 0, 0, 0.083em);
+    -fx-smooth: false;
+}
+
+.tetromino-cyan {
+    -fx-fill: linear-gradient(to bottom, #44ffff, #00cccc);
+    -fx-stroke: #66ffff;
+    -fx-stroke-width: 0.5;
+    -fx-effect: innershadow(gaussian, rgba(0,0,0,0.5), 0.25em, 0, 0, 0.083em);
+    -fx-smooth: false;
+}
+
+.tetromino-magenta {
+    -fx-fill: linear-gradient(to bottom, #ff44ff, #cc00cc);
+    -fx-stroke: #ff66ff;
+    -fx-stroke-width: 0.5;
+    -fx-effect: innershadow(gaussian, rgba(0,0,0,0.5), 0.25em, 0, 0, 0.083em);
+    -fx-smooth: false;
+}
+
+.tetromino-orange {
+    -fx-fill: linear-gradient(to bottom, #ff8844, #cc4400);
+    -fx-stroke: #ffaa66;
+    -fx-stroke-width: 0.5;
+    -fx-effect: innershadow(gaussian, rgba(0,0,0,0.5), 0.25em, 0, 0, 0.083em);
+    -fx-smooth: false;
+}
+
+/* 🔥 FIX: WEIGHT_BOMB 전용 GRAY 색상 */
+.tetromino-gray {
+    -fx-fill: linear-gradient(to bottom, #a0a0a0, #707070);
+    -fx-stroke: #c0c0c0;
+    -fx-stroke-width: 0.5;
+    -fx-effect: innershadow(gaussian, rgba(0,0,0,0.5), 0.25em, 0, 0, 0.083em);
+    -fx-smooth: false;
+}
+
+/* ========== 적록 색맹 모드 (Red-Green Blind Mode) ========== */
+/* Red/Green, Blue/Magenta, Red/Orange 혼동 방지 */
+
+.tetromino-rgblind-red {
+    /* (유지) Red */
+    -fx-fill: linear-gradient(to bottom, #ff4444, #cc0000);
+    -fx-stroke: #ff6666;
+    -fx-stroke-width: 0.5;
+    -fx-effect: innershadow(gaussian, rgba(0,0,0,0.5), 0.25em, 0, 0, 0.083em);
+    -fx-smooth: false;
+}
+
+.tetromino-rgblind-green {
+    /* (변경) Green -> Cyan (기존 Cyan 색상) */
+    -fx-fill: linear-gradient(to bottom, #44ffff, #00cccc);
+    -fx-stroke: #66ffff;
+    -fx-stroke-width: 0.5;
+    -fx-effect: innershadow(gaussian, rgba(0,0,0,0.5), 0.25em, 0, 0, 0.083em);
+    -fx-smooth: false;
+}
+
+.tetromino-rgblind-blue {
+    /* (유지) Blue */
+    -fx-fill: linear-gradient(to bottom, #4444ff, #0000cc);
+    -fx-stroke: #6666ff;
+    -fx-stroke-width: 0.5;
+    -fx-effect: innershadow(gaussian, rgba(0,0,0,0.5), 0.25em, 0, 0, 0.083em);
+    -fx-smooth: false;
+}
+
+.tetromino-rgblind-yellow {
+    /* (유지) Yellow */
+    -fx-fill: linear-gradient(to bottom, #ffff44, #cccc00);
+    -fx-stroke: #ffff66;
+    -fx-stroke-width: 0.5;
+    -fx-effect: innershadow(gaussian, rgba(0,0,0,0.5), 0.25em, 0, 0, 0.083em);
+    -fx-smooth: false;
+}
+
+.tetromino-rgblind-cyan {
+    /* (변경) Cyan -> White/Gray (무채색으로 구분) */
+    -fx-fill: linear-gradient(to bottom, #eeeeee, #bbbbbb);
+    -fx-stroke: #ffffff;
+    -fx-stroke-width: 0.5;
+    -fx-effect: innershadow(gaussian, rgba(0,0,0,0.5), 0.25em, 0, 0, 0.083em);
+    -fx-smooth: false;
+}
+
+.tetromino-rgblind-magenta {
+    /* (변경) Magenta -> Orange (기존 Orange 색상) */
+    -fx-fill: linear-gradient(to bottom, #ff8844, #cc4400);
+    -fx-stroke: #ffaa66;
+    -fx-stroke-width: 0.5;
+    -fx-effect: innershadow(gaussian, rgba(0,0,0,0.5), 0.25em, 0, 0, 0.083em);
+    -fx-smooth: false;
+}
+
+.tetromino-rgblind-orange {
+    /* (변경) Orange -> Dark Purple (Red/Orange와 구분) */
+    -fx-fill: linear-gradient(to bottom, #8844ff, #4400cc);
+    -fx-stroke: #aa66ff;
+    -fx-stroke-width: 0.5;
+    -fx-effect: innershadow(gaussian, rgba(0,0,0,0.5), 0.25em, 0, 0, 0.083em);
+    -fx-smooth: false;
+}
+
+
+/* ========== 청황 색맹 모드 (Blue-Yellow Blind Mode) ========== */
+/* Blue/Green, Yellow/Magenta 혼동 방지 */
+
+.tetromino-byblind-red {
+    /* (유지) Red */
+    -fx-fill: linear-gradient(to bottom, #ff4444, #cc0000);
+    -fx-stroke: #ff6666;
+    -fx-stroke-width: 0.5;
+    -fx-effect: innershadow(gaussian, rgba(0,0,0,0.5), 0.25em, 0, 0, 0.083em);
+    -fx-smooth: false;
+}
+
+.tetromino-byblind-green {
+    /* (변경) Green -> Orange (기존 Orange 색상) */
+    -fx-fill: linear-gradient(to bottom, #ff8844, #cc4400);
+    -fx-stroke: #ffaa66;
+    -fx-stroke-width: 0.5;
+    -fx-effect: innershadow(gaussian, rgba(0,0,0,0.5), 0.25em, 0, 0, 0.083em);
+    -fx-smooth: false;
+}
+
+.tetromino-byblind-blue {
+    /* (유지) Blue */
+    -fx-fill: linear-gradient(to bottom, #4444ff, #0000cc);
+    -fx-stroke: #6666ff;
+    -fx-stroke-width: 0.5;
+    -fx-effect: innershadow(gaussian, rgba(0,0,0,0.5), 0.25em, 0, 0, 0.083em);
+    -fx-smooth: false;
+}
+
+.tetromino-byblind-yellow {
+    /* (변경) Yellow -> White/Gray (무채색으로 구분) */
+    -fx-fill: linear-gradient(to bottom, #eeeeee, #bbbbbb);
+    -fx-stroke: #ffffff;
+    -fx-stroke-width: 0.5;
+    -fx-effect: innershadow(gaussian, rgba(0,0,0,0.5), 0.25em, 0, 0, 0.083em);
+    -fx-smooth: false;
+}
+
+.tetromino-byblind-cyan {
+    /* (유지) Cyan */
+    -fx-fill: linear-gradient(to bottom, #44ffff, #00cccc);
+    -fx-stroke: #66ffff;
+    -fx-stroke-width: 0.5;
+    -fx-effect: innershadow(gaussian, rgba(0,0,0,0.5), 0.25em, 0, 0, 0.083em);
+    -fx-smooth: false;
+}
+
+.tetromino-byblind-magenta {
+    /* (유지) Magenta */
+    -fx-fill: linear-gradient(to bottom, #ff44ff, #cc00cc);
+    -fx-stroke: #ff66ff;
+    -fx-stroke-width: 0.5;
+    -fx-effect: innershadow(gaussian, rgba(0,0,0,0.5), 0.25em, 0, 0, 0.083em);
+    -fx-smooth: false;
+}
+
+.tetromino-byblind-orange {
+    /* (변경) Orange -> Brown (Green이 Orange를 사용했으므로) */
+    -fx-fill: linear-gradient(to bottom, #aa6633, #774411);
+    -fx-stroke: #cc8855;
+    -fx-stroke-width: 0.5;
+    -fx-effect: innershadow(gaussian, rgba(0,0,0,0.5), 0.25em, 0, 0, 0.083em);
+    -fx-smooth: false;
+    
+}/* ========== 게임 정보 라벨 ========== */
+.info-label-title {
+    -fx-font-size: 1.333em;
+    -fx-font-family: "Arial Black";
+    -fx-text-fill: #888888;
+}
+
+.info-label-value {
+    -fx-font-size: 2.667em;
+    -fx-font-family: "Arial Black";
+    -fx-text-fill: #00ff00;
+    -fx-effect: dropshadow(gaussian, rgba(0,255,0,0.5), 0.417em, 0, 0, 0);
+}
+
+/* ========== 조작법 안내 ========== */
+.controls-info {
+    -fx-background-color: rgba(50, 50, 50, 0.5);
+    -fx-padding: 0.833em;
+    -fx-background-radius: 0.417em;
+    -fx-spacing: 0.25em;
+}
+
+.control-text {
+    -fx-font-size: 1em;
+    -fx-font-family: "Consolas", "Courier New", monospace;
+    -fx-text-fill: #aaaaaa;
+}
+
+/* ========== 게임 오버 메시지 ========== */
+.game-over-label {
+    -fx-font-size: 4em;
+    -fx-font-family: "Impact";
+    -fx-text-fill: #ff0000;
+    -fx-effect: dropshadow(gaussian, rgba(255,0,0,0.8), 1.667em, 0, 0, 0);
+    -fx-background-color: rgba(0, 0, 0, 0.8);
+    -fx-padding: 1.667em;
+    -fx-background-radius: 0.833em;
+}
+
+/* ========== 프리뷰 보드 (HOLD, NEXT) ========== */
+.preview-board {
+    -fx-background-color: #0a0a0a;
+    -fx-border-color: #444444;
+    -fx-border-width: 0.167em;
+    -fx-padding: 0.417em;
+    -fx-hgap: 0;
+    -fx-vgap: 0;
+    -fx-grid-lines-visible: false;
+}
+
+/* ========== 콤보 라벨 (좌측) ========== */
+.combo-label {
+    -fx-font-size: 1.2em;
+    -fx-font-family: "Impact";
+    -fx-text-fill: #FFD700;
+    -fx-effect: dropshadow(gaussian, rgba(255,215,0,0.6), 0.5em, 0, 0, 0);
+    -fx-background-color: rgba(0, 0, 0, 0.5);
+    -fx-padding: 0.3em 0.8em;
+    -fx-background-radius: 0.25em;
+}
+
+/* ========== 라인 클리어 타입 라벨 (중앙) ========== */
+.line-clear-type-label {
+    -fx-font-size: 1.6em;
+    -fx-font-family: "Impact";
+    -fx-text-fill: #FFFFFF;
+    -fx-effect: dropshadow(gaussian, rgba(255,255,255,0.7), 0.6em, 0, 0, 0);
+    -fx-background-color: rgba(0, 0, 0, 0.5);
+    -fx-padding: 0.4em 1em;
+    -fx-background-radius: 0.25em;
+}
+
+/* ========== Back-to-Back 라벨 (우측) ========== */
+.back-to-back-label {
+    -fx-font-size: 1.2em;
+    -fx-font-family: "Arial Black";
+    -fx-text-fill: #FF6B6B;
+    -fx-effect: dropshadow(gaussian, rgba(255,107,107,0.6), 0.5em, 0, 0, 0);
+    -fx-background-color: rgba(0, 0, 0, 0.5);
+    -fx-padding: 0.3em 0.8em;
+    -fx-background-radius: 0.25em;
+}
+
+/* ========== 라인 클리어 수 알림 라벨 ========== */
+.line-clear-notification-label {
+    -fx-font-size: 1.1em;
+    -fx-font-family: "Arial Black";
+    -fx-text-fill: #4ECDC4;
+    -fx-effect: dropshadow(gaussian, rgba(78,205,196,0.6), 0.5em, 0, 0, 0);
+    -fx-background-color: rgba(0, 0, 0, 0.5);
+    -fx-padding: 0.3em 0.8em;
+    -fx-background-radius: 0.25em;
+}
+
+/* ========== 팝업 오버레이 ========== */
+.popup-overlay {
+    -fx-background-color: rgba(0, 0, 0, 0.85);
+    -fx-spacing: 1.667em;
+}
+
+.popup-container {
+    -fx-background-color: #2a2a2a;
+    -fx-border-color: #4a4a4a;
+    -fx-border-width: 0.25em;
+    -fx-border-radius: 1em;
+    -fx-background-radius: 1em;
+    -fx-padding: 2em;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.8), 2em, 0, 0, 0);
+    -fx-spacing: 1.25em;
+}
+
+.popup-title {
+    -fx-font-size: 3em;
+    -fx-font-family: "Impact";
+    -fx-text-fill: linear-gradient(from 0% 0% to 100% 200%, repeat, aqua 0%, red 50%);
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.8), 0.833em, 0, 0.25em, 0.25em);
+}
+
+.popup-label {
+    -fx-font-size: 1.3em;
+    -fx-font-family: "Arial Bold";
+    -fx-text-fill: #cccccc;
+}
+
+.popup-score {
+    -fx-font-size: 2.5em;
+    -fx-font-family: "Impact";
+    -fx-text-fill: #00ff00;
+    -fx-effect: dropshadow(gaussian, rgba(0,255,0,0.6), 0.8em, 0, 0, 0);
+}
+
+/* 깜빡임 애니메이션 정의 */
+@keyframes blink {
+    0%, 100% { 
+        -fx-background-color: white;
+        -fx-opacity: 1.0; 
+    }
+    50% { 
+        -fx-background-color: white;
+        -fx-opacity: 0.2;
+    }
+}
+
+/* 블럭 사라질 때 깜빡이는 애니메이션 효과 클래스 */
+.erase-motion {
+    -fx-animation: blink 500ms infinite;
+}
+
+/* ========== 아이템 인벤토리 ========== */
+.item-inventory-container {
+    -fx-spacing: 0.833em;
+    -fx-padding: 0.833em;
+    -fx-background-color: rgba(30, 30, 30, 0.8);
+    -fx-background-radius: 0.417em;
+    -fx-border-color: #444444;
+    -fx-border-width: 0.167em;
+    -fx-border-radius: 0.417em;
+}
+
+.item-slot {
+    -fx-spacing: 0.417em;
+    -fx-padding: 0.833em;
+    -fx-background-color: rgba(50, 50, 50, 0.6);
+    -fx-background-radius: 0.417em;
+    -fx-border-color: #666666;
+    -fx-border-width: 0.167em;
+    -fx-border-radius: 0.417em;
+    -fx-pref-width: 8.333em;
+    -fx-pref-height: 5em;
+    -fx-alignment: center;
+}
+
+.item-slot:hover {
+    -fx-background-color: rgba(70, 70, 70, 0.8);
+    -fx-border-color: #888888;
+}
+
+.item-icon {
+    -fx-font-size: 2em;
+}
+
+.item-name {
+    -fx-font-size: 0.917em;
+    -fx-font-family: "Arial Bold";
+    -fx-text-fill: #cccccc;
+}
+
+.item-use-button {
+    -fx-background-color: #4CAF50;
+    -fx-text-fill: white;
+    -fx-font-size: 0.833em;
+    -fx-font-family: "Arial Bold";
+    -fx-padding: 0.25em 0.833em;
+    -fx-background-radius: 0.25em;
+    -fx-cursor: hand;
+}
+
+.item-use-button:hover {
+    -fx-background-color: #45a049;
+}
+
+.item-use-button:pressed {
+    -fx-background-color: #3d8b40;
+}
+
+.item-slot-empty {
+    -fx-spacing: 0.417em;
+    -fx-padding: 0.833em;
+    -fx-background-color: rgba(30, 30, 30, 0.4);
+    -fx-background-radius: 0.417em;
+    -fx-border-color: #444444;
+    -fx-border-width: 0.167em;
+    -fx-border-style: dashed;
+    -fx-border-radius: 0.417em;
+    -fx-pref-width: 8.333em;
+    -fx-pref-height: 5em;
+    -fx-alignment: center;
+}
+
+.item-slot-empty-label {
+    -fx-font-size: 0.917em;
+    -fx-text-fill: #666666;
+}

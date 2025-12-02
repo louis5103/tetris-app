@@ -1,0 +1,23 @@
+.center-box {
+    -fx-alignment: center;
+    -fx-spacing: 1em;
+    -fx-padding: 1em; /* 전체 창에서 input창 여백 */
+}
+
+.notice-label {
+    -fx-font-size: 1.5em;
+    -fx-text-fill: white;
+    -fx-font-family: "Arial Black";
+}
+
+.input-field {
+    -fx-pref-width: 10em;
+    -fx-pref-height: 2em;
+    -fx-font-size: 1.5em;
+    -fx-font-family: "Arial Black";
+    -fx-border-color: #555555;
+    -fx-border-width: 0.18em;
+    -fx-background-radius: 0.8em;
+    -fx-border-radius: 0.8em;
+    -fx-padding: 0.5em 0.5em; /* 안쪽 글자 여백 */
+}

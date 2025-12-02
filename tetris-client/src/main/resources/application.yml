@@ -1,0 +1,226 @@
+# =============================================================================
+# 테트리스 게임 통합 설정 (Tetris Game Unified Configuration)
+# =============================================================================
+# 
+# 설정 계층:
+# 1. application.yml (이 파일) - 정적 설정: 개발자가 정의하는 기본값
+# 2. tetris_settings (루트)    - 동적 설정: 사용자가 변경하는 런타임 값
+# 
+# =============================================================================
+
+# =============================================================================
+# Spring Boot 기본 설정
+# =============================================================================
+spring:
+  config:
+    import: 
+      - classpath:game-modes.yml
+      - classpath:config/client/setting.yml
+
+  application:
+    name: Tetris Desktop Game
+  
+  profiles:
+    active: desktop-client
+  
+  # Banner 설정
+  main:
+    banner-mode: console
+  banner:
+    location: classpath:banner.txt
+  
+  # Internationalization
+  messages:
+    basename: messages
+    encoding: UTF-8
+  
+  # JPA 설정 - desktop-client 프로필에서 MySQL 설정으로 오버라이드됨
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+  
+  # 데이터베이스 설정은 application-desktop-client.properties에서 관리
+  # (MySQL 사용 - docker-compose.yml 참고)
+
+# =============================================================================
+# JavaFX 설정
+# =============================================================================
+javafx:
+  enabled: true  # 기본값: JavaFX 활성화 (테스트에서는 false로 오버라이드)
+  preloader:
+    enabled: false
+  stage:
+    resizable: false
+    always-on-top: false
+
+# =============================================================================
+# 테트리스 게임 설정
+# =============================================================================
+# ⚠️ 게임 모드별 설정은 config/client/classic.yml, arcade.yml에서 관리
+# ⚠️ 사용자 런타임 설정은 config/client/setting.yml에서 관리
+# ⚠️ 난이도(Difficulty)는 GameModeConfigFactory에서 배율 적용
+# =============================================================================
+tetris:
+  # ---------------------------------------------------------------------------
+  # 7-bag 시스템 설정
+  # ---------------------------------------------------------------------------
+  bag-system:
+    # 가방 크기 (기본 7개)
+    bag-size: 7
+    # Easy 모드에서 I블록 추가 확률 (20%)
+    easy-i-block-add-chance: 0.2
+    # Hard 모드에서 I블록 제거 확률 (20%)
+    hard-i-block-remove-chance: 0.2
+  
+  # ---------------------------------------------------------------------------
+  # 애니메이션 설정 ✨ NEW
+  # ---------------------------------------------------------------------------
+  animation:
+    line-clear:
+      # 깜빡임 횟수
+      flash-count: 3
+      # 깜빡임 간격 (밀리초)
+      flash-duration-ms: 200
+      # 페이드아웃 시간 (밀리초)
+      fade-duration-ms: 300
+      # 애니메이션 활성화 여부
+      enabled: true
+  
+  # ---------------------------------------------------------------------------
+  # 게임 기본 설정 (Game Configuration)
+  # ---------------------------------------------------------------------------
+  game:
+    # 초기 레벨 (환경 변수로 오버라이드 가능)
+    initial-level: ${TETRIS_GAME_INITIAL_LEVEL:1}
+    # 최대 레벨
+    max-level: ${TETRIS_GAME_MAX_LEVEL:15}
+    # 레벨당 필요한 라인 수
+    lines-per-level: ${TETRIS_GAME_LINES_PER_LEVEL:10}
+    # 초기 드롭 간격 (밀리초)
+    initial-drop-interval: ${TETRIS_GAME_INITIAL_DROP_INTERVAL:1000}
+  
+  # ---------------------------------------------------------------------------
+  # 사운드 설정 (Sound Configuration)
+  # ---------------------------------------------------------------------------
+  sound:
+    # 사운드 활성화 여부
+    enabled: ${TETRIS_SOUND_ENABLED:true}
+    # 사운드 볼륨 (0 ~ 100, SettingsService 스케일)
+    volume: ${TETRIS_SOUND_VOLUME:80}
+  
+  # ---------------------------------------------------------------------------
+  # UI 설정 (UI Configuration)
+  # ---------------------------------------------------------------------------
+  ui:
+    # UI 테마
+    theme: ${TETRIS_UI_THEME:dark}
+    # 색상 모드 (colorModeDefault, rg_blind, yb_blind)
+    color-mode: ${TETRIS_UI_COLOR_MODE:colorModeDefault}
+    # 화면 크기 (screenSizeXS, screenSizeS, screenSizeM, screenSizeL, screenSizeXL)
+    screen-size: ${TETRIS_UI_SCREEN_SIZE:screenSizeM}
+    # 스테이지 기본 너비
+    stage-width: ${TETRIS_UI_STAGE_WIDTH:500}
+    # 스테이지 기본 높이
+    stage-height: ${TETRIS_UI_STAGE_HEIGHT:700}
+    # ✨ Phase 5: 난이도 기본값 (difficultyEasy, difficultyNormal, difficultyHard)
+    difficulty: ${TETRIS_UI_DIFFICULTY:difficultyNormal}
+    # 애니메이션 활성화
+    animation:
+      enabled: ${TETRIS_UI_ANIMATION_ENABLED:true}
+    # 그리드 표시 여부
+    show-grid: ${TETRIS_UI_SHOW_GRID:true}
+    # 고스트 피스 표시 여부
+    show-ghost-piece: ${TETRIS_UI_SHOW_GHOST_PIECE:true}
+  
+  # ---------------------------------------------------------------------------
+  # 점수 설정 (Score Configuration)
+  # ---------------------------------------------------------------------------
+  score:
+    # 1줄 삭제 점수
+    single-line: ${TETRIS_SCORE_SINGLE_LINE:100}
+    # 2줄 삭제 점수
+    double-line: ${TETRIS_SCORE_DOUBLE_LINE:300}
+    # 3줄 삭제 점수
+    triple-line: ${TETRIS_SCORE_TRIPLE_LINE:500}
+    # 4줄 삭제 점수 (테트리스)
+    tetris-line: ${TETRIS_SCORE_TETRIS_LINE:800}
+  
+  # ---------------------------------------------------------------------------
+  # 저장 설정 (Save Configuration)
+  # ---------------------------------------------------------------------------
+  save:
+    # 자동 저장 여부
+    auto-save: ${TETRIS_SAVE_AUTO_SAVE:true}
+    # 저장 위치
+    location: ${TETRIS_SAVE_LOCATION:${user.home}/.tetris/}
+
+  # ---------------------------------------------------------------------------
+  # 멀티플레이 서버 설정 (Multiplayer Server Configuration)
+  # ---------------------------------------------------------------------------
+  server:
+    # 서버 기본 URL
+    base-url: ${TETRIS_SERVER_BASE_URL:http://localhost:8090}
+    # WebSocket URL (자동 생성: base-url + /ws-game)
+    websocket-endpoint: /ws-game
+
+  # ---------------------------------------------------------------------------
+  # 인증 서버 설정 (Authentication Server Configuration)
+  # ---------------------------------------------------------------------------
+  auth:
+    # 인증 서버 기본 URL (tetris-server와 동일)
+    base-url: ${TETRIS_AUTH_BASE_URL:http://localhost:8090}
+    # 사용자 API 엔드포인트
+    user-endpoint: /tetris/users
+  
+
+
+# =============================================================================
+# 로깅 설정 (Logging Configuration)
+# =============================================================================
+logging:
+  level:
+    root: INFO
+    seoultech.se: DEBUG
+    org.springframework: INFO
+    org.hibernate: WARN
+
+---
+# =============================================================================
+# 개발 환경 프로파일 (Development Profile)
+# =============================================================================
+spring:
+  config:
+    activate:
+      on-profile: dev
+
+# 개발 환경 로깅 (디버그 모드)
+logging:
+  level:
+    seoultech.se: TRACE
+    org.springframework: DEBUG
+
+---
+# =============================================================================
+# 테스트 환경 프로파일 (Test Profile)
+# =============================================================================
+spring:
+  config:
+    activate:
+      on-profile: test
+
+# 테스트 환경 전용 설정
+tetris:
+  # 테스트 환경에서는 애니메이션 비활성화 (속도 향상)
+  animation:
+    line-clear:
+      enabled: false
+
+# 테스트 환경 로깅
+logging:
+  level:
+    seoultech.se: DEBUG
+    org.springframework: WARN

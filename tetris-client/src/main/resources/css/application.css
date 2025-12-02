@@ -1,0 +1,316 @@
+/* ========== 화면 크기별 CSS 변수 정의 ========== */
+/* XSMALL (Extra Small) */
+.root.screenSizeXS {
+    -fx-font-size: 8px;
+}
+
+/* SMALL */
+.root.screenSizeS {
+    -fx-font-size: 10px;
+}
+
+/* MEDIUM (기본) */
+.root.screenSizeM {
+    -fx-font-size: 12px;
+}
+
+/* LARGE */
+.root.screenSizeL {
+    -fx-font-size: 14px;
+}
+
+/* XLARGE (Extra Large) */
+.root.screenSizeXL {
+    -fx-font-size: 16px;
+}
+
+/* ========== 기본 배경 ========== */
+.root {
+    -fx-background-color: #1a1a1a;
+}
+
+/* ========== 버튼 및 라벨 최소크기 해제 ========== */
+.button, .label {
+    -fx-min-width: 0;
+    -fx-min-height: 0;
+}
+
+/* ========== 메뉴 버튼 ========== */
+.menu-button {
+    -fx-pref-width: 20em;
+    -fx-pref-height: 4.5em;
+    -fx-background-color: #333333;
+    -fx-background-radius: 0.833em;
+
+    /* 내부 폰트설정 */
+    -fx-text-fill: white;
+    -fx-font-size: 2em;
+    -fx-font-family: "Arial Black";
+
+    /* 테두리 설정 */
+    -fx-border-color: #555555;
+    -fx-border-width: 0.167em;
+    -fx-border-radius: 0.833em;
+}
+
+.menu-button-middle {
+    -fx-pref-width: 18em;
+    -fx-pref-height: 2.8em;
+    -fx-background-color: #333333;
+    -fx-text-fill: white;
+    -fx-font-size: 1.5em;
+    -fx-font-family: "Arial Black";
+    -fx-border-color: #555555;
+    -fx-border-width: 0.167em;
+    -fx-background-radius: 0.833em;
+    -fx-border-radius: 0.833em;
+}
+
+.menu-button-small {
+    -fx-pref-width: 12em;
+    -fx-pref-height: 3em;
+    -fx-background-color: #333333;
+    -fx-text-fill: white;
+    -fx-font-size: 1.5em;
+    -fx-font-family: "Arial Black";
+    -fx-border-color: #555555;
+    -fx-border-width: 0.167em;
+    -fx-background-radius: 0.667em;
+    -fx-border-radius: 0.667em;
+}
+
+/* 호버 효과를 .highlighted로 통일하기 위해 제거 */
+.menu-button:hover {
+    -fx-cursor: hand;
+}
+
+/* :focused는 제거 (JavaFX에서 포커스 시각화 안 함) */
+
+.menu-button-middle:hover, .menu-button-middle:focused {
+    -fx-cursor: hand;
+}
+
+.menu-button-small:hover, .menu-button-small:focused {
+    -fx-cursor: hand;
+}
+
+/* ========== 설정 버튼 ========== */
+.settings-button:hover, .settings-button:focused {
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(gaussian, rgba(255,255,255,0.8), 1em, 0, 0, 0);
+}
+
+/* ========== 하단 버튼 박스 ========== */
+.bottom-box {
+    -fx-padding: 0.5em 1.667em 1.25em 1.667em;
+    -fx-spacing: 0.833em;
+    -fx-alignment: CENTER_RIGHT;
+}
+
+/* ========== 모드 선택 팝업 ========== */
+.mode-selection-popup {
+    -fx-background-color: rgba(44, 62, 80, 0.98);
+    -fx-background-radius: 15px;
+    -fx-border-color: #3498db;
+    -fx-border-width: 3px;
+    -fx-border-radius: 15px;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.8), 30, 0, 0, 0);
+}
+
+.mode-selection-popup .popup-title {
+    -fx-font-size: 32px;
+    -fx-font-weight: bold;
+    -fx-text-fill: white;
+    -fx-padding: 10px 0 20px 0;
+}
+
+.mode-selection-popup .section-label {
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #3498db;
+    -fx-padding: 10px 0 5px 0;
+}
+
+.mode-selection-popup .selection-box {
+    -fx-padding: 10px 20px;
+    -fx-spacing: 8px;
+}
+
+.mode-selection-popup .play-type-radio,
+.mode-selection-popup .gameplay-type-radio {
+    -fx-text-fill: white;
+    -fx-font-size: 16px;
+    -fx-padding: 5px;
+}
+
+.mode-selection-popup .play-type-radio:hover,
+.mode-selection-popup .gameplay-type-radio:hover {
+    -fx-text-fill: #3498db;
+    -fx-cursor: hand;
+}
+
+.mode-selection-popup .srs-checkbox {
+    -fx-text-fill: white;
+    -fx-font-size: 15px;
+    -fx-font-weight: bold;
+}
+
+.mode-selection-popup .srs-box {
+    -fx-padding: 15px 20px;
+}
+
+.mode-selection-popup .hint-label {
+    -fx-font-size: 12px;
+    -fx-text-fill: #95a5a6;
+    -fx-padding: 5px 0 0 25px;
+}
+
+.mode-selection-popup .primary-button {
+    -fx-background-color: #27ae60;
+    -fx-text-fill: white;
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+    -fx-padding: 12px 40px;
+    -fx-background-radius: 8px;
+    -fx-min-width: 150px;
+}
+
+.mode-selection-popup .primary-button:hover {
+    -fx-background-color: #2ecc71;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(gaussian, rgba(46, 204, 113, 0.6), 10, 0, 0, 0);
+}
+
+.mode-selection-popup .secondary-button {
+    -fx-background-color: #7f8c8d;
+    -fx-text-fill: white;
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+    -fx-padding: 12px 30px;
+    -fx-background-radius: 8px;
+    -fx-min-width: 120px;
+}
+
+.mode-selection-popup .secondary-button:hover {
+    -fx-background-color: #95a5a6;
+    -fx-cursor: hand;
+}
+
+.mode-selection-popup .button-box {
+    -fx-padding: 20px 0 0 0;
+    -fx-spacing: 15px;
+}
+
+.mode-selection-popup .separator {
+    -fx-padding: 5px 0;
+}
+
+/* ============================================================ */
+/* Matching Screen Styles */
+/* ============================================================ */
+
+.matching-box {
+    -fx-padding: 40px;
+    -fx-alignment: center;
+}
+
+.matching-title {
+    -fx-font-size: 36px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #3498db;
+}
+
+.matching-progress {
+    -fx-progress-color: #3498db;
+}
+
+.matching-status {
+    -fx-font-size: 18px;
+    -fx-text-fill: #ecf0f1;
+}
+
+.matching-timer {
+    -fx-font-size: 24px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #e74c3c;
+}
+
+.matching-info {
+    -fx-font-size: 16px;
+    -fx-text-fill: #95a5a6;
+}
+
+.cancel-button {
+    -fx-background-color: #e74c3c;
+    -fx-text-fill: white;
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+    -fx-padding: 12px 40px;
+    -fx-background-radius: 8px;
+    -fx-min-width: 200px;
+}
+
+.cancel-button:hover {
+    -fx-background-color: #c0392b;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(gaussian, rgba(231, 76, 60, 0.6), 10, 0, 0, 0);
+}
+
+/* ========== 매칭 완료 화면 스타일 ========== */
+.match-found-box {
+    -fx-background-color: linear-gradient(to bottom, #1a1a1a, #2c3e50);
+    -fx-padding: 40px;
+}
+
+.match-found-title {
+    -fx-font-size: 42px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #f39c12;
+    -fx-effect: dropshadow(gaussian, rgba(243, 156, 18, 0.8), 15, 0, 0, 0);
+}
+
+.opponent-info-box {
+    -fx-background-color: rgba(52, 73, 94, 0.5);
+    -fx-background-radius: 15px;
+    -fx-padding: 30px;
+    -fx-border-color: #3498db;
+    -fx-border-width: 2px;
+    -fx-border-radius: 15px;
+}
+
+.vs-label {
+    -fx-font-size: 36px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #e74c3c;
+    -fx-effect: dropshadow(gaussian, rgba(231, 76, 60, 0.8), 10, 0, 0, 0);
+}
+
+.opponent-name {
+    -fx-font-size: 28px;
+    -fx-font-weight: bold;
+    -fx-text-fill: white;
+}
+
+.opponent-email {
+    -fx-font-size: 16px;
+    -fx-text-fill: #95a5a6;
+}
+
+.game-mode-label {
+    -fx-font-size: 20px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #3498db;
+}
+
+.countdown-label {
+    -fx-font-size: 96px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #2ecc71;
+    -fx-effect: dropshadow(gaussian, rgba(46, 204, 113, 0.8), 20, 0, 0, 0);
+}
+
+.message-label {
+    -fx-font-size: 20px;
+    -fx-text-fill: #ecf0f1;
+    -fx-font-style: italic;
+}

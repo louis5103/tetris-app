@@ -1,0 +1,22 @@
+.title-label {
+    -fx-padding: 1em 0 0.5em 0;
+    -fx-font-size: 6em;
+    -fx-font-family: "Impact";
+    -fx-text-fill:  rgb(90, 170, 170) 0%;
+    /* -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.6), 10, 0, 5, 5); */
+}
+
+.center-box {
+    -fx-padding: 1em 2em 2em 2em;
+    -fx-spacing: 1.7em;
+    -fx-border-color: #606060;
+    -fx-border-width: 0 0 0 0.083em;
+}
+
+.bottom-box-custom {
+    -fx-spacing: 1em;
+}
+
+.custom-setting-button-selected {
+    -fx-background-color: #2427d5;
+}

@@ -1,0 +1,51 @@
+/* item.css: 아이템 모드 게임에서 사용되는 블럭 스타일 정의 */
+
+/* 모든 아이템 블럭에 .item-block 를 적용하고, 아이템 종류에 맞는 스타일을 추가하세요 
+   L모양, 범위폭탄, 십자가 폭탄은 아이콘을 사용하는 방식, 무게추, 선택가능 블럭은 색상과 효과를 입히는 방식입니다. */
+
+/* 모든 아이템 블럭에 공통적으로 적용되는 스타일 */
+.item-block {
+    -fx-background-size: contain; /* 이미지가 블록 크기에 맞게 조절됨 */
+    -fx-background-repeat: no-repeat; /* 이미지가 여러개 생성되지 않도록 설정 */
+    -fx-background-position: center;  /* 이미지를 적용될 개체의 중앙에 위치 */
+}
+
+/* 라인 지우는 L모양 블럭 */
+.line-clear-block{
+    -fx-background-image: url("/images/L.png");
+}
+
+/* 무게추 블럭 (강철 효과 적용) */
+.weighted-block {
+    -fx-background-color: linear-gradient(from 0% 0% to 100% 100%, 
+        lightgray, silver, dimgray);
+    -fx-effect: innershadow(three-pass-box, rgba(0,0,0,0.5), 10, 0, 0, 3);
+}
+
+/* 범위 폭탄 블럭 */
+.range-bomb-block {
+    -fx-background-image: url("/images/bomb.png");
+}
+
+/* 십자폭탄 블럭 */
+.cross-bomb-block {
+    -fx-background-image: url("/images/cross.png");
+}
+
+/* --- 애니메이션 및 동적 효과 --- */
+
+/* 무지개 순환 애니메이션 정의 */
+@keyframes rainbow-flow {
+    0%   { -fx-background-color: #ff0000; } /* Red */
+    17%  { -fx-background-color: #ff7f00; } /* Orange */
+    34%  { -fx-background-color: #ffff00; } /* Yellow */
+    51%  { -fx-background-color: #00ff00; } /* Green */
+    68%  { -fx-background-color: #0000ff; } /* Blue */
+    85%  { -fx-background-color: #4b0082; } /* Indigo */
+    100% { -fx-background-color: #ff0000; } /* 다시 Red로 */
+}
+
+/* 선택가능 블럭 효과 (무지개 효과 적용) */
+.selectable-block {
+    -fx-animation: rainbow-flow 800ms linear infinite;
+}

@@ -1,0 +1,154 @@
+# =============================================================================
+# Test Configuration
+# =============================================================================
+# JavaFX 활성화 (E2E UI 테스트를 위해 필요)
+javafx:
+  enabled: true
+
+spring:
+  main:
+    allow-bean-definition-overriding: true
+  autoconfigure:
+    exclude:
+      # JavaFX 관련 컴포넌트 제외
+      - org.springframework.boot.autoconfigure.jmx.JmxAutoConfiguration
+
+  # 테스트용 데이터베이스 설정 (H2 인메모리)
+  datasource:
+    url: jdbc:h2:mem:testdb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    defer-datasource-initialization: true  # JPA 테이블 생성 후 data.sql 실행
+  
+  sql:
+    init:
+      mode: never  # 테스트에서는 data.sql 실행하지 않음
+
+# =============================================================================
+# 테트리스 게임 설정 (난이도 설정 포함)
+# =============================================================================
+tetris:
+  # ---------------------------------------------------------------------------
+  # 난이도 시스템 설정 (Difficulty System)
+  # ---------------------------------------------------------------------------
+  difficulty:
+    # Easy 모드 설정
+    easy:
+      display-name: "쉬움"
+      i-block-multiplier: 1.2
+      speed-increase-multiplier: 0.8
+      score-multiplier: 0.5  # SRS 표준: 낮은 난이도 = 낮은 배율
+      lock-delay-multiplier: 1.2
+      
+    # Normal 모드 설정 (기본값)
+    normal:
+      display-name: "보통"
+      i-block-multiplier: 1.0
+      speed-increase-multiplier: 1.0
+      score-multiplier: 1.0
+      lock-delay-multiplier: 1.0
+      
+    # Hard 모드 설정
+    hard:
+      display-name: "어려움"
+      i-block-multiplier: 0.8
+      speed-increase-multiplier: 1.2
+      score-multiplier: 1.5  # SRS 표준: 높은 난이도 = 높은 배율
+      lock-delay-multiplier: 0.8
+  
+  # ---------------------------------------------------------------------------
+  # 7-bag 시스템 설정
+  # ---------------------------------------------------------------------------
+  bag-system:
+    bag-size: 7
+    easy-i-block-add-chance: 0.2
+    hard-i-block-remove-chance: 0.2
+  
+  # ---------------------------------------------------------------------------
+  # 애니메이션 설정
+  # ---------------------------------------------------------------------------
+  animation:
+    line-clear:
+      flash-count: 3
+      flash-duration-ms: 200
+      fade-duration-ms: 300
+      enabled: true
+  
+  # ---------------------------------------------------------------------------
+  # 게임 기본 설정
+  # ---------------------------------------------------------------------------
+  game:
+    initial-level: 1
+    max-level: 15
+    lines-per-level: 10
+    initial-drop-interval: 1000
+  
+  # ---------------------------------------------------------------------------
+  # 사운드 설정
+  # ---------------------------------------------------------------------------
+  sound:
+    enabled: true
+    volume: 80
+  
+  # ---------------------------------------------------------------------------
+  # UI 설정
+  # ---------------------------------------------------------------------------
+  ui:
+    theme: dark
+    color-mode: colorModeDefault
+    screen-size: screenSizeM
+    stage-width: 500
+    stage-height: 700
+    difficulty: difficultyNormal  # 기본값
+    animation:
+      enabled: true
+    show-grid: true
+    show-ghost-piece: true
+  
+  # ---------------------------------------------------------------------------
+  # 점수 설정
+  # ---------------------------------------------------------------------------
+  score:
+    single-line: 100
+    double-line: 300
+    triple-line: 500
+    tetris-line: 800
+  
+  # ---------------------------------------------------------------------------
+  # 저장 설정
+  # ---------------------------------------------------------------------------
+  save:
+    auto-save: true
+    location: ${user.home}/.tetris/
+  
+  # ---------------------------------------------------------------------------
+  # 게임 모드 설정
+  # ---------------------------------------------------------------------------
+  mode:
+    play-type: LOCAL_SINGLE
+    gameplay-type: CLASSIC
+    srs-enabled: true
+    last-play-type: LOCAL_SINGLE
+    last-gameplay-type: CLASSIC
+    last-srs-enabled: true
+    
+    # 아케이드 모드 설정
+    arcade:
+      drop-speed-multiplier: 1.5
+      lock-delay: 300
+      
+    # 아이템 설정
+    item:
+      drop-rate: 0.15
+      max-inventory-size: 3
+      auto-use: false
+      enabled-items:
+        bomb: true
+        plus: true
+        bonus-score: true
