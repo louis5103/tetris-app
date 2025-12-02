@@ -45,6 +45,11 @@ public class TetrominoGenerator {
      * 현재 가방 (남은 블록들)
      */
     private List<TetrominoType> currentBag;
+
+    /**
+     * 다음 가방 (미리보기용 캐시)
+     */
+    private List<TetrominoType> nextBag = null;
     
     /**
      * 가방 크기 (기본 7개)
@@ -84,7 +89,7 @@ public class TetrominoGenerator {
      * 
      * @return 다음 테트로미노 타입
      */
-    public TetrominoType next() {
+    public synchronized TetrominoType next() {
         // 가방이 비었으면 리필
         if (currentBag.isEmpty()) {
             refillBag();
@@ -101,50 +106,42 @@ public class TetrominoGenerator {
      * 난이도에 따라 I형 블록을 추가하거나 제거합니다.</p>
      */
     private void refillBag() {
-        currentBag.clear();
-        
-        // 기본 7개 블록 추가
-        currentBag.add(TetrominoType.I);
-        currentBag.add(TetrominoType.O);
-        currentBag.add(TetrominoType.T);
-        currentBag.add(TetrominoType.S);
-        currentBag.add(TetrominoType.Z);
-        currentBag.add(TetrominoType.J);
-        currentBag.add(TetrominoType.L);
-        
-        // 난이도별 조정
-        adjustBagForDifficulty();
-        
-        // 가방 섞기
-        Collections.shuffle(currentBag, random.getRandom());
+        if (nextBag != null) {
+            currentBag = nextBag;
+            nextBag = null;
+        } else {
+            currentBag = createNewBag();
+        }
     }
-    
+
     /**
      * 난이도에 따라 가방 조정
-     * 
+     *
      * <p>Easy: 20% 확률로 I형 블록 추가</p>
      * <p>Hard: 20% 확률로 I형 블록 제거</p>
+     *
+     * @param bag 조정할 가방
      */
-    private void adjustBagForDifficulty() {
+    private void adjustBagForDifficulty(List<TetrominoType> bag) {
         switch (difficulty) {
             case EASY:
                 // 20% 확률로 I형 블록 추가
                 if (random.nextBoolean(EASY_I_BLOCK_ADD_CHANCE)) {
-                    currentBag.add(TetrominoType.I);
+                    bag.add(TetrominoType.I);
                     // 디버그 로그 (선택사항)
                     // System.out.println("🔵 [Easy] I-block added to bag");
                 }
                 break;
-                
+
             case HARD:
                 // 20% 확률로 I형 블록 제거
                 if (random.nextBoolean(HARD_I_BLOCK_REMOVE_CHANCE)) {
-                    currentBag.remove(TetrominoType.I);
+                    bag.remove(TetrominoType.I);
                     // 디버그 로그 (선택사항)
                     // System.out.println("🔴 [Hard] I-block removed from bag");
                 }
                 break;
-                
+
             case NORMAL:
             default:
                 // 조정 없음
@@ -160,29 +157,25 @@ public class TetrominoGenerator {
      * @param count 미리보기할 블록 개수
      * @return 다음 블록들 (순서대로)
      */
-    public List<TetrominoType> preview(int count) {
-        List<TetrominoType> preview = new ArrayList<>();
-        List<TetrominoType> tempBag = new ArrayList<>(currentBag);
-        
-        for (int i = 0; i < count; i++) {
-            if (tempBag.isEmpty()) {
-                // 임시로 새 가방 생성
-                tempBag = createNewBag();
+    public synchronized List<TetrominoType> preview(int count) {
+        List<TetrominoType> lookahead = new ArrayList<>(currentBag);
+        if (lookahead.size() < count) {
+            if (nextBag == null) {
+                nextBag = createNewBag();
             }
-            preview.add(tempBag.remove(0));
+            lookahead.addAll(nextBag);
         }
-        
-        return preview;
+        return lookahead.subList(0, Math.min(count, lookahead.size()));
     }
     
     /**
      * 새 가방 생성 (미리보기용)
-     * 
+     *
      * @return 새로 생성된 가방
      */
     private List<TetrominoType> createNewBag() {
         List<TetrominoType> bag = new ArrayList<>();
-        
+
         // 기본 7개 블록
         bag.add(TetrominoType.I);
         bag.add(TetrominoType.O);
@@ -191,10 +184,10 @@ public class TetrominoGenerator {
         bag.add(TetrominoType.Z);
         bag.add(TetrominoType.J);
         bag.add(TetrominoType.L);
-        
-        // 난이도 조정은 refillBag()에서만 적용
-        // preview는 기본 7-bag만 사용
-        
+
+        // 난이도별 조정
+        adjustBagForDifficulty(bag);
+
         Collections.shuffle(bag, random.getRandom());
         return bag;
     }
