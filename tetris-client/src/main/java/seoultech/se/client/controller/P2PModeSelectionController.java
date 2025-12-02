@@ -1,11 +1,11 @@
 package seoultech.se.client.controller;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Controller;
+
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.TextField;
-import javafx.stage.Stage;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Controller;
 import seoultech.se.backend.network.P2PService;
 import seoultech.se.client.service.NetworkGameService;
 import seoultech.se.client.util.NetworkUtils;
@@ -59,6 +59,10 @@ public class P2PModeSelectionController extends BaseController {
 
         try {
             int targetPort = Integer.parseInt(targetPortStr);
+            
+            // P2P 호환성 체크
+            String myIp = NetworkUtils.getLocalIpAddress();
+            NetworkUtils.checkP2PCompatibility(myIp, targetIp);
             
             // 1. 상대방에게 연결 시도 (UDP Hole Punching / Handshake)
             p2pService.connectToPeer(targetIp, targetPort);

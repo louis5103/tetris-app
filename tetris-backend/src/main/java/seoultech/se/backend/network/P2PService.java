@@ -41,12 +41,19 @@ public class P2PService {
     @PostConstruct
     public void init() {
         try {
-            // 빈 포트 자동 할당
-            this.socket = new DatagramSocket();
+            // 모든 네트워크 인터페이스(0.0.0.0)에서 수신하도록 명시적 바인딩
+            this.socket = new DatagramSocket(null);
+            this.socket.setReuseAddress(true);
+            this.socket.bind(new java.net.InetSocketAddress("0.0.0.0", 0));
             this.localPort = socket.getLocalPort();
             this.isRunning = true;
             
-            System.out.println("🔹 [P2P] UDP Socket bound to port: " + localPort);
+            System.out.println("\n" + "=".repeat(50));
+            System.out.println("🔹 [P2P] UDP Socket initialized");
+            System.out.println("   └ Bound to: 0.0.0.0:" + localPort);
+            System.out.println("   └ Listening on ALL network interfaces");
+            System.out.println("   └ Socket open: " + !socket.isClosed());
+            System.out.println("=".repeat(50) + "\n");
             
             // 수신 스레드 시작
             Thread receiverThread = new Thread(this::listen);
@@ -54,8 +61,11 @@ public class P2PService {
             receiverThread.setName("P2P-Receiver");
             receiverThread.start();
             
+            System.out.println("✅ [P2P] Receiver thread started: " + receiverThread.getName());
+            
         } catch (SocketException e) {
             System.err.println("❌ [P2P] Failed to bind UDP socket: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
