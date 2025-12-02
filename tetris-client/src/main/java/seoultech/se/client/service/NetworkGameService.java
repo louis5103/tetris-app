@@ -106,8 +106,9 @@ public class NetworkGameService {
         if ("HANDSHAKE".equals(packet.getType())) {
             if (isHost && !isConnected) {
                 System.out.println("✅ [P2P] Handshake received from Guest!");
-                // Guest의 실제 UDP 포트로 재연결
-                if (packet.getUdpPort() != null) {
+                
+                // 릴레이 모드가 아니면 Guest의 실제 UDP 포트로 재연결
+                if (!p2pService.isRelayMode() && packet.getUdpPort() != null) {
                     String guestIp = p2pService.getOpponentIp();
                     if (guestIp == null) {
                         System.err.println("❌ [P2P Host] Cannot reconnect - Guest IP is null!");
@@ -116,6 +117,8 @@ public class NetworkGameService {
                     int guestUdpPort = packet.getUdpPort();
                     p2pService.connectToPeer(guestIp, guestUdpPort);
                     System.out.println("🔄 [P2P Host] Reconnected to Guest's UDP port: " + guestUdpPort);
+                } else if (p2pService.isRelayMode()) {
+                    System.out.println("🔄 [Relay] Already connected via relay server - skipping reconnect");
                 }
                 isConnected = true;
                 sendHandshake(); // ACK with Host's UDP port
@@ -124,8 +127,9 @@ public class NetworkGameService {
                 broadcastState();
             } else if (!isHost && !isConnected) {
                 System.out.println("✅ [P2P] Handshake received from Host!");
-                // Host의 실제 UDP 포트로 재연결
-                if (packet.getUdpPort() != null) {
+                
+                // 릴레이 모드가 아니면 Host의 실제 UDP 포트로 재연결
+                if (!p2pService.isRelayMode() && packet.getUdpPort() != null) {
                     String hostIp = p2pService.getOpponentIp();
                     if (hostIp == null) {
                         System.err.println("❌ [P2P Guest] Cannot reconnect - Host IP is null!");
@@ -134,6 +138,8 @@ public class NetworkGameService {
                     int hostUdpPort = packet.getUdpPort();
                     p2pService.connectToPeer(hostIp, hostUdpPort);
                     System.out.println("🔄 [P2P Guest] Reconnected to Host's UDP port: " + hostUdpPort);
+                } else if (p2pService.isRelayMode()) {
+                    System.out.println("🔄 [Relay] Already connected via relay server - skipping reconnect");
                 }
                 isConnected = true;
                 notifyGameStart();
@@ -154,6 +160,9 @@ public class NetworkGameService {
                         ", opponentGameState=" + (state.getOpponentGameState() != null));
                 }
                 processStateUpdate(state);
+            } else if ("GAME_OVER".equals(packet.getType())) {
+                System.out.println("💀 [P2P] GAME_OVER packet received from opponent");
+                handleOpponentGameOver();
             } else {
                 System.out.println("⚠️ [P2P] Unhandled packet - Type: " + packet.getType() + ", isHost: " + isHost + ", isConnected: " + isConnected);
             }
@@ -324,6 +333,8 @@ public class NetworkGameService {
         // 게임 오버 체크 (블록이 스폰 위치에서 충돌하는 경우)
         if (state.isGameOver()) {
             System.out.println("💀 [P2P] Game Over for " + (isHostPlayer ? "Host" : "Guest"));
+            // 상대방에게 GAME_OVER 패킷 전송
+            sendGameOver();
         }
     }
     
@@ -456,6 +467,39 @@ public class NetworkGameService {
         isRunning = false;
         p2pService.close();
         System.out.println("🛑 [NetworkGameService] Stopped");
+    }
+    
+    /**
+     * 게임 오버 패킷 전송
+     */
+    private void sendGameOver() {
+        p2pService.sendPacket(P2PPacket.builder()
+            .type("GAME_OVER")
+            .gameOver(true)
+            .build());
+        System.out.println("💀 [P2P] Sent GAME_OVER packet to opponent");
+    }
+    
+    /**
+     * 상대방 게임 오버 처리
+     */
+    private void handleOpponentGameOver() {
+        Platform.runLater(() -> {
+            System.out.println("💀 [P2P] Opponent game over received");
+            if (isHost && opponentState != null) {
+                opponentState.setGameOver(true);
+                System.out.println("💀 [P2P Host] Guest game over - updating opponent state");
+                if (onOpponentStateUpdate != null) {
+                    onOpponentStateUpdate.accept(opponentState);
+                }
+            } else if (!isHost && opponentState != null) {
+                opponentState.setGameOver(true);
+                System.out.println("💀 [P2P Guest] Host game over - updating opponent state");
+                if (onOpponentStateUpdate != null) {
+                    onOpponentStateUpdate.accept(opponentState);
+                }
+            }
+        });
     }
     
     public void setOnDisconnect(Runnable callback) {

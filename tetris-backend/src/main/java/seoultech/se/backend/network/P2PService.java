@@ -164,12 +164,13 @@ public class P2PService {
         }
         
         try {
-            // P2P 패킷을 릴레이 패킷으로 래핑
-            byte[] p2pData = objectMapper.writeValueAsBytes(packet);
+            // P2P 패킷을 JSON 문자열로 변환
+            String p2pJson = objectMapper.writeValueAsString(packet);
             
+            // 릴레이 패킷으로 래핑 (payload를 문자열로 직접 삽입)
             String relayPacketJson = String.format(
-                "{\"type\":\"DATA\",\"sessionId\":\"%s\",\"playerId\":\"%s\",\"payload\":%s}",
-                relaySessionId, myPlayerId, new String(p2pData)
+                "{\"type\":\"DATA\",\"sessionId\":\"%s\",\"playerId\":\"%s\",\"payload\":\"%s\"}",
+                relaySessionId, myPlayerId, p2pJson.replace("\"", "\\\"")
             );
             
             byte[] data = relayPacketJson.getBytes();
@@ -263,14 +264,26 @@ public class P2PService {
                 // 릴레이 모드에서는 P2P 패킷 직접 처리
                 if (relayMode) {
                     if (json.equals("PING")) continue;
-                    if (onPacketReceived != null) {
-                        try {
-                            P2PPacket p2pPacket = objectMapper.readValue(json, P2PPacket.class);
-                            System.out.println("✅ [Relay] Packet received: type=" + p2pPacket.getType());
+                    
+                    System.out.println("🔍 [Relay] Processing packet: " + json.substring(0, Math.min(100, json.length())));
+                    
+                    // PEER_CONNECTED 알림은 무시 (양쪽 연결 완료 알림)
+                    if (json.contains("\"type\":\"PEER_CONNECTED\"")) {
+                        System.out.println("✅ [Relay] Peer connected notification received");
+                        continue;
+                    }
+                    
+                    // 릴레이 서버에서 unescape된 P2P 패킷을 직접 받음
+                    try {
+                        P2PPacket p2pPacket = objectMapper.readValue(json, P2PPacket.class);
+                        System.out.println("✅ [Relay] Packet received via relay: type=" + p2pPacket.getType());
+                        
+                        if (onPacketReceived != null) {
                             onPacketReceived.accept(p2pPacket);
-                        } catch (Exception e) {
-                            System.err.println("❌ [Relay] Parse error: " + e.getMessage());
                         }
+                    } catch (Exception e) {
+                        System.err.println("❌ [Relay] Parse error: " + e.getMessage());
+                        System.err.println("   └ JSON: " + json.substring(0, Math.min(200, json.length())));
                     }
                     continue;
                 }
@@ -333,6 +346,10 @@ public class P2PService {
     
     public String getOpponentIp() {
         return opponentIp != null ? opponentIp.getHostAddress() : null;
+    }
+    
+    public boolean isRelayMode() {
+        return relayMode;
     }
     
     @PreDestroy

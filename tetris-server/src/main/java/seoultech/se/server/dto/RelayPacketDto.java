@@ -16,5 +16,5 @@ public class RelayPacketDto {
     private String type;        // "CONNECT", "DATA", "DISCONNECT", "PING"
     private String sessionId;   // 릴레이 세션 ID
     private String playerId;    // 송신자 플레이어 ID
-    private byte[] payload;     // 실제 P2P 패킷 데이터 (JSON)
+    private String payload;     // 실제 P2P 패킷 데이터 (JSON 문자열)
 }
