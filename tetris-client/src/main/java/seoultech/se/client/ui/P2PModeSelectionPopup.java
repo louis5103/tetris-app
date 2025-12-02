@@ -8,7 +8,7 @@ import javafx.scene.control.TextField;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 
-public class P2PModeSelectionPopup extends VBox {
+public final class P2PModeSelectionPopup extends VBox {
 
     private TextField ipField;
     private TextField portField;

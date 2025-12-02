@@ -6,7 +6,6 @@ import org.springframework.stereotype.Component;
 
 import javafx.application.Platform;
 import seoultech.se.backend.mapper.GameStateDtoToGameStateMapper;
-import seoultech.se.client.service.GameApiService;
 import seoultech.se.client.strategy.NetworkExecutionStrategy;
 import seoultech.se.client.ui.OpponentBoardView;
 import seoultech.se.core.GameState;
@@ -16,14 +15,14 @@ import seoultech.se.core.command.GameCommand;
 @Scope("prototype")
 public class MultiGameController extends BaseGameController {
 
-    @Autowired
-    private seoultech.se.client.util.NetworkUtils networkUtils; // 유틸리티 클래스 주입 (빈 등록 필요 또는 static 사용)
-    
     @Autowired(required = false)
     private seoultech.se.backend.network.P2PService p2pService;
     
-    @Autowired(required = false)
+    @Autowired
     private seoultech.se.backend.network.NetworkTemplate networkTemplate;
+
+    @Autowired
+    private seoultech.se.client.service.GameApiService gameApiService;
 
     @Autowired(required = false)
     private GameStateDtoToGameStateMapper dtoToStateMapper;
@@ -168,7 +167,19 @@ public class MultiGameController extends BaseGameController {
         System.out.println("▶️ [MultiGameController] Game Started (Server Auth)");
         if (gameOverLabel != null) gameOverLabel.setVisible(false);
         popupManager.hideAllPopups();
+        
+        System.out.println("🎯 [MultiGameController] Requesting focus on boardGridPane...");
         boardGridPane.requestFocus();
+        
+        // 포커스 확인
+        javafx.application.Platform.runLater(() -> {
+            boolean hasFocus = boardGridPane.isFocused();
+            System.out.println("🎯 [MultiGameController] boardGridPane focused: " + hasFocus);
+            if (!hasFocus) {
+                System.err.println("⚠️ [MultiGameController] boardGridPane does NOT have focus! Keyboard input may not work.");
+            }
+        });
+        
         // 멀티플레이는 GameLoopManager를 사용하지 않음 (서버 중력)
     }
 
@@ -238,6 +249,18 @@ public class MultiGameController extends BaseGameController {
         if (newState != null && newState != oldState) {
             updateUI(oldState, newState);
         }
+    }
+
+    public OpponentBoardView getOpponentBoardView() {
+        return opponentBoardView;
+    }
+    
+    public BoardController getBoardController() {
+        return boardController;
+    }
+    
+    public void updateUI(GameState oldState, GameState newState) {
+        super.updateUI(oldState, newState);
     }
 
     // --- Network Callbacks ---

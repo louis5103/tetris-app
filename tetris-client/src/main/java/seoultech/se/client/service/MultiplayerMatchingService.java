@@ -219,7 +219,7 @@ public class MultiplayerMatchingService {
      */
     public void disconnect() {
         if (networkGameClient != null) {
-            networkGameClient.disconnect();
+            networkGameClient.cleanup();
         }
         currentSessionId = null;
         System.out.println("🔌 [MatchingService] Disconnected");

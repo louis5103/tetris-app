@@ -435,4 +435,13 @@ public abstract class BaseGameController {
     @FXML public void handleQuitFromOverlay() { popupManager.handleQuitAction(); }
     @FXML public void handleMainFromOverlay() { popupManager.handleMainMenuAction(); }
     @FXML public void handleRestartFromOverlay() { popupManager.handleRestartAction(); }
+    
+    // Public getters (P2P support)
+    public BoardRenderer getBoardRenderer() {
+        return boardRenderer;
+    }
+    
+    public javafx.scene.layout.GridPane getBoardGridPane() {
+        return boardGridPane;
+    }
 }

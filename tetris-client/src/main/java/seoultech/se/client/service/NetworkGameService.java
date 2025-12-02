@@ -2,7 +2,6 @@ package seoultech.se.client.service;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
@@ -14,7 +13,9 @@ import seoultech.se.backend.mapper.GameStateDtoToGameStateMapper;
 import seoultech.se.backend.mapper.GameStateMapper;
 import seoultech.se.backend.network.P2PService;
 import seoultech.se.core.GameState;
+import seoultech.se.core.command.Direction;
 import seoultech.se.core.command.GameCommand;
+import seoultech.se.core.command.MoveCommand;
 import seoultech.se.core.config.GameModeConfig;
 import seoultech.se.core.dto.P2PPacket;
 import seoultech.se.core.dto.PlayerInputDto;
@@ -59,23 +60,116 @@ public class NetworkGameService {
     private Consumer<GameState> onMyStateUpdate;
     private Consumer<GameState> onOpponentStateUpdate;
 
+    private Consumer<Void> onGameStart;
+    private volatile boolean isConnected = false;
+
     /**
-     * P2P 게임 시작
+     * P2P 게임 시작 (대기 상태 진입)
      */
-    public void startP2PGame(boolean isHost, Consumer<GameState> onMyStateUpdate, Consumer<GameState> onOpponentStateUpdate) {
+    public void startP2PGame(boolean isHost, Consumer<GameState> onMyStateUpdate, Consumer<GameState> onOpponentStateUpdate, Consumer<Void> onGameStart) {
         this.isHost = isHost;
         this.onMyStateUpdate = onMyStateUpdate;
         this.onOpponentStateUpdate = onOpponentStateUpdate;
+        this.onGameStart = onGameStart;
         this.isRunning = true;
+        this.isConnected = false;
         
         // 1. 패킷 수신 리스너 설정
         p2pService.setOnPacketReceived(this::handlePacket);
         
         if (isHost) {
-            System.out.println("👑 [P2P] Starting as HOST");
+            System.out.println("👑 [P2P] HOST waiting for connection...");
             initializeHostGame();
+            // Host는 Guest의 HANDSHAKE를 기다림 (게임 루프는 연결 후 시작되어야 함)
         } else {
-            System.out.println("👤 [P2P] Starting as GUEST");
+            System.out.println("👤 [P2P] GUEST connecting...");
+            // Guest는 HANDSHAKE 전송
+            sendHandshake();
+        }
+    }
+
+    private void sendHandshake() {
+        // HANDSHAKE 패킷 전송 (실제 UDP 포트 포함)
+        P2PPacket packet = new P2PPacket();
+        packet.setType("HANDSHAKE");
+        packet.setUdpPort(p2pService.getLocalPort()); // 실제 UDP 리스닝 포트 전달
+        p2pService.sendPacket(packet);
+        System.out.println("📡 [P2P] Sent HANDSHAKE with UDP port: " + p2pService.getLocalPort());
+    }
+
+    /**
+     * 패킷 수신 처리 (메인 스레드 아님)
+     */
+    private void handlePacket(P2PPacket packet) {
+        System.out.println("📬 [P2P " + (isHost ? "Host" : "Guest") + "] Packet received: " + packet.getType());
+        
+        if ("HANDSHAKE".equals(packet.getType())) {
+            if (isHost && !isConnected) {
+                System.out.println("✅ [P2P] Handshake received from Guest!");
+                // Guest의 실제 UDP 포트로 재연결
+                if (packet.getUdpPort() != null) {
+                    String guestIp = p2pService.getOpponentIp();
+                    if (guestIp == null) {
+                        System.err.println("❌ [P2P Host] Cannot reconnect - Guest IP is null!");
+                        return;
+                    }
+                    int guestUdpPort = packet.getUdpPort();
+                    p2pService.connectToPeer(guestIp, guestUdpPort);
+                    System.out.println("🔄 [P2P Host] Reconnected to Guest's UDP port: " + guestUdpPort);
+                }
+                isConnected = true;
+                sendHandshake(); // ACK with Host's UDP port
+                startGameLoop();
+                // 즉시 초기 상태 전송
+                broadcastState();
+            } else if (!isHost && !isConnected) {
+                System.out.println("✅ [P2P] Handshake received from Host!");
+                // Host의 실제 UDP 포트로 재연결
+                if (packet.getUdpPort() != null) {
+                    String hostIp = p2pService.getOpponentIp();
+                    if (hostIp == null) {
+                        System.err.println("❌ [P2P Guest] Cannot reconnect - Host IP is null!");
+                        return;
+                    }
+                    int hostUdpPort = packet.getUdpPort();
+                    p2pService.connectToPeer(hostIp, hostUdpPort);
+                    System.out.println("🔄 [P2P Guest] Reconnected to Host's UDP port: " + hostUdpPort);
+                }
+                isConnected = true;
+                notifyGameStart();
+                System.out.println("🎮 [P2P Guest] Waiting for initial STATE from Host...");
+            }
+        } else if (isConnected) {
+            if ("INPUT".equals(packet.getType()) && isHost) {
+                System.out.println("📥 [P2P Host] INPUT packet received!");
+                if (packet.getInput() != null && packet.getInput().getCommand() != null) {
+                    System.out.println("   └ Command: " + packet.getInput().getCommand().getType());
+                }
+                processGuestInput(packet.getInput());
+            } else if ("STATE".equals(packet.getType()) && !isHost) {
+                System.out.println("📥 [P2P Guest] STATE packet detected, processing...");
+                ServerStateDto state = packet.getState();
+                if (state != null) {
+                    System.out.println("   └ STATE details: myGameState=" + (state.getMyGameState() != null) + 
+                        ", opponentGameState=" + (state.getOpponentGameState() != null));
+                }
+                processStateUpdate(state);
+            } else {
+                System.out.println("⚠️ [P2P] Unhandled packet - Type: " + packet.getType() + ", isHost: " + isHost + ", isConnected: " + isConnected);
+            }
+        } else {
+            System.out.println("⚠️ [P2P] Packet ignored - not connected yet");
+        }
+    }
+
+    private void startGameLoop() {
+        notifyGameStart();
+        new Thread(this::hostGameLoop).start();
+    }
+
+    private void notifyGameStart() {
+        if (onGameStart != null) {
+            Platform.runLater(() -> onGameStart.accept(null));
         }
     }
     
@@ -85,7 +179,7 @@ public class NetworkGameService {
     private void initializeHostGame() {
         // 1. 엔진 생성 (Classic, Normal)
         GameModeConfig config = GameModeConfig.createDefaultClassic();
-        this.gameEngine = new seoultech.se.core.engine.impl.ClassicGameEngine(config);
+        this.gameEngine = new seoultech.se.core.engine.ClassicGameEngine(config);
         
         // 2. 생성기 초기화
         seoultech.se.core.model.enumType.Difficulty difficulty = config.getDifficulty();
@@ -105,71 +199,59 @@ public class NetworkGameService {
         lastTickTimeMy = System.currentTimeMillis();
         lastTickTimeOpponent = System.currentTimeMillis();
         
-        // 4. 게임 루프 시작
-        new Thread(this::hostGameLoop).start();
-    }
-    
-    /**
-     * 다음 블록 생성 및 스폰 (GameSession 로직 복제)
-     */
-    private void spawnNextBlock(GameState state, boolean isHostPlayer) {
-        TetrominoGenerator generator = generators.get(isHostPlayer);
-        if (generator == null) return;
-
-        // 새 테트로미노 생성
-        TetrominoType nextType = generator.next();
-        Tetromino newTetromino = new Tetromino(nextType);
-
-        // 초기 위치 설정
-        int startX = (state.getBoardWidth() - newTetromino.getCurrentShape()[0].length) / 2;
-        int startY = 0;
-
-        state.setCurrentTetromino(newTetromino);
-        state.setCurrentX(startX);
-        state.setCurrentY(startY);
-        state.setHoldUsedThisTurn(false);
-
-        // 아이템 타입 설정 (있다면)
-        state.setCurrentItemType(state.getNextBlockItemType());
-        state.setNextBlockItemType(null);
-        state.setWeightBombLocked(false);
-
-        // Next Queue 업데이트 (표시용)
-        TetrominoType[] queue = state.getNextQueue();
-        // TetrominoGenerator는 peekNext 메서드가 없으므로 간단히 기본값으로 설정
-        // 실제로는 Generator를 개선하여 Preview를 지원해야 함 (현재는 I로 고정)
-        for (int i = 0; i < queue.length; i++) {
-            queue[i] = TetrominoType.I; 
-        }
-    }
-    
-    /**
-     * 패킷 수신 처리 (메인 스레드 아님)
-     */
-    private void handlePacket(P2PPacket packet) {
-        if ("INPUT".equals(packet.getType()) && isHost) {
-            // 호스트: 게스트의 입력 수신 -> 처리
-            processGuestInput(packet.getInput());
-        } else if ("STATE".equals(packet.getType()) && !isHost) {
-            // 게스트: 호스트가 보낸 상태 수신 -> UI 업데이트
-            processStateUpdate(packet.getState());
-        }
+        // 4. 게임 루프 시작은 startGameLoop()에서 함
     }
     
     /**
      * [Guest] 서버 상태 수신 및 UI 반영
      */
     private void processStateUpdate(ServerStateDto dto) {
-        if (dto == null) return;
+        if (dto == null) {
+            System.err.println("⚠️ [P2P Guest] Received null state!");
+            return;
+        }
         
         // DTO -> GameState 변환
+        // Host가 이미 Guest 관점으로 보냈으므로 그대로 사용
+        // dto.myGameState = Guest 자신의 상태
+        // dto.opponentGameState = Host의 상태
         GameState myNewState = dtoToStateMapper.toGameState(dto.getMyGameState());
         GameState oppNewState = dtoToStateMapper.toGameState(dto.getOpponentGameState());
         
+        System.out.println("📦 [P2P Guest] State received - My: " + (myNewState != null) + ", Opp: " + (oppNewState != null));
+        if (myNewState != null) {
+            System.out.println("   └ My state details: currentTetromino=" + (myNewState.getCurrentTetromino() != null) + 
+                ", x=" + myNewState.getCurrentX() + ", y=" + myNewState.getCurrentY() +
+                ", score=" + myNewState.getScore() + ", lines=" + myNewState.getLinesCleared());
+            
+            // Grid 확인
+            int filledCells = 0;
+            if (myNewState.getGrid() != null) {
+                for (int row = 0; row < myNewState.getGrid().length; row++) {
+                    for (int col = 0; col < myNewState.getGrid()[row].length; col++) {
+                        if (myNewState.getGrid()[row][col] != null && myNewState.getGrid()[row][col].isOccupied()) {
+                            filledCells++;
+                        }
+                    }
+                }
+            }
+            System.out.println("   └ Grid: filled cells = " + filledCells);
+        }
+        
         // UI 업데이트 (Platform.runLater)
         Platform.runLater(() -> {
-            if (onMyStateUpdate != null && myNewState != null) onMyStateUpdate.accept(myNewState);
-            if (onOpponentStateUpdate != null && oppNewState != null) onOpponentStateUpdate.accept(oppNewState);
+            if (onMyStateUpdate != null && myNewState != null) {
+                System.out.println("🔄 [P2P Guest] Calling myStateUpdate callback...");
+                onMyStateUpdate.accept(myNewState);
+                System.out.println("🎮 [P2P Guest] My state updated");
+            } else {
+                if (onMyStateUpdate == null) System.err.println("❌ [P2P Guest] onMyStateUpdate callback is NULL!");
+                if (myNewState == null) System.err.println("❌ [P2P Guest] myNewState is NULL!");
+            }
+            if (onOpponentStateUpdate != null && oppNewState != null) {
+                onOpponentStateUpdate.accept(oppNewState);
+                System.out.println("👥 [P2P Guest] Opponent state updated");
+            }
         });
     }
     
@@ -205,6 +287,47 @@ public class NetworkGameService {
     }
     
     /**
+     * 다음 블록 생성 및 스폰 (GameSession과 동일한 로직)
+     */
+    private void spawnNextBlock(GameState state, boolean isHostPlayer) {
+        TetrominoGenerator generator = generators.get(isHostPlayer);
+        if (generator == null) {
+            System.err.println("❌ [P2P] No generator for player: " + (isHostPlayer ? "Host" : "Guest"));
+            return;
+        }
+
+        // 새 테트로미노 생성
+        TetrominoType nextType = generator.next();
+        Tetromino newTetromino = new Tetromino(nextType);
+
+        // 초기 위치 설정
+        int startX = (state.getBoardWidth() - newTetromino.getCurrentShape()[0].length) / 2;
+        int startY = 0;
+
+        state.setCurrentTetromino(newTetromino);
+        state.setCurrentX(startX);
+        state.setCurrentY(startY);
+        state.setHoldUsedThisTurn(false); // 새 블록이므로 Hold 재사용 가능
+
+        // 아이템 타입 설정 (있다면)
+        state.setCurrentItemType(state.getNextBlockItemType());
+        state.setNextBlockItemType(null);
+        state.setWeightBombLocked(false); // 무게추 초기화
+
+        // Next Queue 업데이트 (표시용)
+        TetrominoType[] queue = state.getNextQueue();
+        // TetrominoGenerator는 peekNext 메서드가 없으므로 간단히 기본값으로 설정
+        for (int i = 0; i < queue.length; i++) {
+            queue[i] = TetrominoType.I; // 기본값
+        }
+        
+        // 게임 오버 체크 (블록이 스폰 위치에서 충돌하는 경우)
+        if (state.isGameOver()) {
+            System.out.println("💀 [P2P] Game Over for " + (isHostPlayer ? "Host" : "Guest"));
+        }
+    }
+    
+    /**
      * 중력 처리 (개별 플레이어)
      */
     private void processGravity(GameState state, boolean isHostPlayer, long currentTime) {
@@ -215,7 +338,7 @@ public class NetworkGameService {
         long interval = Math.max(100, 1000 - (state.getLevel() - 1) * 100);
         
         if (currentTime - lastTick >= interval) {
-            seoultech.se.core.command.GameCommand down = new seoultech.se.core.command.MoveCommand(seoultech.se.core.command.Direction.DOWN);
+            GameCommand down = new MoveCommand(Direction.DOWN);
             executeAndCheck(down, state, isHostPlayer);
             
             if (isHostPlayer) lastTickTimeMy = currentTime;
@@ -281,6 +404,10 @@ public class NetworkGameService {
             .gameOver(myState.isGameOver() || opponentState.isGameOver())
             .events(new ArrayList<>()) // 이벤트는 별도 처리 필요하지만 일단 빈 리스트
             .build();
+        
+        System.out.println("📤 [P2P Host] Broadcasting STATE - Guest.currentTetromino: " + 
+            (opponentState.getCurrentTetromino() != null) + ", Host.currentTetromino: " + 
+            (myState.getCurrentTetromino() != null));
             
         p2pService.sendState(guestDto);
     }
@@ -289,8 +416,12 @@ public class NetworkGameService {
      * [Host] 게스트 입력 처리
      */
     private void processGuestInput(PlayerInputDto input) {
-        if (input == null || opponentState == null || opponentState.isGameOver()) return;
+        if (input == null || opponentState == null || opponentState.isGameOver()) {
+            System.out.println("⚠️ [P2P Host] Cannot process guest input - input:" + (input != null) + ", state:" + (opponentState != null));
+            return;
+        }
         
+        System.out.println("📨 [P2P Host] Processing guest input: " + input.getCommand().getType());
         executeAndCheck(input.getCommand(), opponentState, false);
         broadcastState(); // 즉시 반응성 위해 전송
     }
@@ -302,6 +433,7 @@ public class NetworkGameService {
         if (isHost) {
             // 호스트: 내 입력 즉시 처리
             if (myState == null || myState.isGameOver()) return;
+            System.out.println("⌨️ [P2P Host] Input: " + command.getType());
             executeAndCheck(command, myState, true);
             
             // UI 즉시 업데이트
@@ -312,6 +444,7 @@ public class NetworkGameService {
             
         } else {
             // 게스트: 입력 전송
+            System.out.println("⌨️ [P2P Guest] Sending input: " + command.getType());
             PlayerInputDto input = PlayerInputDto.builder()
                 .command(command)
                 .build();
@@ -321,5 +454,11 @@ public class NetworkGameService {
     
     public void stop() {
         isRunning = false;
+        p2pService.close();
+        System.out.println("🛑 [NetworkGameService] Stopped");
+    }
+    
+    public void setOnDisconnect(Runnable callback) {
+        // TODO: Implement disconnect detection (timeout or packet)
     }
 }

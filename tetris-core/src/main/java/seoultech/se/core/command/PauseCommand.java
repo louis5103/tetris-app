@@ -1,5 +1,7 @@
 package seoultech.se.core.command;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
 /**
  * 게임 일시정지 명령
  * 
@@ -41,6 +43,7 @@ package seoultech.se.core.command;
  * 멀티플레이어 랭킹 모드에서는 Pause 시간도 총 시간에 포함시킬 수 있습니다.
  * 무한정 Pause하면서 전략을 짜는 것을 방지하기 위해서죠.
  */
+@JsonIgnoreProperties(ignoreUnknown = true)  // P2P 전송 시 추가 필드(description 등) 무시
 public class PauseCommand implements GameCommand {
     
     @Override

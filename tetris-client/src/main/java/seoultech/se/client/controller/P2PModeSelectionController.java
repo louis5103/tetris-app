@@ -33,19 +33,15 @@ public class P2PModeSelectionController extends BaseController {
 
     @FXML
     public void handleHostGame() {
-        // 호스트 모드로 게임 시작
-        // 1. P2P 소켓 열기 (이미 P2PService @PostConstruct에서 열림)
-        // 2. 대기 화면으로 전환 (내 IP/Port 표시)
-        // 3. 상대방 접속 대기
+        // 호스트 모드로 게임 시작 준비
+        // P2P 소켓은 이미 P2PService @PostConstruct에서 열림
         
         String myIp = NetworkUtils.getLocalIpAddress();
         int myPort = p2pService.getLocalPort();
         
-        System.out.println("Hosting game at " + myIp + ":" + myPort);
-        // TODO: 대기 화면으로 전환 로직
+        System.out.println("Hosting game setup at " + myIp + ":" + myPort);
         
-        // 임시: 바로 게임 시작 (상대방 연결 대기 로직 필요)
-        networkGameService.startP2PGame(true); // true = isHost
+        // 게임 시작 로직은 MainController에서 transitionToP2PGame()을 통해 수행됨
     }
 
     @FXML
@@ -67,9 +63,7 @@ public class P2PModeSelectionController extends BaseController {
             // 1. 상대방에게 연결 시도 (UDP Hole Punching / Handshake)
             p2pService.connectToPeer(targetIp, targetPort);
             
-            // 2. 게임 시작 (Guest 모드)
-            // TODO: UI 콜백 연결 (MultiGameController의 updateUI 등)
-            // networkGameService.startP2PGame(false, ...);
+            // 게임 시작 로직은 MainController에서 수행됨
             
         } catch (NumberFormatException e) {
             // TODO: 포트 번호 에러 처리

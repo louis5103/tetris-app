@@ -1,5 +1,7 @@
 package seoultech.se.core.command;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
 /**
  * 게임 재개 명령
  * 
@@ -50,6 +52,7 @@ package seoultech.se.core.command;
  * 
  * 이렇게 하면 Pause 시간은 게임 시간에 포함되지 않습니다.
  */
+@JsonIgnoreProperties(ignoreUnknown = true)  // P2P 전송 시 추가 필드(description 등) 무시
 public class ResumeCommand implements GameCommand {
     
     @Override

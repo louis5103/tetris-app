@@ -34,10 +34,6 @@
 
                 <!-- 버튼 -->
                 <HBox styleClass="button-box" alignment="CENTER" spacing="15">
-                    <Button fx:id="p2pDirectButton" onAction="#handleP2PDirect" styleClass="menu-button" text="P2P Direct" />
-                </HBox>
-
-                <HBox styleClass="button-box" alignment="CENTER" spacing="15">
                     <Button fx:id="startButton" onAction="#handleStart" styleClass="primary-button" text="시작" />
                     <Button fx:id="cancelButton" onAction="#handleCancel" styleClass="secondary-button" text="취소" />
                 </HBox>

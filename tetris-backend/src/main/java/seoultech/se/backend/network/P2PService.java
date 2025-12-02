@@ -33,6 +33,7 @@ public class P2PService {
     private int opponentPort;
     private volatile boolean isConnected = false;
     private volatile boolean isRunning = false;
+    private volatile boolean autoConnectLocked = false; // 명시적 재연결 후 자동 연결 방지
     
     private final ObjectMapper objectMapper = new ObjectMapper();
     private Consumer<P2PPacket> onPacketReceived;
@@ -66,6 +67,7 @@ public class P2PService {
             this.opponentIp = InetAddress.getByName(ip);
             this.opponentPort = port;
             this.isConnected = true;
+            this.autoConnectLocked = true; // 명시적 연결 후 자동 연결 차단
             
             System.out.println("🔹 [P2P] Target set to: " + ip + ":" + port);
             sendPing();
@@ -79,14 +81,32 @@ public class P2PService {
      * 패킷 전송 (공통)
      */
     public void sendPacket(P2PPacket packet) {
-        if (!isConnected || socket == null || opponentIp == null) return;
+        // HANDSHAKE는 초기 연결용이므로 isConnected 체크 우회
+        boolean isHandshake = "HANDSHAKE".equals(packet.getType());
+        if (!isHandshake && (!isConnected || socket == null || opponentIp == null)) {
+            System.err.println("⚠️ [P2P] Cannot send " + packet.getType() + " packet:");
+            System.err.println("   └ isConnected: " + isConnected);
+            System.err.println("   └ socket: " + (socket != null ? "OK" : "NULL"));
+            System.err.println("   └ opponentIp: " + (opponentIp != null ? opponentIp.getHostAddress() : "NULL"));
+            System.err.println("   └ opponentPort: " + opponentPort);
+            return;
+        }
+        if (socket == null || opponentIp == null) {
+            System.err.println("⚠️ [P2P] Cannot send HANDSHAKE - socket or opponentIp is null");
+            return;
+        }
         
         try {
             byte[] data = objectMapper.writeValueAsBytes(packet);
             DatagramPacket udpPacket = new DatagramPacket(data, data.length, opponentIp, opponentPort);
             socket.send(udpPacket);
+            System.out.println("✉️ [P2P] Packet sent successfully:");
+            System.out.println("   └ Type: " + packet.getType());
+            System.out.println("   └ Target: " + opponentIp.getHostAddress() + ":" + opponentPort);
+            System.out.println("   └ Size: " + data.length + " bytes");
         } catch (Exception e) {
-            // UDP 전송 실패는 무시 (로그 최소화)
+            System.err.println("❌ [P2P] Send error: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
@@ -94,14 +114,26 @@ public class P2PService {
      * 입력 데이터 전송 (Wrapper)
      */
     public void sendInput(PlayerInputDto input) {
-        sendPacket(new P2PPacket("INPUT", input, null));
+        System.out.println("📤 [P2P] Sending INPUT packet:");
+        System.out.println("   └ connected: " + isConnected);
+        System.out.println("   └ socket: " + (socket != null ? "OK" : "NULL"));
+        System.out.println("   └ opponentIp: " + (opponentIp != null ? opponentIp.getHostAddress() : "NULL"));
+        System.out.println("   └ opponentPort: " + opponentPort);
+        System.out.println("   └ command: " + (input != null && input.getCommand() != null ? input.getCommand().getType() : "NULL"));
+        sendPacket(P2PPacket.builder()
+            .type("INPUT")
+            .input(input)
+            .build());
     }
 
     /**
      * 상태 데이터 전송 (Wrapper)
      */
     public void sendState(ServerStateDto state) {
-        sendPacket(new P2PPacket("STATE", null, state));
+        sendPacket(P2PPacket.builder()
+            .type("STATE")
+            .state(state)
+            .build());
     }
 
     /**
@@ -123,14 +155,38 @@ public class P2PService {
                 
                 String json = new String(packet.getData(), 0, packet.getLength());
                 
+                System.out.println("📬 [P2P] Raw packet received from " + 
+                    packet.getAddress().getHostAddress() + ":" + packet.getPort() + 
+                    " (" + packet.getLength() + " bytes)");
+                
+                // 🔧 송신자 주소 저장 (HANDSHAKE 패킷용 - 재연결에 필요한 IP 저장)
+                // HANDSHAKE는 임시 포트로 올 수 있으므로 IP만 저장하고 포트는 재연결 시 업데이트
+                if (json.contains("\"type\":\"HANDSHAKE\"") && opponentIp == null) {
+                    opponentIp = packet.getAddress();
+                    // 포트는 HANDSHAKE 응답의 udpPort 필드로 업데이트될 예정
+                    System.out.println("📍 [P2P] Saved peer IP from HANDSHAKE: " + opponentIp.getHostAddress());
+                }
+                
+                // 🔧 자동 연결 (HANDSHAKE가 아닌 첫 패킷 수신 시만, 명시적 재연결 후에는 차단)
+                if (!autoConnectLocked && (opponentPort == 0 || !isConnected) && !json.contains("\"type\":\"HANDSHAKE\"")) {
+                    if (opponentIp == null) opponentIp = packet.getAddress();
+                    opponentPort = packet.getPort();
+                    isConnected = true;
+                    System.out.println("🔗 [P2P] Auto-connected to peer: " + 
+                        opponentIp.getHostAddress() + ":" + opponentPort);
+                }
+                
                 if (json.equals("PING")) continue;
 
                 if (onPacketReceived != null) {
                     try {
                         P2PPacket p2pPacket = objectMapper.readValue(json, P2PPacket.class);
+                        System.out.println("✅ [P2P] Packet parsed successfully: type=" + p2pPacket.getType());
                         onPacketReceived.accept(p2pPacket);
                     } catch (Exception e) {
-                        // JSON 파싱 에러 무시
+                        System.err.println("❌ [P2P] JSON parse error: " + e.getMessage());
+                        System.err.println("   └ JSON content (first 200 chars): " + 
+                            json.substring(0, Math.min(200, json.length())));
                     }
                 }
                 
@@ -156,6 +212,10 @@ public class P2PService {
 
     public int getLocalPort() {
         return localPort;
+    }
+    
+    public String getOpponentIp() {
+        return opponentIp != null ? opponentIp.getHostAddress() : null;
     }
     
     @PreDestroy

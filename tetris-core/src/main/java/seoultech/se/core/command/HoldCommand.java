@@ -1,5 +1,7 @@
 package seoultech.se.core.command;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
 /**
  * Hold 명령
  * 
@@ -43,6 +45,7 @@ package seoultech.se.core.command;
  * 원하는 블록이 나올 때까지 계속 바꿀 수 있게 됩니다.
  * 이것은 게임 밸런스를 완전히 무너뜨리죠.
  */
+@JsonIgnoreProperties(ignoreUnknown = true)  // P2P 전송 시 추가 필드(description 등) 무시
 public class HoldCommand implements GameCommand {
     
     @Override

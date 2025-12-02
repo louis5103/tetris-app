@@ -107,9 +107,11 @@ public class InputHandler {
      */
     public void handleKeyPress(KeyEvent event) {
         // ✅ 입력 차단 로직 제거됨
+        System.out.println("⌨️ [InputHandler] Key pressed: " + event.getCode());
         
         // 게임 오버 상태 체크
         if (gameStateProvider != null && gameStateProvider.isGameOver()) {
+            System.out.println("🚫 [InputHandler] Game over - input ignored");
             return;
         }
         
@@ -117,10 +119,12 @@ public class InputHandler {
         Optional<GameAction> actionOpt = keyMappingService.getAction(event.getCode());
         
         if (actionOpt.isEmpty()) {
+            System.out.println("⚠️ [InputHandler] Unmapped key: " + event.getCode());
             return; // 매핑되지 않은 키는 무시
         }
         
         GameAction action = actionOpt.get();
+        System.out.println("✅ [InputHandler] Key mapped to action: " + action);
 
         // 멀티플레이 모드에서는 PAUSE_RESUME 액션 차단
         if (isMultiplayerMode && action == GameAction.PAUSE_RESUME) {
@@ -139,7 +143,10 @@ public class InputHandler {
         
         // Command가 생성되었으면 콜백 호출
         if (command != null && callback != null) {
+            System.out.println("📤 [InputHandler] Sending command to controller: " + command.getType());
             callback.onCommandGenerated(command);
+        } else {
+            System.err.println("⚠️ [InputHandler] Command is null or callback is null - command: " + (command != null) + ", callback: " + (callback != null));
         }
         
         event.consume();

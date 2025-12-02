@@ -21,6 +21,7 @@ import seoultech.se.client.TetrisApplication;
 import seoultech.se.client.config.ApplicationContextProvider;
 import seoultech.se.client.service.NavigationService;
 import seoultech.se.client.service.SettingsService;
+import seoultech.se.core.GameState;
 import seoultech.se.core.config.GameplayType;
 
 
@@ -104,6 +105,9 @@ public class MainController extends BaseController {
 
     @Autowired(required = false)
     private seoultech.se.client.service.MultiplayerMatchingService matchingService;
+
+    @Autowired
+    private seoultech.se.client.controller.P2PModeSelectionController p2pController;
 
     /**
      * UI 초기화 메서드
@@ -547,19 +551,150 @@ public class MainController extends BaseController {
     }
 
     /**
-     * P2P Server 버튼 액션 (미구현)
+     * P2P Server 버튼 액션
+     * 호스트 모드로 P2P 대기 화면 진입
      */
     public void handleP2pServerAction(ActionEvent event) {
-        System.out.println("🖥️ [미구현] P2P Server mode selected");
-        System.out.println("📋 This feature is coming soon!");
+        System.out.println("🖥️ P2P Server (Host) mode selected");
+        showP2PPopup(true);
     }
 
     /**
-     * P2P Client 버튼 액션 (미구현)
+     * P2P Client 버튼 액션
+     * 클라이언트 모드로 P2P 연결 화면 진입
      */
     public void handleP2pClientAction(ActionEvent event) {
-        System.out.println("💻 [미구현] P2P Client mode selected");
-        System.out.println("📋 This feature is coming soon!");
+        System.out.println("💻 P2P Client (Guest) mode selected");
+        showP2PPopup(false);
+    }
+
+    private void showP2PPopup(boolean isHostMode) {
+        try {
+            seoultech.se.client.ui.P2PModeSelectionPopup popup = new seoultech.se.client.ui.P2PModeSelectionPopup();
+            
+            Stage p2pStage = new Stage();
+            Scene scene = new Scene(popup);
+            p2pStage.setScene(scene);
+            p2pStage.setTitle(isHostMode ? "P2P Host Setup" : "P2P Connect Setup");
+            p2pStage.setResizable(false);
+            
+            popup.setOnHost(() -> {
+                p2pStage.close();
+                if (p2pController != null) {
+                    p2pController.handleHostGame();
+                    transitionToP2PGame(true);
+                }
+            });
+            
+            popup.setOnConnect(() -> {
+                String ip = popup.getIpAddress();
+                String port = popup.getPort();
+                p2pStage.close();
+                if (p2pController != null) {
+                    p2pController.connectToGame(ip, port);
+                    transitionToP2PGame(false);
+                }
+            });
+            
+            popup.setOnCancel(() -> {
+                p2pStage.close();
+            });
+            
+            p2pStage.show();
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+            // showErrorAlert("오류", "P2P 모드 실행 중 오류 발생: " + e.getMessage());
+        }
+    }
+
+    private void transitionToP2PGame(boolean isHost) {
+        try {
+            ApplicationContext context = ApplicationContextProvider.getApplicationContext();
+            
+            // 먼저 컨트롤러를 생성
+            MultiGameController gameViewController = context.getBean(MultiGameController.class);
+            
+            FXMLLoader loader = new FXMLLoader(
+                TetrisApplication.class.getResource("/view/game-view.fxml")
+            );
+            
+            // 생성된 컨트롤러를 설정
+            loader.setController(gameViewController);
+            Parent gameRoot = loader.load();
+
+            seoultech.se.core.config.GameModeConfig config = seoultech.se.core.config.GameModeConfig.createDefaultClassic();
+            gameViewController.initGame(config);
+
+            seoultech.se.client.service.NetworkGameService netService = context.getBean(seoultech.se.client.service.NetworkGameService.class);
+            
+            // P2P 모드 초기화
+            gameViewController.initP2PMode(netService, isHost);
+            
+            // P2P 게임 시작 (콜백에서 상태 업데이트)
+            // 주의: NetworkGameService에서 이미 Platform.runLater()로 감싸서 호출하므로
+            // 여기서는 Platform.runLater()를 사용하지 않음 (이중 호출 방지)
+            netService.startP2PGame(isHost, 
+                myState -> {
+                    System.out.println("🎮 [MainController " + (isHost ? "Host" : "Guest") + "] My state callback triggered!");
+                    if (myState == null) {
+                        System.err.println("❌ [MainController] myState is NULL!");
+                        return;
+                    }
+                    System.out.println("   └ myState details: currentTetromino=" + (myState.getCurrentTetromino() != null) + 
+                        ", x=" + myState.getCurrentX() + ", y=" + myState.getCurrentY());
+                    
+                    // NetworkGameService가 이미 JavaFX 스레드에서 호출하므로 직접 실행
+                    GameState oldState = gameViewController.getBoardController().getGameState();
+                    gameViewController.getBoardController().setGameState(myState);
+                    // MultiGameController의 updateUI 사용 (전체 렌더링 로직)
+                    gameViewController.updateUI(oldState, myState);
+                    System.out.println("✅ [MainController] UI updated with myState");
+                },
+                opponentState -> {
+                    System.out.println("👥 [MainController " + (isHost ? "Host" : "Guest") + "] Opponent state callback triggered!");
+                    if (opponentState == null) {
+                        System.err.println("❌ [MainController] opponentState is NULL!");
+                        return;
+                    }
+                    
+                    // NetworkGameService가 이미 JavaFX 스레드에서 호출하므로 직접 실행
+                    gameViewController.getOpponentBoardView().update(opponentState);
+                    System.out.println("✅ [MainController] Opponent view updated");
+                },
+                unused -> {
+                    System.out.println("✅ [MainController] P2P Game Started callback!");
+                    System.out.println("🔍 [MainController] About to call startGame() on gameViewController...");
+                    System.out.println("🔍 [MainController] gameViewController is null? " + (gameViewController == null));
+                    // P2P 모드에서는 NetworkGameService가 게임 로직을 관리하므로
+                    // 여기서는 UI만 활성화 (이미 JavaFX 스레드에서 호출됨)
+                    gameViewController.startGame(); // 키보드 포커스 설정 및 UI 활성화
+                    System.out.println("🔍 [MainController] startGame() call completed");
+                }
+            );
+
+            Stage stage = (Stage) rootPane.getScene().getWindow();
+            Scene gameScene = new Scene(gameRoot);
+            stage.setScene(gameScene);
+            stage.setTitle("Tetris - P2P Direct (" + (isHost ? "HOST" : "GUEST") + ")");
+            
+            settingsService.applyScreenSizeClass();
+            stage.sizeToScene();
+            
+            // Scene이 완전히 렌더링된 후 포커스 재요청
+            Platform.runLater(() -> {
+                Platform.runLater(() -> { // 이중 runLater로 확실한 지연
+                    System.out.println("🎯 [MainController] Requesting focus after scene loaded...");
+                    gameViewController.getBoardGridPane().requestFocus();
+                    
+                    boolean hasFocus = gameViewController.getBoardGridPane().isFocused();
+                    System.out.println("🎯 [MainController] Final focus check: " + hasFocus);
+                });
+            });
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     /**
