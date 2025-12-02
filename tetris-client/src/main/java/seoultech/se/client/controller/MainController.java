@@ -592,8 +592,8 @@ public class MainController extends BaseController {
                 p2pStage.close();
                 
                 if (popup.isRelayMode()) {
-                    // 릴레이 모드
-                    handleRelayMode(popup, isHostMode, true);
+                    // 릴레이 모드 - Host
+                    handleRelayMode(popup, true, true);
                 } else {
                     // 직접 P2P 모드
                     if (p2pController != null) {
@@ -607,8 +607,8 @@ public class MainController extends BaseController {
                 p2pStage.close();
                 
                 if (popup.isRelayMode()) {
-                    // 릴레이 모드
-                    handleRelayMode(popup, isHostMode, false);
+                    // 릴레이 모드 - Guest
+                    handleRelayMode(popup, false, false);
                 } else {
                     // 직접 P2P 모드
                     String ip = popup.getIpAddress();
@@ -646,11 +646,12 @@ public class MainController extends BaseController {
         try {
             int relayPort = Integer.parseInt(relayServerPort);
             String playerId = isHost ? "player-host" : "player-guest";
+            String role = isHost ? "HOST" : "GUEST";
             
-            System.out.println("🔄 [Relay] Connecting via relay server:");
+            System.out.println("🔄 [Relay] Connecting via relay server as " + role + ":");
             System.out.println("   └ Server: " + relayServerIp + ":" + relayPort);
             System.out.println("   └ Session: " + sessionId);
-            System.out.println("   └ Player: " + playerId);
+            System.out.println("   └ Player ID: " + playerId);
             
             // 릴레이 서버를 통한 연결
             if (p2pService != null) {

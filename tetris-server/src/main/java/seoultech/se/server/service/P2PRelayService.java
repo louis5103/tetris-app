@@ -154,9 +154,21 @@ public class P2PRelayService {
         String playerId = relayPacket.getPlayerId();
         String type = relayPacket.getType();
         
+        log.debug("📨 [Relay] Received packet: type={}, session={}, player={}", 
+            type, sessionId, playerId);
+        
+        // 세션이 없으면 자동 생성 (CONNECT 타입일 때만)
         RelaySessionDto session = sessions.get(sessionId);
+        if (session == null && "CONNECT".equals(type)) {
+            log.info("🔨 [Relay] Auto-creating session: {} for player: {}", sessionId, playerId);
+            // playerA는 항상 host, playerB는 항상 guest
+            String playerAId = "player-host";
+            String playerBId = "player-guest";
+            session = createSession(sessionId, playerAId, playerBId);
+        }
+        
         if (session == null) {
-            log.warn("⚠️ [Relay] Unknown session: {}", sessionId);
+            log.warn("⚠️ [Relay] Unknown session: {} (type: {})", sessionId, type);
             return;
         }
         
@@ -165,13 +177,25 @@ public class P2PRelayService {
                 // 플레이어 연결 등록
                 session.updatePlayerConnection(playerId, senderAddress);
                 log.info("🔗 [Relay] Player connected: {} from {}", playerId, senderAddress);
+                log.info("   └ Session status: Host={}, Guest={}", 
+                    session.isPlayerAConnected(), session.isPlayerBConnected());
                 
-                // 상대방에게 연결 알림
-                notifyOpponentConnection(session, playerId);
+                // 양쪽 모두 연결되었으면 서로에게 알림
+                if (session.isActive()) {
+                    log.info("✅ [Relay] Both players connected! Session {} is now active", sessionId);
+                    notifyOpponentConnection(session, "player-host");
+                    notifyOpponentConnection(session, "player-guest");
+                }
                 break;
                 
             case "DATA":
-                // 데이터 패킷 중계
+                // 데이터 패킷 중계 (양쪽 모두 연결되었을 때만)
+                if (!session.isActive()) {
+                    log.warn("⚠️ [Relay] Cannot relay packet - session not fully active");
+                    log.warn("   └ Host connected: {}, Guest connected: {}", 
+                        session.isPlayerAConnected(), session.isPlayerBConnected());
+                    return;
+                }
                 relayPacketToOpponent(session, playerId, relayPacket.getPayload());
                 session.setPacketCount(session.getPacketCount() + 1);
                 session.setLastActivityAt(LocalDateTime.now());
@@ -200,7 +224,7 @@ public class P2PRelayService {
     /**
      * 상대방에게 패킷 전송
      */
-    private void relayPacketToOpponent(RelaySessionDto session, String senderId, byte[] payload) {
+    private void relayPacketToOpponent(RelaySessionDto session, String senderId, String payload) {
         InetSocketAddress opponentAddress = session.getOpponentAddress(senderId);
         
         if (opponentAddress == null) {
@@ -209,15 +233,20 @@ public class P2PRelayService {
         }
         
         try {
+            // payload는 escape된 JSON 문자열이므로 unescape 후 전송
+            String unescapedPayload = payload.replace("\\\"", "\"");
+            byte[] data = unescapedPayload.getBytes();
+            
             DatagramPacket packet = new DatagramPacket(
-                payload, 
-                payload.length, 
+                data, 
+                data.length, 
                 opponentAddress
             );
             socket.send(packet);
             
-            log.debug("📤 [Relay] Relayed {} bytes: {} → {}", 
-                payload.length, senderId, opponentAddress);
+            log.info("📤 [Relay] Relayed {} bytes: {} → {} (payload preview: {}...)", 
+                data.length, senderId, opponentAddress, 
+                unescapedPayload.substring(0, Math.min(50, unescapedPayload.length())));
                 
         } catch (IOException e) {
             log.error("❌ [Relay] Failed to relay packet: {}", e.getMessage());
