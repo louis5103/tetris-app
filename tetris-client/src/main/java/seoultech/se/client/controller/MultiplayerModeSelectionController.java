@@ -33,12 +33,16 @@ public class MultiplayerModeSelectionController extends BaseController {
     @FXML private ComboBox<DifficultyItem> difficultyComboBox;
     @FXML private Button startButton;
     @FXML private Button cancelButton;
+    @FXML private Button p2pDirectButton; // P2P Direct 버튼 추가
 
     @Autowired(required = false)
     private MultiplayerMatchingService matchingService;
 
     @Autowired
     private SettingsService settingsService;
+    
+    @Autowired
+    private seoultech.se.client.controller.P2PModeSelectionController p2pController; // P2P Controller 주입
 
     @Autowired(required = false)
     private seoultech.se.client.service.AuthService authService;
@@ -85,6 +89,127 @@ public class MultiplayerModeSelectionController extends BaseController {
     public void setConnectionInfo(String serverBaseUrl, String jwtToken) {
         this.serverBaseUrl = serverBaseUrl;
         this.jwtToken = jwtToken;
+    }
+
+    /**
+     * P2P Direct 버튼 핸들러
+     */
+    @FXML
+    public void handleP2PDirect(ActionEvent event) {
+        try {
+            // 팝업 Stage 닫기 (현재 창)
+            Stage currentStage = (Stage) p2pDirectButton.getScene().getWindow();
+            currentStage.close();
+            
+            // P2P 모드 선택 팝업 (커스텀 UI) 생성
+            seoultech.se.client.ui.P2PModeSelectionPopup popup = new seoultech.se.client.ui.P2PModeSelectionPopup();
+            
+            // 팝업을 위한 새 Stage 생성
+            Stage p2pStage = new Stage();
+            Scene scene = new Scene(popup);
+            p2pStage.setScene(scene);
+            p2pStage.setTitle("P2P Direct Connect");
+            p2pStage.setResizable(false);
+            
+            // 콜백 연결 (Controller 메서드 호출)
+            popup.setOnHost(() -> {
+                p2pStage.close();
+                System.out.println("Host mode selected");
+                if (p2pController != null) {
+                    p2pController.handleHostGame();
+                    transitionToP2PGame(true); // Host 모드로 게임 화면 진입
+                }
+            });
+            
+            popup.setOnConnect(() -> {
+                String ip = popup.getIpAddress();
+                String port = popup.getPort();
+                System.out.println("Connect to " + ip + ":" + port);
+                p2pStage.close();
+                if (p2pController != null) {
+                    p2pController.connectToGame(ip, port);
+                    transitionToP2PGame(false); // Guest 모드로 게임 화면 진입
+                }
+            });
+            
+            popup.setOnCancel(() -> {
+                p2pStage.close();
+            });
+            
+            p2pStage.show();
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+            showErrorAlert("오류", "P2P 모드 실행 중 오류 발생: " + e.getMessage());
+        }
+    }
+
+    /**
+     * P2P 게임 화면으로 전환
+     */
+    private void transitionToP2PGame(boolean isHost) {
+        try {
+            // game-view.fxml 로드
+            FXMLLoader loader = new FXMLLoader(
+                TetrisApplication.class.getResource("/view/game-view.fxml")
+            );
+
+            ApplicationContext context = ApplicationContextProvider.getApplicationContext();
+            MultiGameController controller = context.getBean(MultiGameController.class);
+            loader.setController(controller);
+
+            Parent gameRoot = loader.load();
+
+            // 1. 게임 모드 설정 (기본값)
+            seoultech.se.core.config.GameModeConfig config = seoultech.se.core.config.GameModeConfig.createDefaultClassic();
+            controller.initGame(config);
+
+            // 2. P2P 모드 설정 (NetworkGameService 연결)
+            seoultech.se.client.service.NetworkGameService netService = context.getBean(seoultech.se.client.service.NetworkGameService.class);
+            
+            // MultiGameController에 P2P 모드용 초기화 메서드가 없으므로, 
+            // 기존 initMultiplayer를 우회하거나 P2P 전용 초기화 로직을 추가해야 함.
+            // 여기서는 NetworkExecutionStrategy를 가짜로 만들거나 P2P용으로 개조해야 함.
+            // 임시 해결책: MultiGameController에 initP2PMode 추가 필요.
+            // 일단은 여기서 콜백을 직접 연결하여 NetworkGameService를 시작함.
+            
+            controller.startGame(); // UI 초기화
+            
+            netService.startP2PGame(isHost, 
+                myState -> {
+                    // 내 상태 업데이트 (Reflection or public method needed on Controller)
+                    // MultiGameController.onMyStateUpdate는 private임.
+                    // BaseGameController.boardController.setGameState(myState) + updateUI 호출 필요
+                    Platform.runLater(() -> {
+                        controller.boardController.setGameState(myState);
+                        controller.updateUI(controller.boardController.getGameState(), myState); // oldState 처리 필요
+                    });
+                },
+                opponentState -> {
+                    // 상대 상태 업데이트
+                    // MultiGameController.opponentBoardView.update(opponentState)
+                    Platform.runLater(() -> {
+                        // Reflection으로 opponentBoardView 접근하거나 getter 필요
+                        // controller.getOpponentBoardView().update(opponentState);
+                    });
+                }
+            );
+
+            // Scene 변경
+            Stage stage = new Stage();
+            Scene gameScene = new Scene(gameRoot);
+            stage.setScene(gameScene);
+            stage.setTitle("Tetris - P2P Direct (" + (isHost ? "HOST" : "GUEST") + ")");
+            stage.setResizable(false);
+            
+            settingsService.applyScreenSizeClass();
+            stage.sizeToScene();
+            stage.show();
+
+        } catch (IOException e) {
+            e.printStackTrace();
+            showErrorAlert("오류", "게임 화면 로딩 실패: " + e.getMessage());
+        }
     }
 
     /**

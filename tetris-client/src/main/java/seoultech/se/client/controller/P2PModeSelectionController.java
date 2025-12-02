@@ -32,7 +32,7 @@ public class P2PModeSelectionController extends BaseController {
     }
 
     @FXML
-    private void handleHostGame() {
+    public void handleHostGame() {
         // 호스트 모드로 게임 시작
         // 1. P2P 소켓 열기 (이미 P2PService @PostConstruct에서 열림)
         // 2. 대기 화면으로 전환 (내 IP/Port 표시)
@@ -49,10 +49,13 @@ public class P2PModeSelectionController extends BaseController {
     }
 
     @FXML
-    private void handleConnectGame() {
+    public void handleConnectGame() {
         String targetIp = ipAddressField.getText();
         String targetPortStr = portField.getText();
+        connectToGame(targetIp, targetPortStr);
+    }
 
+    public void connectToGame(String targetIp, String targetPortStr) {
         if (targetIp.isEmpty() || targetPortStr.isEmpty()) {
             // TODO: 에러 처리
             return;
@@ -65,7 +68,8 @@ public class P2PModeSelectionController extends BaseController {
             p2pService.connectToPeer(targetIp, targetPort);
             
             // 2. 게임 시작 (Guest 모드)
-            networkGameService.startP2PGame(false); // false = isHost
+            // TODO: UI 콜백 연결 (MultiGameController의 updateUI 등)
+            // networkGameService.startP2PGame(false, ...);
             
         } catch (NumberFormatException e) {
             // TODO: 포트 번호 에러 처리

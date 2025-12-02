@@ -31,6 +31,24 @@ public class MultiGameController extends BaseGameController {
     private NetworkExecutionStrategy executionStrategy;
     private OpponentBoardView opponentBoardView;
     private String sessionId;
+    private boolean isP2PMode = false;
+    private seoultech.se.client.service.NetworkGameService networkGameService;
+
+    /**
+     * P2P 모드 초기화
+     */
+    public void initP2PMode(seoultech.se.client.service.NetworkGameService networkGameService, boolean isHost) {
+        this.isP2PMode = true;
+        this.networkGameService = networkGameService;
+        
+        // 기본 게임 초기화 (BoardController 등)
+        // initGame()은 이미 호출되었어야 함
+        
+        System.out.println("✅ [MultiGameController] Initialized in P2P Mode (" + (isHost ? "HOST" : "GUEST") + ")");
+        
+        // P2P 모드에서는 startGame()을 NetworkGameService가 주도함
+        // 여기서는 UI 준비만 함
+    }
 
     /**
      * 멀티플레이 모드 초기화 (외부 호출)
@@ -38,6 +56,7 @@ public class MultiGameController extends BaseGameController {
     public void initMultiplayer(seoultech.se.client.strategy.NetworkExecutionStrategy strategy, String sessionId) {
         this.executionStrategy = strategy;
         this.sessionId = sessionId;
+        this.isP2PMode = false;
         
         // 1. P2P 초기화 및 시그널링
         if (p2pService != null && networkTemplate != null) {
@@ -190,7 +209,15 @@ public class MultiGameController extends BaseGameController {
             return;
         }
 
-        // P2P로 입력 전송 (가능한 경우)
+        // P2P 모드 처리
+        if (isP2PMode) {
+            if (networkGameService != null) {
+                networkGameService.sendMyInput(command);
+            }
+            return; // P2P 모드에서는 서버 전송 스킵
+        }
+
+        // P2P로 입력 전송 (가능한 경우 - 하이브리드 모드)
         if (p2pService != null) {
             long seq = 0; // P2P용 시퀀스는 별도 관리하거나 NetworkGameClient와 공유 필요 (일단 0)
             seoultech.se.core.dto.PlayerInputDto inputDto = seoultech.se.core.dto.PlayerInputDto.builder()
