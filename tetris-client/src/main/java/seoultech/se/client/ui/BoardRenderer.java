@@ -206,7 +206,10 @@ public class BoardRenderer {
         }
         
         // ⚡ 최적화: 이전 테트로미노 위치 지우기 (그리드 셀로 복원)
-        if (previousTetromino != null) {
+        // 단, 현재 테트로미노와 겹치는 위치는 제외 (마커 보존)
+        if (previousTetromino != null && gameState.getCurrentTetromino() != null) {
+            clearPreviousTetrominoExcludingCurrent(gameState);
+        } else if (previousTetromino != null) {
             clearPreviousTetromino(gameState);
         }
         
@@ -248,6 +251,63 @@ public class BoardRenderer {
                         absoluteX >= 0 && absoluteX < currentState.getBoardWidth()) {
                         // 현재 그리드의 셀로 복원 (락된 블록 표시)
                         updateCellInternal(absoluteY, absoluteX, grid[absoluteY][absoluteX]);
+                    }
+                }
+            }
+        }
+    }
+    
+    /**
+     * 이전 테트로미노 위치를 현재 그리드 셀로 복원합니다 (현재 테트로미노와 겹치는 영역 제외)
+     * ⚡ 성능 최적화: 변경된 위치만 업데이트
+     * 🔥 FIX: 현재 테트로미노 위치는 건너뛰어 아이템 마커 보존
+     */
+    private void clearPreviousTetrominoExcludingCurrent(GameState currentState) {
+        if (previousTetromino == null) return;
+        
+        Tetromino currentTetromino = currentState.getCurrentTetromino();
+        if (currentTetromino == null) return;
+        
+        // 현재 테트로미노가 차지하는 위치를 Set에 저장
+        java.util.Set<String> currentPositions = new java.util.HashSet<>();
+        int[][] currentShape = currentTetromino.getCurrentShape();
+        int currentPivotX = currentTetromino.getPivotX();
+        int currentPivotY = currentTetromino.getPivotY();
+        int currentX = currentState.getCurrentX();
+        int currentY = currentState.getCurrentY();
+        
+        for (int row = 0; row < currentShape.length; row++) {
+            for (int col = 0; col < currentShape[0].length; col++) {
+                if (currentShape[row][col] == 1) {
+                    int absoluteX = currentX + (col - currentPivotX);
+                    int absoluteY = currentY + (row - currentPivotY);
+                    if (absoluteY >= 0 && absoluteY < currentState.getBoardHeight() &&
+                        absoluteX >= 0 && absoluteX < currentState.getBoardWidth()) {
+                        currentPositions.add(absoluteY + "," + absoluteX);
+                    }
+                }
+            }
+        }
+        
+        // 이전 테트로미노 위치 복원 (현재 위치는 스킵)
+        int[][] shape = previousTetromino.getCurrentShape();
+        int pivotX = previousTetromino.getPivotX();
+        int pivotY = previousTetromino.getPivotY();
+        Cell[][] grid = currentState.getGrid();
+        
+        for (int row = 0; row < shape.length; row++) {
+            for (int col = 0; col < shape[0].length; col++) {
+                if (shape[row][col] == 1) {
+                    int absoluteX = previousX + (col - pivotX);
+                    int absoluteY = previousY + (row - pivotY);
+                    
+                    if (absoluteY >= 0 && absoluteY < currentState.getBoardHeight() &&
+                        absoluteX >= 0 && absoluteX < currentState.getBoardWidth()) {
+                        // 현재 테트로미노 위치가 아닌 경우만 복원
+                        String posKey = absoluteY + "," + absoluteX;
+                        if (!currentPositions.contains(posKey)) {
+                            updateCellInternal(absoluteY, absoluteX, grid[absoluteY][absoluteX]);
+                        }
                     }
                 }
             }
