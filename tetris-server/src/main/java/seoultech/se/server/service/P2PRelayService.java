@@ -153,9 +153,9 @@ public class P2PRelayService {
         String sessionId = relayPacket.getSessionId();
         String playerId = relayPacket.getPlayerId();
         String type = relayPacket.getType();
-        
-        log.debug("📨 [Relay] Received packet: type={}, session={}, player={}", 
-            type, sessionId, playerId);
+
+        log.info("📨 [Relay] Received packet: type={}, session={}, player={}, from={}",
+            type, sessionId, playerId, senderAddress);
         
         // 세션이 없으면 자동 생성 (CONNECT 타입일 때만)
         RelaySessionDto session = sessions.get(sessionId);
@@ -192,10 +192,22 @@ public class P2PRelayService {
                 // 데이터 패킷 중계 (양쪽 모두 연결되었을 때만)
                 if (!session.isActive()) {
                     log.warn("⚠️ [Relay] Cannot relay packet - session not fully active");
-                    log.warn("   └ Host connected: {}, Guest connected: {}", 
+                    log.warn("   └ Host connected: {}, Guest connected: {}",
                         session.isPlayerAConnected(), session.isPlayerBConnected());
                     return;
                 }
+
+                // 페이로드에서 P2P 패킷 타입 추출 (디버깅용)
+                String payload = relayPacket.getPayload();
+                if (payload != null && payload.contains("\"type\":")) {
+                    int typeStart = payload.indexOf("\"type\":\"") + 8;
+                    int typeEnd = payload.indexOf("\"", typeStart);
+                    if (typeEnd > typeStart) {
+                        String p2pType = payload.substring(typeStart, typeEnd);
+                        log.info("   └ P2P packet type: {}", p2pType);
+                    }
+                }
+
                 relayPacketToOpponent(session, playerId, relayPacket.getPayload());
                 session.setPacketCount(session.getPacketCount() + 1);
                 session.setLastActivityAt(LocalDateTime.now());

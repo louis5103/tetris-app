@@ -2,6 +2,7 @@ package seoultech.se.client.service;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
@@ -59,24 +60,28 @@ public class NetworkGameService {
     // 콜백 (UI 업데이트용)
     private Consumer<GameState> onMyStateUpdate;
     private Consumer<GameState> onOpponentStateUpdate;
+    private Consumer<Boolean> onGameResult; // true=Win, false=Lose
 
     private Consumer<Void> onGameStart;
+    private Consumer<Void> onPlayerMatched; // 플레이어 매칭 완료 콜백
+    private Consumer<Integer> onCountdownUpdate; // 카운트다운 업데이트 콜백
     private volatile boolean isConnected = false;
 
     /**
      * P2P 게임 시작 (대기 상태 진입)
      */
-    public void startP2PGame(boolean isHost, Consumer<GameState> onMyStateUpdate, Consumer<GameState> onOpponentStateUpdate, Consumer<Void> onGameStart) {
+    public void startP2PGame(boolean isHost, Consumer<GameState> onMyStateUpdate, Consumer<GameState> onOpponentStateUpdate, Consumer<Void> onGameStart, Consumer<Boolean> onGameResult) {
         this.isHost = isHost;
         this.onMyStateUpdate = onMyStateUpdate;
         this.onOpponentStateUpdate = onOpponentStateUpdate;
         this.onGameStart = onGameStart;
+        this.onGameResult = onGameResult;
         this.isRunning = true;
         this.isConnected = false;
-        
+
         // 1. 패킷 수신 리스너 설정
         p2pService.setOnPacketReceived(this::handlePacket);
-        
+
         if (isHost) {
             System.out.println("👑 [P2P] HOST waiting for connection...");
             initializeHostGame();
@@ -86,6 +91,20 @@ public class NetworkGameService {
             // Guest는 HANDSHAKE 전송
             sendHandshake();
         }
+    }
+
+    /**
+     * 매칭 완료 콜백 설정
+     */
+    public void setOnPlayerMatched(Consumer<Void> onPlayerMatched) {
+        this.onPlayerMatched = onPlayerMatched;
+    }
+
+    /**
+     * 카운트다운 업데이트 콜백 설정
+     */
+    public void setOnCountdownUpdate(Consumer<Integer> onCountdownUpdate) {
+        this.onCountdownUpdate = onCountdownUpdate;
     }
 
     private void sendHandshake() {
@@ -106,7 +125,7 @@ public class NetworkGameService {
         if ("HANDSHAKE".equals(packet.getType())) {
             if (isHost && !isConnected) {
                 System.out.println("✅ [P2P] Handshake received from Guest!");
-                
+
                 // 릴레이 모드가 아니면 Guest의 실제 UDP 포트로 재연결
                 if (!p2pService.isRelayMode() && packet.getUdpPort() != null) {
                     String guestIp = p2pService.getOpponentIp();
@@ -122,12 +141,15 @@ public class NetworkGameService {
                 }
                 isConnected = true;
                 sendHandshake(); // ACK with Host's UDP port
-                startGameLoop();
-                // 즉시 초기 상태 전송
-                broadcastState();
+
+                // 매칭 완료 알림
+                notifyPlayerMatched();
+
+                // 3초 카운트다운 시작 (Host가 제어)
+                startCountdown();
             } else if (!isHost && !isConnected) {
                 System.out.println("✅ [P2P] Handshake received from Host!");
-                
+
                 // 릴레이 모드가 아니면 Host의 실제 UDP 포트로 재연결
                 if (!p2pService.isRelayMode() && packet.getUdpPort() != null) {
                     String hostIp = p2pService.getOpponentIp();
@@ -142,8 +164,37 @@ public class NetworkGameService {
                     System.out.println("🔄 [Relay] Already connected via relay server - skipping reconnect");
                 }
                 isConnected = true;
-                notifyGameStart();
-                System.out.println("🎮 [P2P Guest] Waiting for initial STATE from Host...");
+
+                // 매칭 완료 알림
+                notifyPlayerMatched();
+
+                System.out.println("🎮 [P2P Guest] Waiting for countdown from Host...");
+            }
+        } else if ("COUNTDOWN".equals(packet.getType())) {
+            // 카운트다운 패킷 수신
+            if (packet.getCountdown() != null) {
+                int count = packet.getCountdown();
+                System.out.println("⏱️ [P2P " + (isHost ? "Host" : "Guest") + "] Countdown received: " + count);
+
+                // GUEST만 UI 업데이트 (Host는 자체적으로 업데이트)
+                if (!isHost) {
+                    // UI 업데이트
+                    if (onCountdownUpdate != null) {
+                        Platform.runLater(() -> onCountdownUpdate.accept(count));
+                    } else {
+                        System.err.println("❌ [P2P Guest] onCountdownUpdate callback is NULL!");
+                    }
+
+                    // 카운트다운 0이면 게임 시작
+                    if (count == 0) {
+                        System.out.println("🎮 [P2P Guest] Countdown 0 received - starting game!");
+                        notifyGameStart();
+                    }
+                } else {
+                    System.out.println("⚠️ [P2P Host] Received own COUNTDOWN packet (echo) - ignoring");
+                }
+            } else {
+                System.err.println("❌ [P2P] COUNTDOWN packet has null countdown value!");
             }
         } else if (isConnected) {
             if ("INPUT".equals(packet.getType()) && isHost) {
@@ -162,13 +213,136 @@ public class NetworkGameService {
                 processStateUpdate(state);
             } else if ("GAME_OVER".equals(packet.getType())) {
                 System.out.println("💀 [P2P] GAME_OVER packet received from opponent");
-                handleOpponentGameOver();
+
+                // 게임 루프 즉시 중지
+                isRunning = false;
+                System.out.println("🛑 [P2P] Game loop stopped (isRunning = false)");
+
+                if (packet.getIsWinner() != null) {
+                    boolean amIWinner = packet.getIsWinner();
+
+                    // 승패 여부와 관계없이 상대방 게임 오버 상태 업데이트
+                    handleOpponentGameOver();
+
+                    Platform.runLater(() -> {
+                        if (onGameResult != null) {
+                            System.out.println("💀 [P2P] Calling onGameResult with: " + amIWinner);
+                            onGameResult.accept(amIWinner);
+                        }
+                    });
+                } else {
+                    // isWinner가 null인 경우에도 상대방이 죽었으므로 나는 승리
+                    handleOpponentGameOver();
+                    Platform.runLater(() -> {
+                        if (onGameResult != null) {
+                            System.out.println("💀 [P2P] Calling onGameResult with: true (null case)");
+                            onGameResult.accept(true); // 상대방 사망 = 나 승리
+                        }
+                    });
+                }
             } else {
                 System.out.println("⚠️ [P2P] Unhandled packet - Type: " + packet.getType() + ", isHost: " + isHost + ", isConnected: " + isConnected);
             }
         } else {
             System.out.println("⚠️ [P2P] Packet ignored - not connected yet");
         }
+    }
+
+    /**
+     * 플레이어 매칭 완료 알림
+     */
+    private void notifyPlayerMatched() {
+        if (onPlayerMatched != null) {
+            Platform.runLater(() -> onPlayerMatched.accept(null));
+        }
+    }
+
+    /**
+     * 카운트다운 시작 (Host만 실행)
+     */
+    private void startCountdown() {
+        if (!isHost) {
+            System.err.println("❌ [P2P] startCountdown called but not host!");
+            return;
+        }
+
+        System.out.println("⏱️ [P2P Host] Starting countdown...");
+        System.out.println("   └ onCountdownUpdate callback: " + (onCountdownUpdate != null ? "SET" : "NULL"));
+        System.out.println("   └ isConnected: " + isConnected);
+        System.out.println("   └ p2pService: " + (p2pService != null ? "OK" : "NULL"));
+
+        new Thread(() -> {
+            try {
+                // 3, 2, 1 카운트다운
+                for (int i = 3; i > 0; i--) {
+                    final int count = i;
+                    System.out.println("⏱️ [P2P Host] Countdown: " + count);
+
+                    // Host UI 업데이트
+                    if (onCountdownUpdate != null) {
+                        Platform.runLater(() -> {
+                            System.out.println("   └ Updating Host UI with count: " + count);
+                            onCountdownUpdate.accept(count);
+                        });
+                    } else {
+                        System.err.println("❌ [P2P Host] onCountdownUpdate is NULL at count " + count);
+                    }
+
+                    // Guest에게 카운트다운 전송
+                    System.out.println("   └ Sending countdown " + count + " to Guest...");
+                    sendCountdown(count);
+
+                    Thread.sleep(1000);
+                }
+
+                // 카운트다운 0 (START!)
+                System.out.println("⏱️ [P2P Host] Countdown: 0 (START!)");
+                if (onCountdownUpdate != null) {
+                    Platform.runLater(() -> {
+                        System.out.println("   └ Updating Host UI with count: 0");
+                        onCountdownUpdate.accept(0);
+                    });
+                } else {
+                    System.err.println("❌ [P2P Host] onCountdownUpdate is NULL at count 0");
+                }
+
+                System.out.println("   └ Sending countdown 0 to Guest...");
+                sendCountdown(0);
+
+                Thread.sleep(500); // 짧은 대기 후 게임 시작
+
+                // 게임 시작
+                System.out.println("🎮 [P2P Host] Starting game loop...");
+                startGameLoop();
+
+                System.out.println("📤 [P2P Host] Broadcasting initial state...");
+                broadcastState(); // 초기 상태 전송
+
+            } catch (InterruptedException e) {
+                System.err.println("❌ [P2P Host] Countdown interrupted: " + e.getMessage());
+                e.printStackTrace();
+            }
+        }, "P2P-Countdown-Thread").start();
+    }
+
+    /**
+     * 카운트다운 패킷 전송 (Host -> Guest)
+     */
+    private void sendCountdown(int count) {
+        System.out.println("📤 [P2P Host] Preparing COUNTDOWN packet...");
+        System.out.println("   └ Count: " + count);
+        System.out.println("   └ p2pService: " + (p2pService != null ? "OK" : "NULL"));
+
+        P2PPacket packet = P2PPacket.builder()
+                .type("COUNTDOWN")
+                .countdown(count)
+                .build();
+
+        System.out.println("   └ Packet created: type=" + packet.getType() + ", countdown=" + packet.getCountdown());
+
+        p2pService.sendPacket(packet);
+
+        System.out.println("✅ [P2P Host] COUNTDOWN packet sent successfully: " + count);
     }
 
     private void startGameLoop() {
@@ -270,29 +444,59 @@ public class NetworkGameService {
     private void hostGameLoop() {
         while (isRunning) {
             try {
+                // 게임오버 체크 (양쪽 중 하나라도 끝나면 루프 종료)
+                if (myState != null && myState.isGameOver()) {
+                    System.out.println("🛑 [P2P Host] Host game over detected in loop");
+                    isRunning = false;
+                    // Host가 죽음 -> 결과 전송 및 팝업 표시
+                    sendGameResult(true); // Guest에게 "너 이김" 전송
+                    Platform.runLater(() -> {
+                        System.out.println("💀 [P2P Host] Triggering Local Game Result: LOSE (from loop)");
+                        if (onGameResult != null) {
+                            onGameResult.accept(false); // 나(Host)는 패배
+                        }
+                    });
+                    break;
+                }
+
+                if (opponentState != null && opponentState.isGameOver()) {
+                    System.out.println("🛑 [P2P Host] Guest game over detected in loop");
+                    isRunning = false;
+                    // Guest가 죽음 -> 결과 전송 및 팝업 표시
+                    sendGameResult(false); // Guest에게 "너 짐" 전송
+                    Platform.runLater(() -> {
+                        System.out.println("💀 [P2P Host] Triggering Local Game Result: WIN (from loop)");
+                        if (onGameResult != null) {
+                            onGameResult.accept(true); // 나(Host)는 승리
+                        }
+                    });
+                    break;
+                }
+
                 long currentTime = System.currentTimeMillis();
-                
+
                 // 1. 중력 적용 (Host & Guest) - 개별 틱 타임 관리
                 processGravity(myState, true, currentTime);
                 processGravity(opponentState, false, currentTime);
-                
+
                 // 2. 상태 전송 (Host -> Guest)
                 broadcastState();
-                
+
                 // 3. Host UI 업데이트
                 Platform.runLater(() -> {
                     if (onMyStateUpdate != null) onMyStateUpdate.accept(myState);
                     if (onOpponentStateUpdate != null) onOpponentStateUpdate.accept(opponentState);
                 });
-                
+
                 Thread.sleep(50); // 50ms Tick (20fps)
-                
+
             } catch (InterruptedException e) {
                 break;
             } catch (Exception e) {
                 e.printStackTrace();
             }
         }
+        System.out.println("🛑 [P2P Host] Game loop ended");
     }
     
     /**
@@ -325,16 +529,49 @@ public class NetworkGameService {
 
         // Next Queue 업데이트 (표시용)
         TetrominoType[] queue = state.getNextQueue();
-        // TetrominoGenerator는 peekNext 메서드가 없으므로 간단히 기본값으로 설정
-        for (int i = 0; i < queue.length; i++) {
-            queue[i] = TetrominoType.I; // 기본값
+        // TetrominoGenerator의 preview 메서드를 사용하여 다음 블록들을 미리 확인
+        List<TetrominoType> upcomingBlocks = generator.preview(queue.length);
+        for (int i = 0; i < queue.length && i < upcomingBlocks.size(); i++) {
+            queue[i] = upcomingBlocks.get(i);
+        }
+        // 남은 슬롯이 있으면 기본값으로 채움 (일반적으로 발생하지 않음)
+        for (int i = upcomingBlocks.size(); i < queue.length; i++) {
+            queue[i] = TetrominoType.I;
         }
         
         // 게임 오버 체크 (블록이 스폰 위치에서 충돌하는 경우)
         if (state.isGameOver()) {
-            System.out.println("💀 [P2P] Game Over for " + (isHostPlayer ? "Host" : "Guest"));
-            // 상대방에게 GAME_OVER 패킷 전송
-            sendGameOver();
+            System.out.println("💀 [P2P] Game Over detected in spawnNextBlock");
+            System.out.println("   └ Player: " + (isHostPlayer ? "Host" : "Guest"));
+            System.out.println("   └ GameOverReason: " + state.getGameOverReason());
+
+            if (isHostPlayer) {
+                // Host가 죽음 -> Host 패배, Guest 승리
+                System.out.println("💀 [P2P Host] Sending GAME_OVER to Guest (isWinner=true)");
+                sendGameResult(true); // Guest에게 "너 이김" 전송
+                Platform.runLater(() -> {
+                    System.out.println("💀 [P2P Host] Triggering Local Game Result: LOSE");
+                    if (onGameResult != null) {
+                        onGameResult.accept(false); // 나(Host)는 패배
+                    } else {
+                        System.err.println("❌ [P2P Host] onGameResult callback is NULL!");
+                    }
+                });
+            } else {
+                // Guest가 죽음 -> Guest 패배, Host 승리
+                System.out.println("💀 [P2P Host] Guest died - Sending GAME_OVER to Guest (isWinner=false)");
+                sendGameResult(false); // Guest에게 "너 짐" 전송
+                Platform.runLater(() -> {
+                    System.out.println("💀 [P2P Host] Triggering Local Game Result: WIN");
+                    if (onGameResult != null) {
+                        onGameResult.accept(true); // 나(Host)는 승리
+                    } else {
+                        System.err.println("❌ [P2P Host] onGameResult callback is NULL!");
+                    }
+                });
+            }
+            isRunning = false;
+            System.out.println("🛑 [P2P] isRunning set to false");
         }
     }
     
@@ -427,6 +664,7 @@ public class NetworkGameService {
      * [Host] 게스트 입력 처리
      */
     private void processGuestInput(PlayerInputDto input) {
+        if (!isRunning) return;
         if (input == null || opponentState == null || opponentState.isGameOver()) {
             System.out.println("⚠️ [P2P Host] Cannot process guest input - input:" + (input != null) + ", state:" + (opponentState != null));
             return;
@@ -441,6 +679,7 @@ public class NetworkGameService {
      * [Common] 내 입력 전송
      */
     public void sendMyInput(GameCommand command) {
+        if (!isRunning) return;
         if (isHost) {
             // 호스트: 내 입력 즉시 처리
             if (myState == null || myState.isGameOver()) return;
@@ -463,6 +702,20 @@ public class NetworkGameService {
         }
     }
     
+    /**
+     * 게임 상태 업데이트 콜백 재설정 (게임 화면 전환 시 사용)
+     */
+    public void updateCallbacks(Consumer<GameState> onMyStateUpdate,
+                                 Consumer<GameState> onOpponentStateUpdate,
+                                 Consumer<Void> onGameStart,
+                                 Consumer<Boolean> onGameResult) {
+        this.onMyStateUpdate = onMyStateUpdate;
+        this.onOpponentStateUpdate = onOpponentStateUpdate;
+        this.onGameStart = onGameStart;
+        this.onGameResult = onGameResult;
+        System.out.println("🔄 [NetworkGameService] Callbacks updated");
+    }
+
     public void stop() {
         isRunning = false;
         p2pService.close();
@@ -470,14 +723,28 @@ public class NetworkGameService {
     }
     
     /**
-     * 게임 오버 패킷 전송
+     * 게임 오버 결과 전송
      */
-    private void sendGameOver() {
-        p2pService.sendPacket(P2PPacket.builder()
-            .type("GAME_OVER")
-            .gameOver(true)
-            .build());
-        System.out.println("💀 [P2P] Sent GAME_OVER packet to opponent");
+    private void sendGameResult(boolean isWinnerForRecipient) {
+        System.out.println("📡 [P2P] sendGameResult called - isWinner for recipient: " + isWinnerForRecipient);
+        new Thread(() -> {
+            for (int i = 0; i < 10; i++) {
+                try {
+                    P2PPacket packet = P2PPacket.builder()
+                        .type("GAME_OVER")
+                        .gameOver(true)
+                        .isWinner(isWinnerForRecipient)
+                        .build();
+                    p2pService.sendPacket(packet);
+                    System.out.println("📤 [P2P] Sent GAME_OVER packet (Attempt " + (i+1) + "/10, isWinner=" + isWinnerForRecipient + ")");
+                    Thread.sleep(50);
+                } catch (InterruptedException e) {
+                    System.out.println("⚠️ [P2P] sendGameResult interrupted at attempt " + (i+1));
+                    break;
+                }
+            }
+            System.out.println("✅ [P2P] Finished sending GAME_OVER packets (10 attempts completed)");
+        }).start();
     }
     
     /**

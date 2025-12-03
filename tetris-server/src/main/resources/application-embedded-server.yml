@@ -41,14 +41,14 @@ spring:
   jpa:
     database-platform: org.hibernate.dialect.H2Dialect
     hibernate:
-      ddl-auto: create  # 매번 스키마 생성
+      ddl-auto: update  # 매번 스키마 생성
     show-sql: true
     properties:
       hibernate:
         format_sql: true
         show_sql: true
         hbm2ddl:
-          auto: create  # 명시적으로 create 지정
+          auto: update  # 명시적으로 create 지정
     generate-ddl: true  # DDL 생성 활성화
     defer-datasource-initialization: false  # 즉시 초기화
   

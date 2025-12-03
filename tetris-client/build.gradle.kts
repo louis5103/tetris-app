@@ -143,11 +143,21 @@ tasks.test {
     }
 }
 
+// run 태스크 설정 (로컬 개발용 - dev 프로파일, MySQL 사용)
+tasks.named<JavaExec>("run") {
+    systemProperty("spring.profiles.active", "dev")
+    
+    // JavaFX 모듈 접근 허용
+    jvmArgs(
+        "--add-opens", "javafx.graphics/com.sun.javafx.application=ALL-UNNAMED"
+    )
+}
+
 // 🎯 개발 실행 태스크
 tasks.register("dev") {
     group = "application"
     description = "Run the desktop application in development mode with Java 21 LTS"
-    dependsOn("bootRun")
+    dependsOn("run")
 }
 
 // 🎮 배포용 태스크 (JAR)
