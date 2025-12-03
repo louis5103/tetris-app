@@ -549,6 +549,13 @@ public class ArcadeGameEngine extends ClassicGameEngine {
                         
                         seoultech.se.core.engine.item.ItemEffect effect = item.apply(newState, itemY, itemX);
                         if (effect.isSuccess()) {
+                            // 🔥 FIX: 아이템 효과 적용 성공 시 마커 제거 (블록은 유지)
+                            // SpeedReset이나 BonusScore 같은 비파괴형 아이템은 마커만 지워야 함
+                            if (newState.getGrid()[itemY][itemX].isOccupied()) {
+                                newState.getGrid()[itemY][itemX].clearItemMarker();
+                                System.out.println("   - Item marker cleared at (" + itemY + ", " + itemX + ")");
+                            }
+
                             newState.addScore(effect.getBonusScore());
                             itemEffectLinesCleared = effect.getLinesCleared();
                             if (itemEffectLinesCleared > 0) {
