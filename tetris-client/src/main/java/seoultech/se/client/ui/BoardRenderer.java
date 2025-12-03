@@ -346,17 +346,12 @@ public class BoardRenderer {
     }
     
     /**
-     * 🎨 아이템 마커를 Rectangle 위에 오버레이로 표시
-     * 
-     * Rectangle의 parent가 StackPane인 경우, ImageView를 추가하여
-     * 배경색 위에 아이템 아이콘을 겹쳐서 표시합니다.
-    /**
-     * ✨ 핵심 개선:
-     * 1. 배경색이 보이도록 반투명 이미지 사용
-     * 2. 회전해도 아이콘은 항상 정방향 유지 (rotate=0)
-     * 
-     * 🔒 PRIORITY 5: synchronized로 중복 방지
-     * 
+     * 🎨 아이템 마커를 Rectangle 위에 오버레이로 표시 (최적화 버전)
+     *
+     * ⚡ 성능 최적화: ImageView와 Text 노드를 매번 생성/삭제하지 않고,
+     * 숨겨진 노드를 재사용(보이게/숨기게 처리)하여 GC 부담을 줄입니다.
+     * 노드는 필요할 때 한 번만 생성됩니다.
+     *
      * @param rect 대상 Rectangle
      * @param itemType 아이템 타입
      */
@@ -365,39 +360,20 @@ public class BoardRenderer {
             System.err.println("⚠️ [BoardRenderer] applyItemMarkerOverlay called with null itemType");
             return;
         }
-        
-        // Rectangle의 부모가 StackPane인지 확인
+
         if (!(rect.getParent() instanceof javafx.scene.layout.StackPane)) {
-            System.err.println("⚠️ [BoardRenderer] Rectangle parent is not StackPane, cannot add ImageView overlay");
+            System.err.println("⚠️ [BoardRenderer] Rectangle parent is not StackPane, cannot add overlay");
             return;
         }
-        
+
         javafx.scene.layout.StackPane parentPane = (javafx.scene.layout.StackPane) rect.getParent();
-        
-        // StackPane의 자식 노드 중 ImageView/Text가 있고, 같은 itemType이면 스킵
-        for (javafx.scene.Node node : parentPane.getChildren()) {
-            if (node instanceof javafx.scene.image.ImageView) {
-                javafx.scene.image.ImageView existingView = (javafx.scene.image.ImageView) node;
-                if (existingView.getId() != null && existingView.getId().equals(itemType.name())) {
-                    // 이미 동일한 아이템 마커가 있으므로 스킵 (로그 없음)
-                    return;
-                }
-            } else if (node instanceof javafx.scene.text.Text) {
-                javafx.scene.text.Text existingText = (javafx.scene.text.Text) node;
-                if (existingText.getId() != null && existingText.getId().equals(itemType.name())) {
-                    // 이미 동일한 텍스트 마커가 있으므로 스킵 (로그 없음)
-                    return;
-                }
-            }
-        }
-        
-        // 기존 마커 제거 (다른 타입의 마커인 경우)
+
+        // 다른 타입의 마커가 있다면 숨김 처리
         removeItemMarkerOverlay(rect);
-        
-        // 아이템 타입에 따라 이미지 또는 텍스트 선택
+
         String imagePath = null;
         String textOverlay = null;
-        
+
         switch (itemType) {
             case WEIGHT_BOMB:
             case BOMB:
@@ -410,97 +386,110 @@ public class BoardRenderer {
                 imagePath = "/image/L.png";
                 break;
             case SPEED_RESET:
-                // ⚡ SPEED_RESET은 텍스트로 표시 (전용 아이콘 없음)
                 textOverlay = "⚡";
                 break;
             case BONUS_SCORE:
-                // ⭐ BONUS_SCORE는 텍스트로 표시 (전용 아이콘 없음)
                 textOverlay = "⭐";
                 break;
             default:
                 System.err.println("⚠️ [BoardRenderer] Unknown item type: " + itemType);
                 return;
         }
-        
-        // ImageView 또는 Text 생성 및 추가
-        if (imagePath != null) {
-            try {
-                // 🚀 이미지 캐싱 적용 (메모리/IO 최적화)
-                javafx.scene.image.Image image = IMAGE_CACHE.computeIfAbsent(imagePath, path -> {
-                    try {
-                        String imageUrl = getClass().getResource(path).toExternalForm();
-                        return new javafx.scene.image.Image(imageUrl);
-                    } catch (Exception e) {
-                        System.err.println("⚠️ [BoardRenderer] Failed to load image: " + path);
-                        return null;
-                    }
-                });
-                
-                if (image == null) return; // 로드 실패 시 중단
 
-                javafx.scene.image.ImageView imageView = new javafx.scene.image.ImageView(image);
-                
-                // 🔥 FIX: 이미지를 정확히 정사각형으로 만들어 대각선 문제 해결
-                double size = rect.getWidth() * 0.8;  // 80% 크기
-                imageView.setFitWidth(size);
-                imageView.setFitHeight(size);
-                imageView.setPreserveRatio(false);  // 🔥 비율 유지 끄기 - 정사각형으로 강제
-                imageView.setSmooth(true);
-                
-                // ✨ 핵심: 항상 회전 0도로 고정
-                imageView.setRotate(0);
-                
-                // 마우스 이벤트 무시 (Rectangle이 클릭 받도록)
-                imageView.setMouseTransparent(true);
-                
-                // 🔥 FIX: ImageView에 itemType ID 설정 (중복 체크용)
-                imageView.setId(itemType.name());
-                
-                // userData에 저장하여 나중에 제거 가능하도록
-                rect.setUserData(imageView);
-                
-                // StackPane에 추가 (StackPane의 alignment가 CENTER이므로 자동 중앙 정렬)
-                parentPane.getChildren().add(imageView);
-            } catch (Exception e) {
-                System.err.println("⚠️ [BoardRenderer] Failed to load item image: " + imagePath + " - " + e.getMessage());
-            }
+        if (imagePath != null) {
+            javafx.scene.image.ImageView imageView = getOrCreateImageView(parentPane, rect);
+            javafx.scene.image.Image image = IMAGE_CACHE.computeIfAbsent(imagePath, path -> {
+                try {
+                    String imageUrl = getClass().getResource(path).toExternalForm();
+                    return new javafx.scene.image.Image(imageUrl);
+                } catch (Exception e) {
+                    System.err.println("⚠️ [BoardRenderer] Failed to load image: " + path);
+                    return null;
+                }
+            });
+
+            if (image == null) return;
+
+            imageView.setImage(image);
+            imageView.setVisible(true);
+
         } else if (textOverlay != null) {
-            // 텍스트 오버레이 생성 (SPEED_RESET, BONUS_SCORE)
-            javafx.scene.text.Text text = new javafx.scene.text.Text(textOverlay);
-            text.setStyle("-fx-font-size: " + (rect.getWidth() * 0.7) + "px; " +
-                         "-fx-font-weight: bold; " +
-                         "-fx-fill: white; " +
-                         "-fx-stroke: black; " +
-                         "-fx-stroke-width: 2;");
-            
-            // 마우스 이벤트 무시
-            text.setMouseTransparent(true);
-            
-            // ID 설정 (중복 체크용)
-            text.setId(itemType.name());
-            
-            // userData에 저장
-            rect.setUserData(text);
-            
-            // StackPane에 추가
-            parentPane.getChildren().add(text);
+            javafx.scene.text.Text text = getOrCreateTextView(parentPane, rect);
+            text.setText(textOverlay);
+            text.setVisible(true);
         }
     }
-    
+
     /**
-     * 아이템 마커 오버레이 제거
-     * 
+     * ⚡ get-or-create 헬퍼: ImageView 오버레이를 가져오거나 생성합니다.
+     */
+    private javafx.scene.image.ImageView getOrCreateImageView(javafx.scene.layout.StackPane parent, Rectangle rect) {
+        // ID로 기존 이미지 뷰 찾기
+        for (javafx.scene.Node node : parent.getChildren()) {
+            if (node instanceof javafx.scene.image.ImageView && "item-marker-image".equals(node.getId())) {
+                return (javafx.scene.image.ImageView) node;
+            }
+        }
+        // 없으면 새로 생성
+        javafx.scene.image.ImageView imageView = new javafx.scene.image.ImageView();
+        imageView.setId("item-marker-image");
+        double size = rect.getWidth() * 0.8;
+        imageView.setFitWidth(size);
+        imageView.setFitHeight(size);
+        imageView.setPreserveRatio(false);
+        imageView.setSmooth(true);
+        imageView.setRotate(0);
+        imageView.setMouseTransparent(true);
+        imageView.setVisible(false); // 처음엔 숨김
+        parent.getChildren().add(imageView);
+        return imageView;
+    }
+
+    /**
+     * ⚡ get-or-create 헬퍼: Text 오버레이를 가져오거나 생성합니다.
+     */
+    private javafx.scene.text.Text getOrCreateTextView(javafx.scene.layout.StackPane parent, Rectangle rect) {
+        // ID로 기존 텍스트 찾기
+        for (javafx.scene.Node node : parent.getChildren()) {
+            if (node instanceof javafx.scene.text.Text && "item-marker-text".equals(node.getId())) {
+                return (javafx.scene.text.Text) node;
+            }
+        }
+        // 없으면 새로 생성
+        javafx.scene.text.Text text = new javafx.scene.text.Text();
+        text.setId("item-marker-text");
+        text.setStyle("-fx-font-size: " + (rect.getWidth() * 0.7) + "px; " +
+                "-fx-font-weight: bold; " +
+                "-fx-fill: white; " +
+                "-fx-stroke: black; " +
+                "-fx-stroke-width: 2;");
+        text.setMouseTransparent(true);
+        text.setVisible(false); // 처음엔 숨김
+        parent.getChildren().add(text);
+        return text;
+    }
+
+
+    /**
+     * 아이템 마커 오버레이 제거 (최적화 버전)
+     *
+     * ⚡ 성능 최적화: 노드를 실제로 제거하는 대신 숨깁니다.
+     *
      * @param rect 대상 Rectangle
      */
     private void removeItemMarkerOverlay(Rectangle rect) {
         if (rect.getParent() instanceof javafx.scene.layout.StackPane) {
             javafx.scene.layout.StackPane parentPane = (javafx.scene.layout.StackPane) rect.getParent();
-            
-            // 🔥 FIX: StackPane에서 Rectangle(배경)을 제외한 모든 노드 제거 (확실한 청소)
-            // ImageView, Text 등 모든 오버레이를 제거하여 잔상을 방지함
-            parentPane.getChildren().removeIf(node -> node != rect);
-            
-            rect.setUserData(null);
+
+            for (javafx.scene.Node node : parentPane.getChildren()) {
+                String id = node.getId();
+                if (id != null) {
+                    if (id.equals("item-marker-image") || id.equals("item-marker-text")) {
+                        node.setVisible(false);
+                    }
+                }
+            }
+            rect.setUserData(null); // UserData는 여전히 정리할 수 있음
         }
     }
     
