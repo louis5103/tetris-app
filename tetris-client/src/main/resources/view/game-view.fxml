@@ -118,6 +118,7 @@
                             <Label text="PAUSED" styleClass="popup-title"/>
                             <Button text="Resume" styleClass="menu-button-middle" onAction="#handleResumeFromOverlay"/>
                             <Button text="Quit" styleClass="menu-button-middle" onAction="#handleQuitFromOverlay"/>
+                            <Button text="Exit" styleClass="menu-button-middle" onAction="#handleExitFromOverlay"/>
                         </VBox>
                     </VBox>
                     
@@ -158,6 +159,7 @@
                             <HBox styleClass="gameover-buttons" alignment="CENTER">
                                 <Button text="Main" styleClass="menu-button-small" onAction="#handleMainFromOverlay"/>
                                 <Button text="Restart" styleClass="menu-button-small" onAction="#handleRestartFromOverlay"/>
+                                <Button text="Exit" styleClass="menu-button-small" onAction="#handleExitFromOverlay"/>
                             </HBox>
                         </VBox>
                     </VBox>
