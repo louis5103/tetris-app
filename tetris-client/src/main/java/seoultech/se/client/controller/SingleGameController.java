@@ -68,6 +68,11 @@ public class SingleGameController extends BaseGameController {
     }
     
     private boolean onGameLoopTick() {
+        // Skip gravity while UI animations are in progress
+        if (isAnimating()) {
+            System.out.println("⏯️ [Loop] Gravity tick skipped (animating)");
+            return true;
+        }
         GameState currentState = boardController.getGameState();
         if (currentState.isGameOver()) return false;
         if (currentState.isPaused()) return true;
