@@ -66,6 +66,15 @@ public class SingleGameController extends BaseGameController {
         
         updateUI(oldState, newState);
     }
+
+    @Override
+    protected void updateUI(GameState oldState, GameState newState) {
+        super.updateUI(oldState, newState);
+        // 레벨에 따른 낙하 속도 업데이트
+        if (gameLoopManager != null) {
+            gameLoopManager.updateDropSpeed(newState);
+        }
+    }
     
     private boolean onGameLoopTick() {
         // Skip gravity while UI animations are in progress
