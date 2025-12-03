@@ -20,7 +20,13 @@ public enum GameplayType {
      * 아케이드 모드
      * 빠르고 박진감 넘치는 게임플레이를 제공합니다.
      */
-    ARCADE("아케이드", "빠르고 박진감 넘치는 모드", "블록 낙하 속도가 빠르고 높은 점수 배율 적용");
+    ARCADE("아케이드", "빠르고 박진감 넘치는 모드", "블록 낙하 속도가 빠르고 높은 점수 배율 적용"),
+
+    /**
+     * 타임어택 모드
+     * 시간 제한 대전을 제공합니다.
+     */
+    TIME_ATTACK("타임어택", "시간 제한 대전", "정해진 시간 동안 가장 높은 점수를 획득하는 모드");
     
     private final String displayName;
     private final String description;

@@ -37,6 +37,7 @@ dependencies {
     // 🎯 Core & Backend 모듈 의존성
     implementation(project(":tetris-core"))
     implementation(project(":tetris-backend"))
+    implementation(project(":tetris-server"))
     
     // 🌱 Spring Boot Bundle (DI container + JPA)
     implementation(libs.bundles.client.spring)

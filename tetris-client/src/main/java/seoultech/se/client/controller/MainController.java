@@ -463,27 +463,27 @@ public class MainController extends BaseController {
     }
 
     /**
-     * Battle Classic 모드 버튼 액션 (미구현)
+     * Battle Classic 모드 버튼 액션
      */
     public void handleBattleClassicModeAction(ActionEvent event) {
-        System.out.println("⚔️ [미구현] Battle Classic mode selected");
-        System.out.println("📋 This feature is coming soon!");
+        System.out.println("⚔️ Battle Classic mode selected");
+        startLocalBattle(GameplayType.CLASSIC, "Local Battle - Classic");
     }
 
     /**
-     * Battle Arcade 모드 버튼 액션 (미구현)
+     * Battle Arcade 모드 버튼 액션
      */
     public void handleBattleArcadeModeAction(ActionEvent event) {
-        System.out.println("⚔️ [미구현] Battle Arcade mode selected");
-        System.out.println("📋 This feature is coming soon!");
+        System.out.println("⚔️ Battle Arcade mode selected");
+        startLocalBattle(GameplayType.ARCADE, "Local Battle - Arcade");
     }
 
     /**
-     * Battle Time Attack 모드 버튼 액션 (미구현)
+     * Battle Time Attack 모드 버튼 액션
      */
     public void handleBattleTimeAttackModeAction(ActionEvent event) {
-        System.out.println("⏱️ [미구현] Battle Time Attack mode selected");
-        System.out.println("📋 This feature is coming soon!");
+        System.out.println("⏱️ Battle Time Attack mode selected");
+        startLocalBattle(GameplayType.TIME_ATTACK, "Local Battle - Time Attack");
     }
 
     /**
@@ -872,6 +872,49 @@ public class MainController extends BaseController {
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();
+    }
+
+    private void startLocalBattle(GameplayType gameplayType, String modeName) {
+        try {
+            Stage stage = (Stage) rootPane.getScene().getWindow();
+            if (stage == null) {
+                System.err.println("❌ Cannot get Stage from rootPane");
+                return;
+            }
+
+            FXMLLoader loader = new FXMLLoader(
+                TetrisApplication.class.getResource("/view/local-battle-view.fxml")
+            );
+
+            ApplicationContext context = ApplicationContextProvider.getApplicationContext();
+            
+            LocalBattleController controller = context.getBean(LocalBattleController.class);
+            loader.setController(controller);
+
+            Parent gameRoot = loader.load();
+
+            seoultech.se.client.service.GameModeConfigFactory configFactory = context.getBean(seoultech.se.client.service.GameModeConfigFactory.class);
+            seoultech.se.core.model.enumType.Difficulty difficulty = settingsService.getCurrentDifficulty();
+            seoultech.se.core.config.GameModeConfig config = configFactory.create(gameplayType, difficulty);
+            
+            controller.initGame(config);
+            controller.startGame();
+            
+            Scene gameScene = new Scene(gameRoot);
+            stage.setScene(gameScene);
+            stage.setTitle("Tetris - " + modeName);
+            stage.setResizable(false);
+            
+            settingsService.applyScreenSizeClass();
+            stage.sizeToScene();
+
+            System.out.println("✅ " + modeName + " mode started successfully");
+
+        } catch (IOException e) {
+            System.err.println("❌ Failed to load local-battle-view.fxml");
+            System.err.println("   Error: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
     
 

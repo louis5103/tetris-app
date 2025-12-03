@@ -49,6 +49,7 @@ public class ServerConfigFactory {
         return switch (gameplayType) {
             case CLASSIC -> createClassicConfig(difficulty);
             case ARCADE -> createArcadeConfig(difficulty);
+            case TIME_ATTACK -> createTimeAttackConfig(difficulty);
         };
     }
     
@@ -128,6 +129,41 @@ public class ServerConfigFactory {
             .maxInventorySize(3)
             .itemAutoUse(false)
             .enabledItemTypes(java.util.EnumSet.allOf(ItemType.class))
+            
+            .build();
+    }
+
+    /**
+     * Time Attack 모드 Config 생성 (Classic 기반)
+     * 
+     * @param difficulty 난이도
+     * @return GameModeConfig
+     */
+    public GameModeConfig createTimeAttackConfig(Difficulty difficulty) {
+        DifficultyMultiplier multiplier = getDifficultyMultiplier(difficulty);
+        
+        return GameModeConfig.builder()
+            .gameplayType(GameplayType.TIME_ATTACK)
+            .difficulty(difficulty)
+            
+            .srsEnabled(true)
+            .rotation180Enabled(false)
+            
+            .hardDropEnabled(true)
+            .holdEnabled(true)
+            .ghostPieceEnabled(true)
+            
+            .dropSpeedMultiplier(CLASSIC_DROP_SPEED * multiplier.speedMultiplier)
+            .softDropSpeed(CLASSIC_SOFT_DROP_SPEED)
+            
+            .lockDelay((int)(CLASSIC_LOCK_DELAY * multiplier.lockDelayMultiplier))
+            .maxLockResets(CLASSIC_MAX_LOCK_RESETS)
+            
+            .linesPerItem(0)
+            .itemDropRate(0.0)
+            .maxInventorySize(0)
+            .itemAutoUse(false)
+            .enabledItemTypes(java.util.Collections.emptySet())
             
             .build();
     }

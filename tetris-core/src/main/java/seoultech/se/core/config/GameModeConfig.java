@@ -116,6 +116,13 @@ public class GameModeConfig {
      */
     @Builder.Default
     private final Difficulty difficulty = Difficulty.NORMAL;
+
+    /**
+     * 타임어택 모드 제한 시간 (초)
+     * 0이면 비활성화
+     */
+    @Builder.Default
+    private final int timeLimitSeconds = 0;
     
     // ========== 아이템 시스템 설정 (Arcade 전용) ==========
     

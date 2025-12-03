@@ -347,33 +347,10 @@ public class GameState {
             return false;
         }
 
-        // 1. 기존 보드를 위로 이동
-        for (int i = grid.length - 1; i >= lineCount; i--) {
-            for (int j = 0; j < grid[i].length; j++) {
-                grid[i][j] = grid[i - lineCount][j];
-            }
-        }
-
-        // 2. 하단에 방해 라인 추가
-        for (int line = 0; line < lineCount; line++) {
-            // 각 라인마다 랜덤 위치에 빈 칸 1개
-            int emptyColumn = (int) (Math.random() * boardWidth);
-
+        // 1. 상단 확인 - 블록이 보드 밖으로 밀려나는지 체크하여 게임 오버 결정
+        for (int row = 0; row < lineCount; row++) {
             for (int col = 0; col < boardWidth; col++) {
-                if (col == emptyColumn) {
-                    grid[line][col] = null; // 빈 칸
-                } else {
-                    // 회색 방해 블록 (GRAY 색상)
-                    grid[line][col] = Cell.of(seoultech.se.core.model.enumType.Color.GRAY, true);
-                }
-            }
-        }
-
-        // 3. 상단 확인 - 블록이 보드 밖으로 나갔는지 체크
-        for (int row = grid.length - lineCount; row < grid.length; row++) {
-            for (int col = 0; col < grid[row].length; col++) {
-                if (grid[row][col] != null) {
-                    // 상단에 블록이 있으면 게임 오버
+                if (grid[row][col].isOccupied()) {
                     this.isGameOver = true;
                     this.gameOverReason = "Attacked - Board overflow";
                     return true;
@@ -381,6 +358,27 @@ public class GameState {
             }
         }
 
+        // 2. 기존 보드를 위로 이동
+        for (int row = 0; row < boardHeight - lineCount; row++) {
+            for(int col = 0; col < boardWidth; col++) {
+                grid[row][col] = grid[row + lineCount][col];
+            }
+        }
+
+        // 3. 하단에 방해 라인 추가
+        for (int row = boardHeight - lineCount; row < boardHeight; row++) {
+            // 각 라인마다 랜덤 위치에 빈 칸 1개
+            int emptyColumn = (int) (Math.random() * boardWidth);
+
+            for (int col = 0; col < boardWidth; col++) {
+                if (col == emptyColumn) {
+                    grid[row][col] = Cell.empty(); // 빈 칸
+                } else {
+                    // 회색 방해 블록 (GRAY 색상)
+                    grid[row][col] = Cell.of(seoultech.se.core.model.enumType.Color.GRAY, true);
+                }
+            }
+        }
         return false;
     }
     
