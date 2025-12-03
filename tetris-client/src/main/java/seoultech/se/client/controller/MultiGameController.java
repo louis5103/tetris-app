@@ -189,7 +189,15 @@ public class MultiGameController extends BaseGameController {
         if (executionStrategy != null) {
             executionStrategy.cleanup();
         }
-        // ✅ 입력 차단 제거: cleanup()은 게임 종료 시 호출되며, InputHandler의 isGameOver() 체크로 자동 차단됨
+        // Stop P2P Service
+        if (networkGameService != null) {
+            networkGameService.stop();
+        }
+        
+        // Force Stop Input
+        if (inputHandler != null) {
+            inputHandler.setGameOver(true);
+        }
     }
 
     @Override
@@ -341,14 +349,30 @@ public class MultiGameController extends BaseGameController {
      */
     public void handleP2PGameResult(boolean isWinner) {
         System.out.println("🏆 [MultiGameController] P2P Result: " + (isWinner ? "WIN" : "LOSE"));
+        System.out.println("🔍 [MultiGameController] gameOverLabel: " + (gameOverLabel != null ? "OK" : "NULL"));
+        System.out.println("🔍 [MultiGameController] popupManager: " + (popupManager != null ? "OK" : "NULL"));
+        System.out.println("🔍 [MultiGameController] boardController: " + (boardController != null ? "OK" : "NULL"));
+
         if (gameOverLabel != null) gameOverLabel.setVisible(true);
-        
+
+        // 즉시 입력 차단
+        if (inputHandler != null) {
+            inputHandler.setGameOver(true);
+        }
+
         String title = isWinner ? "YOU WIN" : "YOU LOSE";
-        long finalScore = boardController.getGameState().getScore();
-        
+        long finalScore = boardController != null ? boardController.getGameState().getScore() : 0;
+
+        System.out.println("🔍 [MultiGameController] About to show popup - Title: " + title + ", Score: " + finalScore);
+
         boolean isItemMode = gameModeConfig != null && gameModeConfig.isItemSystemEnabled();
-        popupManager.showGameOverPopup(finalScore, isItemMode, settingsService.getCurrentDifficulty(), title);
-        
+        if (popupManager != null) {
+            popupManager.showGameOverPopup(finalScore, isItemMode, settingsService.getCurrentDifficulty(), title);
+            System.out.println("✅ [MultiGameController] Popup display requested");
+        } else {
+            System.err.println("❌ [MultiGameController] popupManager is NULL - cannot show popup!");
+        }
+
         cleanup();
     }
 }

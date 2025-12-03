@@ -70,6 +70,7 @@ public class InputHandler {
 
     // 멀티플레이 모드 플래그 (pause 비활성화용)
     private boolean isMultiplayerMode = false;
+    private volatile boolean isGameOver = false;
     
     /**
      * InputHandler 생성자
@@ -110,7 +111,7 @@ public class InputHandler {
         System.out.println("⌨️ [InputHandler] Key pressed: " + event.getCode());
         
         // 게임 오버 상태 체크
-        if (gameStateProvider != null && gameStateProvider.isGameOver()) {
+        if (isGameOver || (gameStateProvider != null && gameStateProvider.isGameOver())) {
             System.out.println("🚫 [InputHandler] Game over - input ignored");
             return;
         }
@@ -230,6 +231,18 @@ public class InputHandler {
         this.isMultiplayerMode = isMultiplayer;
         if (isMultiplayer) {
             System.out.println("🌐 [InputHandler] Multiplayer mode enabled - Pause disabled");
+        }
+    }
+
+    /**
+     * 게임 오버 상태를 강제로 설정합니다.
+     * 
+     * @param isGameOver true면 게임 오버로 간주하여 입력을 차단
+     */
+    public void setGameOver(boolean isGameOver) {
+        this.isGameOver = isGameOver;
+        if (isGameOver) {
+            System.out.println("🚫 [InputHandler] Game Over state set manually - Inputs blocked");
         }
     }
 }

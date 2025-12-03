@@ -151,9 +151,13 @@ public class PopupManager {
      */
     private void setOverlayVisibility(VBox overlay, boolean visible) {
         Platform.runLater(() -> {
+            System.out.println("🎯 [PopupManager] setOverlayVisibility - overlay: " + (overlay != null ? "OK" : "NULL") + ", visible: " + visible);
             if (overlay != null) {
                 overlay.setVisible(visible);
                 overlay.setManaged(visible);
+                System.out.println("✅ [PopupManager] Overlay visibility set to: " + visible);
+            } else {
+                System.err.println("❌ [PopupManager] Overlay is NULL - cannot set visibility!");
             }
         });
     }
@@ -192,16 +196,24 @@ public class PopupManager {
      * @param title 팝업 제목 (예: "GAME OVER", "YOU WIN", "YOU LOSE")
      */
     public void showGameOverPopup(long finalScore, boolean isItemMode, seoultech.se.core.model.enumType.Difficulty difficulty, String title) {
+        System.out.println("🎯 [PopupManager] showGameOverPopup called - Title: " + title + ", Score: " + finalScore);
+        System.out.println("🔍 [PopupManager] gameOverOverlay: " + (gameOverOverlay != null ? "OK" : "NULL"));
+        System.out.println("🔍 [PopupManager] gameOverTitleLabel: " + (gameOverTitleLabel != null ? "OK" : "NULL"));
+        System.out.println("🔍 [PopupManager] finalScoreLabel: " + (finalScoreLabel != null ? "OK" : "NULL"));
+
         this.currentScore = finalScore;
         this.isItemMode = isItemMode;
         this.difficulty = difficulty;
 
         Platform.runLater(() -> {
+            System.out.println("🎯 [PopupManager] Inside Platform.runLater - updating labels");
             if (finalScoreLabel != null) {
                 finalScoreLabel.setText(String.valueOf(finalScore));
+                System.out.println("✅ [PopupManager] finalScoreLabel updated");
             }
             if (gameOverTitleLabel != null) {
                 gameOverTitleLabel.setText(title);
+                System.out.println("✅ [PopupManager] gameOverTitleLabel updated to: " + title);
                 // 승리 시 녹색, 패배 시 빨간색 등 스타일 변경 가능
                 if ("YOU WIN".equals(title)) {
                     gameOverTitleLabel.setStyle("-fx-text-fill: #44FF44;"); // Green
@@ -212,22 +224,28 @@ public class PopupManager {
                 }
             }
         });
-        
+
+        System.out.println("🔍 [PopupManager] Loading scores...");
         List<ScoreRankDto> scores = scoreService.getTopScores(isItemMode, 10);
+        System.out.println("✅ [PopupManager] Scores loaded: " + scores.size() + " entries");
         loadScores(scores);
 
         boolean isTopTen = scores.size() < 10 || scores.stream().anyMatch(s -> currentScore > s.getScore());
         if (isTopTen) {
+            System.out.println("🏆 [PopupManager] Player is in top 10!");
             Platform.runLater(() -> {
                 if (nameInputBox != null && usernameInput != null) {
                     nameInputBox.setVisible(true);
                     nameInputBox.setManaged(true);
                     usernameInput.requestFocus();
+                    System.out.println("✅ [PopupManager] Name input box shown");
                 }
             });
         }
-        
+
+        System.out.println("🔍 [PopupManager] About to call setOverlayVisibility...");
         setOverlayVisibility(gameOverOverlay, true);
+        System.out.println("✅ [PopupManager] showGameOverPopup completed");
     }
     
     /**
