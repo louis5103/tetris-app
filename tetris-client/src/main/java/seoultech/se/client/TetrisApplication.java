@@ -70,7 +70,7 @@ public class TetrisApplication extends Application {
         SettingsService settingsService = springContext.getBean(SettingsService.class);
         settingsService.setPrimaryStage(primaryStage);
 
-        FXMLLoader loader = new FXMLLoader(TetrisApplication.class.getResource("/view/main-view.fxml"));
+        FXMLLoader loader = new FXMLLoader(TetrisApplication.class.getResource("/view/login-view.fxml"));
         loader.setControllerFactory(springContext::getBean);
         Parent root = loader.load();
         Scene scene = new Scene(root, settingsService.getStageWidth(), settingsService.getStageHeight());

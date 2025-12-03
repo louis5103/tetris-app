@@ -1,14 +1,15 @@
 # ===============================================================================
 # Tetris Server Module - WebSocket Multiplayer Game Server
-# 멀티플레이 테트리스 게임 서버 설정
+# 멀티플레이 테트리스 게임 서버 설정 (DEV Profile)
 # ===============================================================================
 
 spring:
+  config:
+    activate:
+      on-profile: dev
+  
   application:
     name: ${SPRING_APPLICATION_NAME:Tetris Multiplayer Server}
-
-  profiles:
-    active: ${SPRING_PROFILES_ACTIVE:dev}
 
   # ===============================================================================
   # Database Configuration (MySQL)

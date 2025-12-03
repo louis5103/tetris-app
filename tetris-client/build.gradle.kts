@@ -98,13 +98,16 @@ tasks.bootJar {
     archiveBaseName.set("tetris-desktop-app-java21")
     enabled = true
     
+    // application-desktop-client.yml만 사용 (application.yml은 dev profile 전용으로 변경됨)
+    
     // Spring Boot 자동 Main-Class 설정 사용
     // Spring Boot가 자동으로 JarLauncher를 Main-Class로 설정
     manifest {
         attributes(
             "Implementation-Title" to "Tetris Desktop Game (Java 21 LTS)",
             "Implementation-Version" to project.version,
-            "Implementation-Vendor" to "SeoulTech SE Team 9"
+            "Implementation-Vendor" to "SeoulTech SE Team 9",
+            "Spring-Boot-Active-Profiles" to "desktop-client"
         )
     }
 }
@@ -147,7 +150,7 @@ tasks.register("dev") {
     dependsOn("bootRun")
 }
 
-// 🎮 배포용 태스크
+// 🎮 배포용 태스크 (JAR)
 tasks.register("dist") {
     group = "distribution" 
     description = "Create distribution package for Java 21 LTS desktop application"
@@ -157,5 +160,79 @@ tasks.register("dist") {
         println("🎮 Tetris Desktop Application (Java 21 LTS) JAR created:")
         println("   Location: ${tasks.bootJar.get().archiveFile.get().asFile}")
         println("   Run with: java -jar ${tasks.bootJar.get().archiveFile.get().asFile.name}")
+    }
+}
+
+// 📦 네이티브 패키징 태스크 (DMG for macOS)
+tasks.register<Exec>("packageApp") {
+    group = "distribution"
+    description = "Create native installer (DMG for macOS) using jpackage"
+    dependsOn("bootJar", ":tetris-server:bootJar")
+    
+    doFirst {
+        val jarFile = tasks.bootJar.get().archiveFile.get().asFile
+        val appName = "TetrisGame"
+        val appVersion = project.version.toString().replace("-SNAPSHOT", "")
+        val outputDir = file("${project.buildDir}/dist")
+        val inputDir = file("${project.buildDir}/jpackage-input")
+        
+        // 기존 DMG 파일 삭제 (덮어쓰기)
+        val existingDmg = file("${outputDir}/${appName}-${appVersion}.dmg")
+        if (existingDmg.exists()) {
+            println("🗑️  Deleting existing DMG: ${existingDmg.name}")
+            existingDmg.delete()
+        }
+        
+        // 입력 디렉토리 생성 및 정리
+        inputDir.deleteRecursively()
+        inputDir.mkdirs()
+        
+        // 출력 디렉토리 생성
+        outputDir.mkdirs()
+        
+        // Client JAR 복사 (메인 JAR)
+        copy {
+            from(jarFile)
+            into(inputDir)
+        }
+        
+        // Server JAR 복사 (같은 디렉토리에 포함)
+        val serverProject = project.project(":tetris-server")
+        val serverJarTask = serverProject.tasks.named("bootJar", org.springframework.boot.gradle.tasks.bundling.BootJar::class.java)
+        val serverJar = serverJarTask.get().archiveFile.get().asFile
+        copy {
+            from(serverJar)
+            into(inputDir)
+            // 서버 JAR 파일명을 명확하게 유지
+            rename { "tetris-server.jar" }
+        }
+        
+        println("📦 Packaging files:")
+        println("   Client: ${jarFile.name}")
+        println("   Server: tetris-server.jar (from ${serverJar.name})")
+        
+        commandLine(
+            "jpackage",
+            "--input", inputDir.absolutePath,
+            "--name", appName,
+            "--main-jar", jarFile.name,
+            "--main-class", "org.springframework.boot.loader.launch.JarLauncher",
+            "--type", "dmg",
+            "--app-version", appVersion,
+            "--dest", outputDir.absolutePath,
+            "--vendor", "SeoulTech SE Team 9",
+            "--copyright", "Copyright © 2024 SeoulTech SE Team 9",
+            "--java-options", "-Xmx2048m",
+            "--java-options", "--add-opens=javafx.graphics/com.sun.javafx.application=ALL-UNNAMED",
+            "--java-options", "--add-opens=javafx.controls/com.sun.javafx.scene.control=ALL-UNNAMED",
+            "--java-options", "--add-opens=java.base/java.lang=ALL-UNNAMED",
+            "--java-options", "--add-opens=java.base/java.util.concurrent=ALL-UNNAMED"
+        )
+    }
+    
+    doLast {
+        println("🎮 Native installer created:")
+        println("   Location: ${project.buildDir}/dist/")
+        println("   Type: DMG (macOS)")
     }
 }

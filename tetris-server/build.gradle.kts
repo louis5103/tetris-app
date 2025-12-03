@@ -47,6 +47,7 @@ dependencies {
     // JPA & Database
     implementation(libs.backend.spring.boot.starter.data.jpa)
     runtimeOnly("com.mysql:mysql-connector-j")
+    runtimeOnly(libs.backend.h2.database)  // H2 for embedded-server profile
 
     // Security & JWT
     implementation("org.springframework.boot:spring-boot-starter-security")
@@ -86,6 +87,11 @@ tasks.bootJar {
     archiveBaseName.set("tetris-server-standalone")
     enabled = true
     archiveClassifier.set("boot")
+    
+    // application-embedded-server.yml 또는 application-dev.yml 사용 (profile 기반)
+    
+    // MANIFEST에 프로파일을 설정하지 않음 (명령줄 인자로만 제어)
+    // 이렇게 하면 EmbeddedServerManager의 -Dspring.profiles.active가 작동함
 }
 
 // 테스트 설정

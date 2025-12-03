@@ -1,0 +1,130 @@
+# =============================================================================
+# Desktop Client Profile - H2 Database Configuration
+# =============================================================================
+spring:
+  config:
+    import: 
+      - classpath:game-modes.yml
+      - classpath:config/client/setting.yml
+  
+  application:
+    name: Tetris Desktop Game
+  
+  # Banner 설정
+  main:
+    banner-mode: console
+  banner:
+    location: classpath:banner.txt
+  
+  # Internationalization
+  messages:
+    basename: messages
+    encoding: UTF-8
+  
+  # H2 Database 설정 (Desktop Client용)
+  datasource:
+    url: jdbc:h2:file:~/.tetris/game_data;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: 
+  
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+  
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+
+# =============================================================================
+# JavaFX 설정
+# =============================================================================
+javafx:
+  enabled: true
+  preloader:
+    enabled: false
+  stage:
+    resizable: false
+    always-on-top: false
+
+# =============================================================================
+# 테트리스 게임 설정
+# =============================================================================
+tetris:
+  # 7-bag 시스템 설정
+  bag-system:
+    bag-size: 7
+    easy-i-block-add-chance: 0.2
+    hard-i-block-remove-chance: 0.2
+  
+  # 애니메이션 설정
+  animation:
+    line-clear:
+      flash-count: 3
+      flash-duration-ms: 200
+      fade-duration-ms: 300
+      enabled: true
+  
+  # 게임 기본 설정
+  game:
+    initial-level: 1
+    max-level: 15
+    lines-per-level: 10
+    initial-drop-interval: 1000
+  
+  # 사운드 설정
+  sound:
+    enabled: true
+    volume: 80
+  
+  # UI 설정
+  ui:
+    theme: dark
+    color-mode: colorModeDefault
+    screen-size: screenSizeM
+    stage-width: 500
+    stage-height: 700
+    difficulty: difficultyNormal
+    animation:
+      enabled: true
+    show-grid: true
+    show-ghost-piece: true
+  
+  # 점수 설정
+  score:
+    single-line: 100
+    double-line: 300
+    triple-line: 500
+    tetris-line: 800
+  
+  # 저장 설정
+  save:
+    auto-save: true
+    location: ${user.home}/.tetris/
+
+  # 멀티플레이 서버 설정
+  server:
+    base-url: http://localhost:8090
+    websocket-endpoint: /ws-game
+
+  # 인증 서버 설정
+  auth:
+    base-url: http://localhost:8090
+    user-endpoint: /tetris/users
+
+# Logging Settings
+logging:
+  level:
+    root: INFO
+    seoultech.se: DEBUG
+    seoultech.se.client: INFO
+    seoultech.se.backend: INFO
+    seoultech.se.core: INFO
+    org.springframework: INFO
+    org.hibernate: WARN
