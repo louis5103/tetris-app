@@ -112,6 +112,7 @@
                 <Label text="PAUSED" styleClass="popup-title"/>
                 <Button text="Resume" styleClass="menu-button-middle" onAction="#handleResume"/>
                 <Button text="Quit" styleClass="menu-button-middle" onAction="#handleQuit"/>
+                <Button text="Exit" styleClass="menu-button-middle" onAction="#handleExit"/>
             </VBox>
         </VBox>
     </StackPane>
