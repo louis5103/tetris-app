@@ -47,6 +47,16 @@
     -fx-padding: 1.667em;
 }
 
+/* 플레이어 보드 컨테이너 (내 보드 전체 영역) */
+.player-board-container {
+    -fx-border-color: #666666;
+    -fx-border-width: 0.167em;
+    -fx-background-color: rgba(30, 30, 30, 0.3);
+    -fx-padding: 0.833em;
+    -fx-background-radius: 0.417em;
+    -fx-border-radius: 0.417em;
+}
+
 /* Hold 영역 */
 .hold-container {
     -fx-spacing: 0.833em;
@@ -361,6 +371,13 @@
     -fx-hgap: 0;
     -fx-vgap: 0;
     -fx-grid-lines-visible: false;
+    /* 4x4 그리드 크기 고정 (PREVIEW_CELL_SIZE = 20px) */
+    -fx-pref-width: 90px;  /* 4 * 20 + padding + border */
+    -fx-pref-height: 90px;
+    -fx-min-width: 90px;
+    -fx-min-height: 90px;
+    -fx-max-width: 90px;
+    -fx-max-height: 90px;
 }
 
 /* ========== 콤보 라벨 (좌측) ========== */

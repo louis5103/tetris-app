@@ -19,8 +19,10 @@ import seoultech.se.core.GameState;
  * 사용:
  * - 멀티플레이 모드에서만 활성화
  * - GameController가 GameState를 전달하면 렌더링
+ *
+ * 레이아웃: 메인 보드와 동일한 구조 (Hold - Board - Next)
  */
-public class OpponentBoardView extends VBox {
+public class OpponentBoardView extends javafx.scene.layout.HBox {
     private static final double CELL_SIZE = UIConstants.CELL_SIZE; // 메인 보드와 동일한 크기
     private static final int BOARD_WIDTH = 10;
     private static final int BOARD_HEIGHT = 20;
@@ -42,58 +44,94 @@ public class OpponentBoardView extends VBox {
      * 생성자
      */
     public OpponentBoardView() {
-        super(5); // spacing
-        this.setStyle("-fx-padding: 5; -fx-border-color: #444; -fx-border-width: 2; -fx-background-color: #1a1a1a;");
+        super(10); // spacing between Hold, Board, Next
+        this.setStyle("-fx-padding: 10; -fx-border-color: #666666; -fx-border-width: 2; -fx-background-color: rgba(30, 30, 30, 0.3); -fx-background-radius: 5; -fx-border-radius: 5;");
+        this.setAlignment(javafx.geometry.Pos.CENTER);
 
         // 타이틀
         titleLabel = new Label("OPPONENT");
-        titleLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: #FFA500;");
+        titleLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #FFA500;");
 
         // 보드 GridPane
         boardGrid = new GridPane();
         boardGrid.setHgap(0);
         boardGrid.setVgap(0);
-        
+
         // Hold & Next GridPanes
         holdGrid = new GridPane();
         holdGrid.setHgap(0);
         holdGrid.setVgap(0);
-        
+
         nextGrid = new GridPane();
         nextGrid.setHgap(0);
         nextGrid.setVgap(0);
-        
-        // 미리보기 영역 레이아웃 (HBox)
-        javafx.scene.layout.HBox previewBox = new javafx.scene.layout.HBox(10);
-        previewBox.setAlignment(javafx.geometry.Pos.CENTER);
-        
-        VBox holdBox = new VBox(2, new Label("HOLD"), holdGrid);
-        holdBox.setAlignment(javafx.geometry.Pos.CENTER);
-        holdBox.getChildren().get(0).setStyle("-fx-text-fill: white; -fx-font-size: 9px;");
-        
-        VBox nextBox = new VBox(2, new Label("NEXT"), nextGrid);
-        nextBox.setAlignment(javafx.geometry.Pos.CENTER);
-        nextBox.getChildren().get(0).setStyle("-fx-text-fill: white; -fx-font-size: 9px;");
-        
-        previewBox.getChildren().addAll(holdBox, nextBox);
 
-        // 정보 레이블
-        scoreLabel = new Label("Score: 0");
-        scoreLabel.setStyle("-fx-font-size: 10px; -fx-text-fill: #FFFFFF;");
+        // 정보 레이블 (CSS 스타일 클래스 적용)
+        scoreLabel = new Label("0");
+        scoreLabel.getStyleClass().add("info-label-value");
 
-        levelLabel = new Label("Level: 1");
-        levelLabel.setStyle("-fx-font-size: 10px; -fx-text-fill: #FFFFFF;");
+        levelLabel = new Label("1");
+        levelLabel.getStyleClass().add("info-label-value");
 
-        linesLabel = new Label("Lines: 0");
-        linesLabel.setStyle("-fx-font-size: 10px; -fx-text-fill: #FFFFFF;");
+        linesLabel = new Label("0");
+        linesLabel.getStyleClass().add("info-label-value");
 
-        // VBox에 추가 (Preview -> Board -> Info)
-        this.getChildren().addAll(titleLabel, previewBox, boardGrid, scoreLabel, levelLabel, linesLabel);
+        // 좌측 Hold 영역 (메인 보드와 동일한 구조)
+        Label holdLabel = new Label("HOLD");
+        holdLabel.setStyle("-fx-text-fill: white; -fx-font-size: 10px; -fx-font-weight: bold;");
+        VBox holdBox = new VBox(5, holdLabel, holdGrid);
+        holdBox.setAlignment(javafx.geometry.Pos.TOP_CENTER);
+        holdBox.setStyle("-fx-padding: 5;");
+
+        // 중앙 보드 영역 (타이틀 + 보드)
+        VBox centerBox = new VBox(5, titleLabel, boardGrid);
+        centerBox.setAlignment(javafx.geometry.Pos.TOP_CENTER);
+
+        // 우측 정보 패널 (Next + 점수/레벨/라인)
+        Label nextLabel = new Label("NEXT");
+        nextLabel.setStyle("-fx-text-fill: white; -fx-font-size: 10px; -fx-font-weight: bold;");
+
+        // 점수/레벨/라인 섹션 (제목 + 값)
+        VBox scoreSection = new VBox(5);
+        scoreSection.setAlignment(javafx.geometry.Pos.CENTER);
+        Label scoreTitleLabel = new Label("SCORE");
+        scoreTitleLabel.getStyleClass().add("info-label-title");
+        scoreSection.getChildren().addAll(scoreTitleLabel, scoreLabel);
+
+        VBox levelSection = new VBox(5);
+        levelSection.setAlignment(javafx.geometry.Pos.CENTER);
+        Label levelTitleLabel = new Label("LEVEL");
+        levelTitleLabel.getStyleClass().add("info-label-title");
+        levelSection.getChildren().addAll(levelTitleLabel, levelLabel);
+
+        VBox linesSection = new VBox(5);
+        linesSection.setAlignment(javafx.geometry.Pos.CENTER);
+        Label linesTitleLabel = new Label("LINES");
+        linesTitleLabel.getStyleClass().add("info-label-title");
+        linesSection.getChildren().addAll(linesTitleLabel, linesLabel);
+
+        VBox infoPanel = new VBox(20);
+        infoPanel.setAlignment(javafx.geometry.Pos.TOP_CENTER);
+        infoPanel.setStyle("-fx-padding: 5;");
+
+        VBox nextSection = new VBox(5);
+        nextSection.setAlignment(javafx.geometry.Pos.CENTER);
+        nextSection.getChildren().addAll(nextLabel, nextGrid);
+
+        infoPanel.getChildren().addAll(
+            nextSection,
+            scoreSection,
+            levelSection,
+            linesSection
+        );
+
+        // HBox에 추가 (Hold - Board - Next/Info)
+        this.getChildren().addAll(holdBox, centerBox, infoPanel);
 
         // 초기화
         initializeBoard();
 
-        System.out.println("✅ OpponentBoardView created with Hold/Next support");
+        System.out.println("✅ OpponentBoardView created with main board layout structure");
     }
 
     /**
@@ -174,9 +212,9 @@ public class OpponentBoardView extends VBox {
             boardRenderer.drawNextPiece(opponentState.getNextQueue()[0]);
         }
 
-        // 정보 업데이트
-        scoreLabel.setText("Score: " + opponentState.getScore());
-        levelLabel.setText("Level: " + opponentState.getLevel());
-        linesLabel.setText("Lines: " + opponentState.getLinesCleared());
+        // 정보 업데이트 (값만 표시, 제목은 별도 레이블로 처리됨)
+        scoreLabel.setText(String.valueOf(opponentState.getScore()));
+        levelLabel.setText(String.valueOf(opponentState.getLevel()));
+        linesLabel.setText(String.valueOf(opponentState.getLinesCleared()));
     }
 }

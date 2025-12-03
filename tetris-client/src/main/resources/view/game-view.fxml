@@ -32,19 +32,21 @@
     
     <!-- 중앙: 게임 보드와 정보 -->
     <center>
-        <HBox styleClass="game-main-container" alignment="CENTER" BorderPane.alignment="CENTER">
-            
-            <!-- 왼쪽: Hold 영역 -->
-            <VBox styleClass="hold-container" alignment="TOP_CENTER">
-                <Label text="HOLD" styleClass="info-label-title" alignment="CENTER"/>
-                <GridPane fx:id="holdGridPane" 
-                         styleClass="preview-board"
-                         alignment="CENTER">
-                </GridPane>
-            </VBox>
-            
-            <!-- 게임 보드 (StackPane으로 오버레이 구현) -->
-            <VBox alignment="CENTER" spacing="10">
+        <HBox styleClass="game-main-container" alignment="CENTER" spacing="20" BorderPane.alignment="CENTER">
+
+            <!-- 내 보드 전체 (Hold - Board - Next/Info) -->
+            <HBox fx:id="myBoardContainer" styleClass="player-board-container" alignment="CENTER" spacing="10">
+                <!-- 왼쪽: Hold 영역 -->
+                <VBox styleClass="hold-container" alignment="TOP_CENTER">
+                    <Label text="HOLD" styleClass="info-label-title" alignment="CENTER"/>
+                    <GridPane fx:id="holdGridPane"
+                             styleClass="preview-board"
+                             alignment="CENTER">
+                    </GridPane>
+                </VBox>
+
+                <!-- 게임 보드 (StackPane으로 오버레이 구현) -->
+                <VBox alignment="CENTER" spacing="10">
                 <StackPane fx:id="gameStackPane">
                     <!-- 실제 테트리스 보드 (10x20 그리드) - 배경 -->
                     <GridPane fx:id="boardGridPane" 
@@ -179,8 +181,53 @@
                 <HBox fx:id="itemInventoryContainer" alignment="CENTER" styleClass="item-inventory-container">
                     <!-- ItemInventoryPanel이 동적으로 여기에 추가됨 -->
                 </HBox>
-            </VBox>
-            
+                </VBox>
+
+                <!-- 오른쪽: 게임 정보 -->
+                <VBox styleClass="info-panel" alignment="TOP_CENTER">
+                    <!-- Next 영역 -->
+                    <VBox styleClass="info-section" alignment="CENTER">
+                        <Label text="NEXT" styleClass="info-label-title" alignment="CENTER"/>
+                        <GridPane fx:id="nextGridPane"
+                                 styleClass="preview-board"
+                                 alignment="CENTER">
+                        </GridPane>
+                    </VBox>
+
+                    <!-- 점수 -->
+                    <VBox styleClass="info-section" alignment="CENTER">
+                        <Label text="SCORE" styleClass="info-label-title" alignment="CENTER"/>
+                        <Label fx:id="scoreLabel" text="0" styleClass="info-label-value" alignment="CENTER"/>
+                    </VBox>
+
+                    <!-- 레벨 -->
+                    <VBox styleClass="info-section" alignment="CENTER">
+                        <Label text="LEVEL" styleClass="info-label-title" alignment="CENTER"/>
+                        <Label fx:id="levelLabel" text="1" styleClass="info-label-value" alignment="CENTER"/>
+                    </VBox>
+
+                    <!-- 지운 줄 수 -->
+                    <VBox styleClass="info-section" alignment="CENTER">
+                        <Label text="LINES" styleClass="info-label-title" alignment="CENTER"/>
+                        <Label fx:id="linesLabel" text="0" styleClass="info-label-value" alignment="CENTER"/>
+                    </VBox>
+
+                    <!-- 조작법 안내 -->
+                    <VBox styleClass="controls-section" alignment="CENTER">
+                        <Label text="CONTROLS" styleClass="info-label-title"/>
+                        <VBox styleClass="controls-info">
+                            <Label text="← → : Move" styleClass="control-text"/>
+                            <Label text="↓ : Soft Drop" styleClass="control-text"/>
+                            <Label text="↑ : Rotate CW" styleClass="control-text"/>
+                            <Label text="Z : Rotate CCW" styleClass="control-text"/>
+                            <Label text="Space : Hard Drop" styleClass="control-text"/>
+                            <Label text="C : Hold" styleClass="control-text"/>
+                            <Label text="P : Pause" styleClass="control-text"/>
+                        </VBox>
+                    </VBox>
+                </VBox>
+            </HBox>
+
             <!-- 상대방 보드 컨테이너 (멀티플레이만, 기본 숨김) -->
             <HBox fx:id="opponentContainer"
                   alignment="CENTER"
@@ -189,49 +236,6 @@
                 <!-- OpponentBoardView가 동적으로 여기에 추가됨 -->
             </HBox>
 
-            <!-- 오른쪽: 게임 정보 -->
-            <VBox styleClass="info-panel" alignment="TOP_CENTER">
-                <!-- Next 영역 -->
-                <VBox styleClass="info-section" alignment="CENTER">
-                    <Label text="NEXT" styleClass="info-label-title" alignment="CENTER"/>
-                    <GridPane fx:id="nextGridPane"
-                             styleClass="preview-board"
-                             alignment="CENTER">
-                    </GridPane>
-                </VBox>
-                
-                <!-- 점수 -->
-                <VBox styleClass="info-section" alignment="CENTER">
-                    <Label text="SCORE" styleClass="info-label-title" alignment="CENTER"/>
-                    <Label fx:id="scoreLabel" text="0" styleClass="info-label-value" alignment="CENTER"/>
-                </VBox>
-                
-                <!-- 레벨 -->
-                <VBox styleClass="info-section" alignment="CENTER">
-                    <Label text="LEVEL" styleClass="info-label-title" alignment="CENTER"/>
-                    <Label fx:id="levelLabel" text="1" styleClass="info-label-value" alignment="CENTER"/>
-                </VBox>
-                
-                <!-- 지운 줄 수 -->
-                <VBox styleClass="info-section" alignment="CENTER">
-                    <Label text="LINES" styleClass="info-label-title" alignment="CENTER"/>
-                    <Label fx:id="linesLabel" text="0" styleClass="info-label-value" alignment="CENTER"/>
-                </VBox>
-                
-                <!-- 조작법 안내 -->
-                <VBox styleClass="controls-section" alignment="CENTER">
-                    <Label text="CONTROLS" styleClass="info-label-title"/>
-                    <VBox styleClass="controls-info">
-                        <Label text="← → : Move" styleClass="control-text"/>
-                        <Label text="↓ : Soft Drop" styleClass="control-text"/>
-                        <Label text="↑ : Rotate CW" styleClass="control-text"/>
-                        <Label text="Z : Rotate CCW" styleClass="control-text"/>
-                        <Label text="Space : Hard Drop" styleClass="control-text"/>
-                        <Label text="C : Hold" styleClass="control-text"/>
-                        <Label text="P : Pause" styleClass="control-text"/>
-                    </VBox>
-                </VBox>
-            </VBox>
         </HBox>
     </center>
 </BorderPane>
