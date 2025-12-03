@@ -190,6 +190,41 @@ public class GameModeConfigFactory {
             
             .build();
     }
+
+    public GameModeConfig createTimeAttackConfig(Difficulty difficulty) {
+        // Difficulty 배율 적용
+        DifficultyMultiplier multiplier = getDifficultyMultiplier(difficulty);
+        
+        return GameModeConfig.builder()
+            .gameplayType(GameplayType.TIME_ATTACK)
+            .difficulty(difficulty)
+            
+            // 회전 시스템
+            .srsEnabled(classicSrsEnabled)
+            .rotation180Enabled(classicRotation180Enabled)
+            
+            // 기능 활성화
+            .hardDropEnabled(classicHardDropEnabled)
+            .holdEnabled(classicHoldEnabled)
+            .ghostPieceEnabled(classicGhostPieceEnabled)
+            
+            // 속도 설정 (Difficulty 배율 적용)
+            .dropSpeedMultiplier(classicDropSpeedMultiplier * multiplier.speedMultiplier)
+            .softDropSpeed(classicSoftDropSpeed)
+            
+            // 락 시스템 (Difficulty 배율 적용)
+            .lockDelay((int)(classicLockDelay * multiplier.lockDelayMultiplier))
+            .maxLockResets(classicMaxLockResets)
+            
+            // 아이템 없음 (Time Attack 모드)
+            .linesPerItem(0)
+            .itemDropRate(0.0)
+            .maxInventorySize(0)
+            .itemAutoUse(false)
+            .enabledItemTypes(java.util.Collections.emptySet())
+            
+            .build();
+    }
     
     /**
      * GameplayType + Difficulty → GameModeConfig
@@ -202,6 +237,7 @@ public class GameModeConfigFactory {
         return switch (gameplayType) {
             case CLASSIC -> createClassicConfig(difficulty);
             case ARCADE -> createArcadeConfig(difficulty);
+            case TIME_ATTACK -> createTimeAttackConfig(difficulty);
         };
     }
     
