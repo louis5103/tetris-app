@@ -197,10 +197,6 @@ public class ClassicGameEngine implements GameEngine {
      */
     @Override
     public GameState tryRotate(GameState state, RotationDirection direction, boolean srsEnabled) {
-        // O 블록: 회전해도 모양이 같음 - 원본 상태 반환
-        if(state.getCurrentTetromino().getType() == TetrominoType.O) {
-            return state;
-        }
         
         // Phase 4: 무게추는 회전 불가
         if(state.getCurrentTetromino().getType() == TetrominoType.WEIGHT_BOMB) {

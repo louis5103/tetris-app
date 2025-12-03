@@ -273,6 +273,27 @@ public class BoardRenderer {
         // 아이템 블록 여부 확인
         boolean isItemBlock = gameState.getCurrentItemType() != null;
         seoultech.se.core.engine.item.ItemType itemType = gameState.getCurrentItemType();
+
+        int markerIndex = -1;
+        if (isItemBlock) {
+            markerIndex = tetromino.getItemMarkerBlockIndex();
+            if (tetromino.getType() == TetrominoType.O) {
+                int rotations = tetromino.getRotationState().ordinal();
+                int initialRow = markerIndex / 2;
+                int initialCol = markerIndex % 2;
+                
+                int rotatedRow = initialRow;
+                int rotatedCol = initialCol;
+        
+                for (int i = 0; i < rotations; i++) {
+                    int temp = rotatedRow;
+                    rotatedRow = rotatedCol;
+                    rotatedCol = 1 - temp;
+                }
+                markerIndex = rotatedRow * 2 + rotatedCol;
+            }
+        }
+        int blockCount = 0;
         
         for (int row = 0; row < shape.length; row++) {
             for (int col = 0; col < shape[0].length; col++) {
@@ -285,14 +306,12 @@ public class BoardRenderer {
                         
                         Rectangle rect = cellRectangles[absoluteY][absoluteX];
                         
-                        // 아이템이 있는 경우 pivot 블록에만 아이템 마커 표시
-                        // ✅ WEIGHT_BOMB는 테트로미노 전체가 아이템이므로 마커 표시 제외
-                        boolean isPivotBlock = (row == pivotY && col == pivotX);
+                        // 아이템이 있는 경우 올바른 블록에 아이템 마커 표시
                         boolean isWeightBomb = (tetromino.getType() == TetrominoType.WEIGHT_BOMB);
-                        boolean shouldShowItemMarker = isItemBlock && isPivotBlock && !isWeightBomb;
+                        boolean shouldShowItemMarker = isItemBlock && (blockCount == markerIndex) && !isWeightBomb;
                         
                         if (shouldShowItemMarker) {
-                            // ✨ 수정: pivot 블록에는 배경색 + 아이템 마커 오버레이
+                            // ✨ 수정: 마커 블록에는 배경색 + 아이템 마커 오버레이
                             // 배경색 먼저 적용
                             rect.setFill(ColorMapper.toJavaFXColor(color));
                             rect.getStyleClass().removeAll(UIConstants.ALL_TETROMINO_COLOR_CLASSES);
@@ -320,6 +339,7 @@ public class BoardRenderer {
                             removeItemMarkerOverlay(rect);
                         }
                     }
+                    blockCount++;
                 }
             }
         }

@@ -15,7 +15,7 @@ public interface ScoreRepository extends JpaRepository<ScoreEntity, Long> {
                 "    DENSE_RANK() OVER (ORDER BY score DESC) as `rank`, " +
                 "    name, " +          
                 "    score, " +
-                "    game_mode as gameMode, " +
+                "    difficulty as difficulty, " +
                 "    is_item_mode as itemMode, " + 
                 "    created_at as createdAt " + 
                 "FROM scores " +     

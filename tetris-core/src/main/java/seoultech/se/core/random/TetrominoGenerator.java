@@ -45,6 +45,11 @@ public class TetrominoGenerator {
      * 현재 가방 (남은 블록들)
      */
     private List<TetrominoType> currentBag;
+
+    /**
+     * 다음 가방 (미리보기 및 리필용)
+     */
+    private List<TetrominoType> nextBag;
     
     /**
      * 가방 크기 (기본 7개)
@@ -70,10 +75,8 @@ public class TetrominoGenerator {
     public TetrominoGenerator(RandomGenerator random, Difficulty difficulty) {
         this.random = random;
         this.difficulty = difficulty;
-        this.currentBag = new ArrayList<>();
-        
-        // 첫 번째 가방 생성
-        refillBag();
+        this.currentBag = createNewBag();
+        this.nextBag = createNewBag();
     }
     
     /**
@@ -84,7 +87,7 @@ public class TetrominoGenerator {
      * 
      * @return 다음 테트로미노 타입
      */
-    public TetrominoType next() {
+    public synchronized TetrominoType next() {
         // 가방이 비었으면 리필
         if (currentBag.isEmpty()) {
             refillBag();
@@ -93,96 +96,15 @@ public class TetrominoGenerator {
         // 가방에서 첫 번째 블록 꺼내기
         return currentBag.remove(0);
     }
-    
-    /**
-     * 가방 리필
-     * 
-     * <p>7개의 블록을 가방에 넣고 섞습니다.
-     * 난이도에 따라 I형 블록을 추가하거나 제거합니다.</p>
-     */
+
     private void refillBag() {
-        currentBag.clear();
-        
-        // 기본 7개 블록 추가
-        currentBag.add(TetrominoType.I);
-        currentBag.add(TetrominoType.O);
-        currentBag.add(TetrominoType.T);
-        currentBag.add(TetrominoType.S);
-        currentBag.add(TetrominoType.Z);
-        currentBag.add(TetrominoType.J);
-        currentBag.add(TetrominoType.L);
-        
-        // 난이도별 조정
-        adjustBagForDifficulty();
-        
-        // 가방 섞기
-        Collections.shuffle(currentBag, random.getRandom());
+        this.currentBag = new ArrayList<>(this.nextBag);
+        this.nextBag = createNewBag();
     }
-    
-    /**
-     * 난이도에 따라 가방 조정
-     * 
-     * <p>Easy: 20% 확률로 I형 블록 추가</p>
-     * <p>Hard: 20% 확률로 I형 블록 제거</p>
-     */
-    private void adjustBagForDifficulty() {
-        switch (difficulty) {
-            case EASY:
-                // 20% 확률로 I형 블록 추가
-                if (random.nextBoolean(EASY_I_BLOCK_ADD_CHANCE)) {
-                    currentBag.add(TetrominoType.I);
-                    // 디버그 로그 (선택사항)
-                    // System.out.println("🔵 [Easy] I-block added to bag");
-                }
-                break;
-                
-            case HARD:
-                // 20% 확률로 I형 블록 제거
-                if (random.nextBoolean(HARD_I_BLOCK_REMOVE_CHANCE)) {
-                    currentBag.remove(TetrominoType.I);
-                    // 디버그 로그 (선택사항)
-                    // System.out.println("🔴 [Hard] I-block removed from bag");
-                }
-                break;
-                
-            case NORMAL:
-            default:
-                // 조정 없음
-                break;
-        }
-    }
-    
-    /**
-     * 미리보기용 다음 블록들 생성
-     * 
-     * <p>현재 가방을 수정하지 않고 미리보기만 제공합니다.</p>
-     * 
-     * @param count 미리보기할 블록 개수
-     * @return 다음 블록들 (순서대로)
-     */
-    public List<TetrominoType> preview(int count) {
-        List<TetrominoType> preview = new ArrayList<>();
-        List<TetrominoType> tempBag = new ArrayList<>(currentBag);
-        
-        for (int i = 0; i < count; i++) {
-            if (tempBag.isEmpty()) {
-                // 임시로 새 가방 생성
-                tempBag = createNewBag();
-            }
-            preview.add(tempBag.remove(0));
-        }
-        
-        return preview;
-    }
-    
-    /**
-     * 새 가방 생성 (미리보기용)
-     * 
-     * @return 새로 생성된 가방
-     */
+
     private List<TetrominoType> createNewBag() {
         List<TetrominoType> bag = new ArrayList<>();
-        
+
         // 기본 7개 블록
         bag.add(TetrominoType.I);
         bag.add(TetrominoType.O);
@@ -191,12 +113,43 @@ public class TetrominoGenerator {
         bag.add(TetrominoType.Z);
         bag.add(TetrominoType.J);
         bag.add(TetrominoType.L);
-        
-        // 난이도 조정은 refillBag()에서만 적용
-        // preview는 기본 7-bag만 사용
-        
+
+        // 난이도에 따라 가방 조정
+        adjustBagForDifficulty(bag);
+
         Collections.shuffle(bag, random.getRandom());
         return bag;
+    }
+
+    private void adjustBagForDifficulty(List<TetrominoType> bag) {
+        switch (difficulty) {
+            case EASY:
+                // 20% 확률로 I형 블록 추가
+                if (random.nextBoolean(EASY_I_BLOCK_ADD_CHANCE)) {
+                    bag.add(TetrominoType.I);
+                }
+                break;
+
+            case HARD:
+                // 20% 확률로 I형 블록 제거
+                if (random.nextBoolean(HARD_I_BLOCK_REMOVE_CHANCE)) {
+                    bag.remove(TetrominoType.I);
+                }
+                break;
+
+            case NORMAL:
+            default:
+                // 조정 없음
+                break;
+        }
+    }
+
+    public synchronized List<TetrominoType> preview(int count) {
+        List<TetrominoType> upcoming = new ArrayList<>(currentBag);
+        upcoming.addAll(nextBag);
+
+        int previewSize = Math.min(count, upcoming.size());
+        return new ArrayList<>(upcoming.subList(0, previewSize));
     }
     
     /**

@@ -426,25 +426,31 @@ public class ArcadeGameEngine extends ClassicGameEngine {
             if (originalItemType == seoultech.se.core.engine.item.ItemType.WEIGHT_BOMB) {
                 // Skip marker
                 System.out.println("   - WEIGHT_BOMB: Skipping marker");
-            } else if (originalItemType == seoultech.se.core.engine.item.ItemType.LINE_CLEAR) {
-                // ✅ FIX: 테트로미노의 고정된 itemMarkerBlockIndex 사용
+            } else {
                 int markerIndex = state.getCurrentTetromino().getItemMarkerBlockIndex();
+
+                if (state.getCurrentTetromino().getType() == TetrominoType.O) {
+                    int rotations = state.getCurrentTetromino().getRotationState().ordinal();
+                    int initialRow = markerIndex / 2;
+                    int initialCol = markerIndex % 2;
+                    
+                    int rotatedRow = initialRow;
+                    int rotatedCol = initialCol;
+            
+                    for (int i = 0; i < rotations; i++) {
+                        int temp = rotatedRow;
+                        rotatedRow = rotatedCol;
+                        rotatedCol = 1 - temp;
+                    }
+                    markerIndex = rotatedRow * 2 + rotatedCol;
+                }
+
                 if (markerIndex >= 0 && markerIndex < blockPositions.size()) {
                     int[] markerPos = blockPositions.get(markerIndex);
                     newState.getGrid()[markerPos[0]][markerPos[1]].setItemMarker(originalItemType);
-                    System.out.println("   - LINE_CLEAR marker set at: (" + markerPos[0] + ", " + markerPos[1] + ") [FIXED index " + markerIndex + "/" + blockPositions.size() + "]");
+                    System.out.println("   - " + originalItemType + " marker set at: (" + markerPos[0] + ", " + markerPos[1] + ") [index " + markerIndex + "/" + blockPositions.size() + "]");
                 } else {
-                    System.out.println("   - ⚠️ WARNING: Invalid markerIndex " + markerIndex + " for " + blockPositions.size() + " blocks");
-                }
-            } else {
-                // Pivot Only
-                int pivotAbsX = lockedX;
-                int pivotAbsY = lockedY;
-                if (pivotAbsY >= 0 && pivotAbsY < newState.getBoardHeight() &&
-                    pivotAbsX >= 0 && pivotAbsX < newState.getBoardWidth() &&
-                    newState.getGrid()[pivotAbsY][pivotAbsX].isOccupied()) {
-                    newState.getGrid()[pivotAbsY][pivotAbsX].setItemMarker(originalItemType);
-                } else {
+                    System.out.println("   - ⚠️ WARNING: Invalid markerIndex " + markerIndex + " for " + blockPositions.size() + " blocks. Fallback to first block.");
                     int[] firstBlock = blockPositions.get(0);
                     newState.getGrid()[firstBlock[0]][firstBlock[1]].setItemMarker(originalItemType);
                 }

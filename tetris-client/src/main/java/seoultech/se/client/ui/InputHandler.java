@@ -167,7 +167,7 @@ public class InputHandler {
                 return new MoveCommand(Direction.RIGHT);
                 
             case MOVE_DOWN:
-                return new MoveCommand(Direction.DOWN);
+                return new MoveCommand(Direction.DOWN, true);
                 
             case ROTATE_CLOCKWISE:
                 return new RotateCommand(RotationDirection.CLOCKWISE);
