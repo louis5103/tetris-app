@@ -171,20 +171,30 @@ public class NetworkGameService {
                 System.out.println("🎮 [P2P Guest] Waiting for countdown from Host...");
             }
         } else if ("COUNTDOWN".equals(packet.getType())) {
-            // 카운트다운 패킷 수신 (Guest만 처리)
-            if (!isHost && packet.getCountdown() != null) {
+            // 카운트다운 패킷 수신
+            if (packet.getCountdown() != null) {
                 int count = packet.getCountdown();
-                System.out.println("⏱️ [P2P Guest] Countdown received: " + count);
+                System.out.println("⏱️ [P2P " + (isHost ? "Host" : "Guest") + "] Countdown received: " + count);
 
-                // UI 업데이트
-                if (onCountdownUpdate != null) {
-                    Platform.runLater(() -> onCountdownUpdate.accept(count));
-                }
+                // GUEST만 UI 업데이트 (Host는 자체적으로 업데이트)
+                if (!isHost) {
+                    // UI 업데이트
+                    if (onCountdownUpdate != null) {
+                        Platform.runLater(() -> onCountdownUpdate.accept(count));
+                    } else {
+                        System.err.println("❌ [P2P Guest] onCountdownUpdate callback is NULL!");
+                    }
 
-                // 카운트다운 0이면 게임 시작
-                if (count == 0) {
-                    notifyGameStart();
+                    // 카운트다운 0이면 게임 시작
+                    if (count == 0) {
+                        System.out.println("🎮 [P2P Guest] Countdown 0 received - starting game!");
+                        notifyGameStart();
+                    }
+                } else {
+                    System.out.println("⚠️ [P2P Host] Received own COUNTDOWN packet (echo) - ignoring");
                 }
+            } else {
+                System.err.println("❌ [P2P] COUNTDOWN packet has null countdown value!");
             }
         } else if (isConnected) {
             if ("INPUT".equals(packet.getType()) && isHost) {
@@ -251,21 +261,35 @@ public class NetworkGameService {
      * 카운트다운 시작 (Host만 실행)
      */
     private void startCountdown() {
-        if (!isHost) return;
+        if (!isHost) {
+            System.err.println("❌ [P2P] startCountdown called but not host!");
+            return;
+        }
 
         System.out.println("⏱️ [P2P Host] Starting countdown...");
+        System.out.println("   └ onCountdownUpdate callback: " + (onCountdownUpdate != null ? "SET" : "NULL"));
+        System.out.println("   └ isConnected: " + isConnected);
+        System.out.println("   └ p2pService: " + (p2pService != null ? "OK" : "NULL"));
+
         new Thread(() -> {
             try {
+                // 3, 2, 1 카운트다운
                 for (int i = 3; i > 0; i--) {
                     final int count = i;
                     System.out.println("⏱️ [P2P Host] Countdown: " + count);
 
                     // Host UI 업데이트
                     if (onCountdownUpdate != null) {
-                        Platform.runLater(() -> onCountdownUpdate.accept(count));
+                        Platform.runLater(() -> {
+                            System.out.println("   └ Updating Host UI with count: " + count);
+                            onCountdownUpdate.accept(count);
+                        });
+                    } else {
+                        System.err.println("❌ [P2P Host] onCountdownUpdate is NULL at count " + count);
                     }
 
                     // Guest에게 카운트다운 전송
+                    System.out.println("   └ Sending countdown " + count + " to Guest...");
                     sendCountdown(count);
 
                     Thread.sleep(1000);
@@ -274,32 +298,51 @@ public class NetworkGameService {
                 // 카운트다운 0 (START!)
                 System.out.println("⏱️ [P2P Host] Countdown: 0 (START!)");
                 if (onCountdownUpdate != null) {
-                    Platform.runLater(() -> onCountdownUpdate.accept(0));
+                    Platform.runLater(() -> {
+                        System.out.println("   └ Updating Host UI with count: 0");
+                        onCountdownUpdate.accept(0);
+                    });
+                } else {
+                    System.err.println("❌ [P2P Host] onCountdownUpdate is NULL at count 0");
                 }
+
+                System.out.println("   └ Sending countdown 0 to Guest...");
                 sendCountdown(0);
 
                 Thread.sleep(500); // 짧은 대기 후 게임 시작
 
                 // 게임 시작
+                System.out.println("🎮 [P2P Host] Starting game loop...");
                 startGameLoop();
+
+                System.out.println("📤 [P2P Host] Broadcasting initial state...");
                 broadcastState(); // 초기 상태 전송
 
             } catch (InterruptedException e) {
-                System.err.println("❌ [P2P Host] Countdown interrupted");
+                System.err.println("❌ [P2P Host] Countdown interrupted: " + e.getMessage());
+                e.printStackTrace();
             }
-        }).start();
+        }, "P2P-Countdown-Thread").start();
     }
 
     /**
      * 카운트다운 패킷 전송 (Host -> Guest)
      */
     private void sendCountdown(int count) {
+        System.out.println("📤 [P2P Host] Preparing COUNTDOWN packet...");
+        System.out.println("   └ Count: " + count);
+        System.out.println("   └ p2pService: " + (p2pService != null ? "OK" : "NULL"));
+
         P2PPacket packet = P2PPacket.builder()
                 .type("COUNTDOWN")
                 .countdown(count)
                 .build();
+
+        System.out.println("   └ Packet created: type=" + packet.getType() + ", countdown=" + packet.getCountdown());
+
         p2pService.sendPacket(packet);
-        System.out.println("📤 [P2P Host] Sent countdown: " + count);
+
+        System.out.println("✅ [P2P Host] COUNTDOWN packet sent successfully: " + count);
     }
 
     private void startGameLoop() {
