@@ -10,8 +10,8 @@ import javafx.scene.layout.GridPane;
 import javafx.scene.shape.Rectangle;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import seoultech.se.client.game.LocalGameStatus;
-import seoultech.se.client.game.LocalGameSession;
+import seoultech.se.client.localgame.LocalGameSession;
+import seoultech.se.client.localgame.LocalGameStatus;
 import seoultech.se.core.GameState;
 import seoultech.se.core.config.GameModeConfig;
 import seoultech.se.core.engine.GameEngine;
@@ -40,6 +40,9 @@ public class LocalBattleController {
     private LocalGameSession localGameSession;
     private AnimationTimer gameLoop;
 
+    private Rectangle[][] p1Cells;
+    private Rectangle[][] p2Cells;
+
     private long lastGravityUpdateTime = 0;
     private static final long GRAVITY_UPDATE_INTERVAL_MS = 500; // 0.5초마다 중력 적용
 
@@ -48,12 +51,28 @@ public class LocalBattleController {
     public void initialize() {
         System.out.println("✅ LocalBattleController initialized.");
         initializeColorMap();
-        // 키 이벤트 핸들러는 Scene이 설정된 후 추가
+        p1Cells = initializeBoard(p1BoardGridPane, 10, 20);
+        p2Cells = initializeBoard(p2BoardGridPane, 10, 20);
+
         rootPane.sceneProperty().addListener((obs, oldScene, newScene) -> {
             if (newScene != null) {
                 newScene.addEventFilter(KeyEvent.KEY_PRESSED, this::handleKeyEvent);
             }
         });
+    }
+
+    private Rectangle[][] initializeBoard(GridPane gridPane, int width, int height) {
+        gridPane.getChildren().clear();
+        Rectangle[][] cells = new Rectangle[height][width];
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                Rectangle cell = new Rectangle(20, 20, colorMap.get(Color.NONE));
+                cell.setStroke(javafx.scene.paint.Color.rgb(120, 120, 120, 0.5));
+                cells[y][x] = cell;
+                gridPane.add(cell, x, y);
+            }
+        }
+        return cells;
     }
 
     private void initializeColorMap() {
@@ -97,13 +116,10 @@ public class LocalBattleController {
     
     private void onGameLoopTick() {
         if (localGameSession == null) return;
-        LocalGameStatus status1 = localGameSession.applyGravity("P1");
-        // P1의 중력 적용 후 즉시 UI 업데이트
-        updateUI(status1);
-        
-        LocalGameStatus status2 = localGameSession.applyGravity("P2");
-        // P2의 중력 적용 후 즉시 UI 업데이트
-        updateUI(status2);
+        LocalGameStatus status;
+        status = localGameSession.applyGravity("P1");
+        status = localGameSession.applyGravity("P2");
+        updateUI(status);
     }
     
     private void handleKeyEvent(KeyEvent event) {
@@ -134,7 +150,7 @@ public class LocalBattleController {
             status = localGameSession.processCommand("P1", command);
         }
 
-        // Player 2 Controls (Arrow Keys + Right Shift/Control)
+        // Player 2 Controls (Arrow Keys + Period/Slash)
         else if (code == KeyCode.UP) {
             command = new seoultech.se.core.command.RotateCommand(RotationDirection.CLOCKWISE);
             status = localGameSession.processCommand("P2", command);
@@ -165,7 +181,7 @@ public class LocalBattleController {
         // Player 1
         GameState p1State = status.getPlayer1State();
         if(p1State != null) {
-            drawBoard(p1BoardGridPane, p1State);
+            drawBoard(p1Cells, p1State);
             drawPreview(p1HoldGridPane, p1State.getHeldPiece());
             if (p1State.getNextQueue() != null && p1State.getNextQueue().length > 0) {
                 drawPreview(p1NextGridPane, p1State.getNextQueue()[0]);
@@ -178,7 +194,7 @@ public class LocalBattleController {
         // Player 2
         GameState p2State = status.getPlayer2State();
         if(p2State != null) {
-            drawBoard(p2BoardGridPane, p2State);
+            drawBoard(p2Cells, p2State);
             drawPreview(p2HoldGridPane, p2State.getHeldPiece());
             if (p2State.getNextQueue() != null && p2State.getNextQueue().length > 0) {
                 drawPreview(p2NextGridPane, p2State.getNextQueue()[0]);
@@ -193,43 +209,45 @@ public class LocalBattleController {
         }
     }
 
-    private void drawBoard(GridPane gridPane, GameState state) {
-        gridPane.getChildren().clear();
+    private void drawBoard(Rectangle[][] cells, GameState state) {
         int boardHeight = state.getBoardHeight();
         int boardWidth = state.getBoardWidth();
-
-        // Draw the fixed board from grid
+        
+        // 1. Create a temporary grid of colors from the locked pieces
+        Color[][] finalBoard = new Color[boardHeight][boardWidth];
         Cell[][] grid = state.getGrid();
         for (int y = 0; y < boardHeight; y++) {
             for (int x = 0; x < boardWidth; x++) {
-                Rectangle cell = new Rectangle(20, 20);
-                Color color = grid[y][x] != null ? grid[y][x].getColor() : Color.NONE;
-                cell.setFill(colorMap.get(color));
-                cell.setStroke(javafx.scene.paint.Color.rgb(120, 120, 120, 0.5));
-                gridPane.add(cell, x, y);
+                finalBoard[y][x] = grid[y][x] != null ? grid[y][x].getColor() : Color.NONE;
             }
         }
 
-        // Draw the current tetromino
+        // 2. Stamp the current moving piece onto the temporary grid using pivot logic
         Tetromino piece = state.getCurrentTetromino();
         if (piece != null) {
-            javafx.scene.paint.Color pieceColor = colorMap.get(piece.getColor());
+            int[][] shape = piece.getCurrentShape();
             int pieceX = state.getCurrentX();
             int pieceY = state.getCurrentY();
-            int[][] shape = piece.getCurrentShape();
+            int pivotX = piece.getPivotX();
+            int pivotY = piece.getPivotY();
 
             for (int y = 0; y < shape.length; y++) {
                 for (int x = 0; x < shape[y].length; x++) {
                     if (shape[y][x] == 1) {
-                        int boardX = pieceX + x;
-                        int boardY = pieceY + y;
-                        if (boardX >= 0 && boardX < boardWidth && boardY >= 0 && boardY < boardHeight) {
-                            Rectangle cell = new Rectangle(20, 20, pieceColor);
-                            cell.setStroke(javafx.scene.paint.Color.rgb(120, 120, 120, 0.5));
-                            gridPane.add(cell, boardX, boardY);
+                        int boardX = pieceX + (x - pivotX);
+                        int boardY = pieceY + (y - pivotY);
+                        if (boardY >= 0 && boardY < boardHeight && boardX >= 0 && boardX < boardWidth) {
+                            finalBoard[boardY][boardX] = piece.getColor();
                         }
                     }
                 }
+            }
+        }
+
+        // 3. Update the UI from the final grid
+        for (int y = 0; y < boardHeight; y++) {
+            for (int x = 0; x < boardWidth; x++) {
+                cells[y][x].setFill(colorMap.get(finalBoard[y][x]));
             }
         }
     }

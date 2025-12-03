@@ -1,4 +1,4 @@
-package seoultech.se.client.game;
+package seoultech.se.client.localgame;
 
 import seoultech.se.core.GameState;
 

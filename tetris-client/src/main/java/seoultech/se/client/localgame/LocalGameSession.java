@@ -1,6 +1,6 @@
-package seoultech.se.client.game;
+package seoultech.se.client.localgame;
 
-import seoultech.se.client.game.GameStatus;
+import seoultech.se.client.localgame.LocalGameStatus;
 import seoultech.se.core.GameState;
 import seoultech.se.core.config.GameModeConfig;
 import seoultech.se.core.engine.GameEngine;
@@ -64,11 +64,11 @@ public class LocalGameSession {
         }
     }
 
-    public GameStatus processCommand(String playerId, seoultech.se.core.command.GameCommand command) {
+    public LocalGameStatus processCommand(String playerId, seoultech.se.core.command.GameCommand command) {
         synchronized (lock) {
             GameState currentState = playerStates.get(playerId);
             if (currentState == null || currentState.isGameOver()) {
-                return new GameStatus(playerStates.get("P1"), playerStates.get("P2"));
+                return new LocalGameStatus(playerStates.get("P1"), playerStates.get("P2"));
             }
 
             GameState nextState = gameEngine.executeCommand(command, currentState);
@@ -96,11 +96,11 @@ public class LocalGameSession {
             }
 
             playerStates.put(playerId, nextState);
-            return new GameStatus(playerStates.get("P1"), playerStates.get("P2"));
+            return new LocalGameStatus(playerStates.get("P1"), playerStates.get("P2"));
         }
     }
 
-    public GameStatus applyGravity(String playerId) {
+    public LocalGameStatus applyGravity(String playerId) {
         seoultech.se.core.command.MoveCommand downCommand = new seoultech.se.core.command.MoveCommand(seoultech.se.core.command.Direction.DOWN);
         return processCommand(playerId, downCommand);
     }
