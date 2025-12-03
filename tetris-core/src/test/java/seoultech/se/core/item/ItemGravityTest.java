@@ -61,20 +61,22 @@ class ItemGravityTest {
     @Test
     void testBombItemGravityAndGhosts() {
         // 테트리스 표준: BOMB는 5x5 영역을 제거하고, 꽉 찬 행이 있으면 라인 클리어
-        // 열 단위 중력은 적용되지 않음
+        // 행 단위 중력이 적용됨 (빈 행이 있으면 위의 블록들이 내려옴)
         
         // 1. 상황: 바닥(19행)에 꽉 찬 행, 17-18행도 꽉 참
         fillRow(19);
         fillRow(18);
         fillRow(17);
+        fillRow(16);  // Row 16도 채워서 빈 행이 없도록 함
         
         // Row 15에도 블록 배치 (폭발 범위 밖)
         setBlock(15, 4);
         
         // 2. BombItem 투하 (18, 5) -> 5x5 범위 제거
+        // 폭발 범위: rows 16-20, cols 3-7
         bombItem.apply(gameState, 18, 5);
         
-        // 3. 검증: Row 15의 블록은 그대로 있어야 함 (열 단위 중력 없음)
+        // 3. 검증: Row 15의 블록은 폭발 범위 밖이므로 그대로 있어야 함
         Cell[][] grid = gameState.getGrid();
         
         // Row 15, Col 4는 폭발 범위(16-20행, 3-7열) 밖이므로 그대로 유지

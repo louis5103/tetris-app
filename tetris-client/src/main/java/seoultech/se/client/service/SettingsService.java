@@ -6,11 +6,11 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import org.yaml.snakeyaml.DumperOptions;
-import org.yaml.snakeyaml.Yaml;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.yaml.snakeyaml.DumperOptions;
+import org.yaml.snakeyaml.Yaml;
 
 import jakarta.annotation.PostConstruct;
 import javafx.beans.property.DoubleProperty;
@@ -122,7 +122,7 @@ public class SettingsService {
             Map<String, Object> settings = getNestedMap(data, "client.setting");
 
             // GeneralSettings null 체크 및 안전한 기본값 제공
-            GeneralSettings defaultSettings = getDefaultSettingsSafely();
+            GeneralSettings defaultSettings = getDefaultSettings();
             
             soundVolume.set(getSetting(settings, "soundVolume", defaultSettings.getSoundVolume()));
             colorMode.set(getSetting(settings, "colorMode", defaultSettings.getColorMode()));
@@ -149,7 +149,7 @@ public class SettingsService {
     public void saveSettings() {
         try {
             // JavaFX Property 값을 GeneralSettings에 반영
-            GeneralSettings generalSettings = clientSettings.getSetting();
+            GeneralSettings generalSettings = getDefaultSettings();
             generalSettings.setSoundVolume(soundVolume.get());
             generalSettings.setColorMode(colorMode.get());
             generalSettings.setScreenSize(screenSize.get());
@@ -166,7 +166,7 @@ public class SettingsService {
 
     public void restoreDefaults() {
         // application.yml의 기본값 사용 (ClientSettings의 GeneralSettings에서)
-        GeneralSettings defaultSettings = getDefaultSettingsSafely();
+        GeneralSettings defaultSettings = getDefaultSettings();
         
         soundVolume.set(defaultSettings.getSoundVolume());
         colorMode.set(defaultSettings.getColorMode());
@@ -177,6 +177,25 @@ public class SettingsService {
         saveSettings(); // 기본값을 YAML 파일에 저장
         
         System.out.println("✅ Settings restored to defaults and saved to " + settingsFilePath);
+    }
+    
+    /**
+     * 안전한 기본 설정 가져오기
+     */
+    private GeneralSettings getDefaultSettings() {
+        if (clientSettings != null && clientSettings.getSetting() != null) {
+            return clientSettings.getSetting();
+        }
+        
+        // Fallback: 하드코딩된 기본값
+        GeneralSettings fallback = new GeneralSettings();
+        fallback.setSoundVolume(80.0);
+        fallback.setColorMode("colorModeDefault");
+        fallback.setScreenSize("screenSizeM");
+        fallback.setStageWidth(500.0);
+        fallback.setStageHeight(700.0);
+        fallback.setDifficulty("difficultyNormal");
+        return fallback;
     }
 
     // Helper method to safely get nested map

@@ -4,6 +4,10 @@
 # ===============================================================================
 
 spring:
+  config:
+    activate:
+      on-profile: embedded-server
+  
   application:
     name: Tetris Embedded Server
   
@@ -14,25 +18,39 @@ spring:
     web-application-type: servlet  # HTTP 서버 시작 (NONE이면 비활성화됨)
   
   # ===============================================================================
+  # Security Configuration - DISABLE for embedded mode
+  # ===============================================================================
+  security:
+    enabled: false
+  
+  # ===============================================================================
   # Database Configuration - H2 In-Memory (No external DB required)
+  # CRITICAL: These settings override tetris-backend's application.properties
   # ===============================================================================
   datasource:
     url: jdbc:h2:mem:tetris-embedded;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
     driver-class-name: org.h2.Driver
     username: sa
-    password:
+    password: ""
+    hikari:
+      maximum-pool-size: 5
   
   # ===============================================================================
-  # JPA Configuration - Minimal for embedded mode
+  # JPA Configuration - Force schema creation for embedded H2
   # ===============================================================================
   jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
     hibernate:
-      ddl-auto: create-drop  # 메모리 DB이므로 매번 새로 생성
-    show-sql: false  # 로그 최소화
+      ddl-auto: create  # 매번 스키마 생성
+    show-sql: true
     properties:
       hibernate:
-        format_sql: false
-        dialect: org.hibernate.dialect.H2Dialect
+        format_sql: true
+        show_sql: true
+        hbm2ddl:
+          auto: create  # 명시적으로 create 지정
+    generate-ddl: true  # DDL 생성 활성화
+    defer-datasource-initialization: false  # 즉시 초기화
   
   # ===============================================================================
   # SQL Initialization - DISABLE data.sql for embedded mode
@@ -42,10 +60,10 @@ spring:
       mode: never  # data.sql 실행 안 함
 
 # ===============================================================================
-# Web Server Settings - Different port to avoid conflicts
+# Web Server Settings - Port 8090 for embedded mode
 # ===============================================================================
 server:
-  port: 8091  # tetris-backend(8080)와 충돌 방지
+  port: 8090  # 클라이언트가 기대하는 포트
   servlet:
     context-path: /
 

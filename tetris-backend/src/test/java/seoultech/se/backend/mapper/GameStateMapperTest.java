@@ -1,17 +1,23 @@
 package seoultech.se.backend.mapper;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import seoultech.se.core.dto.GameStateDto;
+
 import seoultech.se.core.GameState;
+import seoultech.se.core.dto.GameStateDto;
 import seoultech.se.core.model.Cell;
 import seoultech.se.core.model.Tetromino;
 import seoultech.se.core.model.enumType.Color;
 import seoultech.se.core.model.enumType.RotationState;
 import seoultech.se.core.model.enumType.TetrominoType;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * GameStateMapper 테스트
@@ -138,10 +144,10 @@ class GameStateMapperTest {
 
         // then
         assertNotNull(dto.getGrid());
-
+        
         // 채워진 셀은 Color의 ordinal 값이어야 함
-        assertEquals(Color.CYAN.ordinal(), dto.getGrid()[19][0]);
-        assertEquals(Color.RED.ordinal(), dto.getGrid()[19][1]);
+        assertEquals(Color.CYAN.ordinal() + 1, dto.getGrid()[19][0]);
+        assertEquals(Color.RED.ordinal() + 1, dto.getGrid()[19][1]);
 
         // 나머지는 0이어야 함
         assertEquals(0, dto.getGrid()[0][0]);

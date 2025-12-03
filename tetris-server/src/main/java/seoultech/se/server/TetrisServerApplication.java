@@ -18,6 +18,10 @@ import org.springframework.scheduling.annotation.EnableScheduling;
     "seoultech.se.core",      // 코어 패키지 (공통 로직)
     "seoultech.se.backend"    // 백엔드 패키지 (Mapper, Network 등)
 })
+@org.springframework.boot.autoconfigure.domain.EntityScan(basePackages = {
+    "seoultech.se.server",
+    "seoultech.se.backend"
+})
 @EnableScheduling  // Phase 1: 스케줄링 활성화 (세션 타임아웃 정리용)
 public class TetrisServerApplication {
     public static void main(String[] args) {
