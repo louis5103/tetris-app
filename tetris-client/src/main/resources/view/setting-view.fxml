@@ -96,23 +96,6 @@
                         </GridPane>
                     </content>
                 </Tab>
-                <Tab text="Custom">
-                    <content>
-                        <BorderPane>
-                            <center>
-                                <VBox fx:id="settingContainer" styleClass="center-box" alignment="TOP_CENTER" />
-                            </center>
-                            <bottom>
-                                <HBox styleClass="bottom-box, bottom-box-custom">
-                                    <children>
-                                        <Button fx:id="saveCustomButton" onAction="#handleSaveCustomButton" styleClass="menu-button-small" text="Save" />
-                                        <Button fx:id="deleteCustomButton" onAction="#handleDeleteCustomButton" styleClass="menu-button-small" text="Delete" />
-                                    </children>
-                                </HBox>
-                            </bottom>
-                        </BorderPane>
-                    </content>
-                </Tab>
             </tabs>
         </TabPane>
     </center>
