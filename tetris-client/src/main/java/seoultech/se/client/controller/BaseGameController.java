@@ -79,6 +79,12 @@ public abstract class BaseGameController {
     protected Rectangle[][] holdCellRectangles;
     protected Rectangle[][] nextCellRectangles;
 
+    // Animation state flag to coordinate with game loop
+    private volatile boolean isAnimating = false;
+
+    public final boolean isAnimating() { return isAnimating; }
+    protected final void setAnimating(boolean animating) { this.isAnimating = animating; }
+
     @FXML
     public void initialize() {
         System.out.println("🎮 [BaseGameController] Initializing UI components...");
@@ -165,17 +171,11 @@ public abstract class BaseGameController {
                 newState.setLastClearedCells(new java.util.ArrayList<>());
             }
 
-            // ✅ 애니메이션 중에도 새 테트로미노를 즉시 표시하기 위한 분리
+            // ✅ 애니메이션 중에도 Next/Hold만 즉시 업데이트 (보드 전체는 최종 시점에 반영)
             Runnable immediateUIUpdate = () -> {
-                // 새 테트로미노가 생성되었으면 즉시 화면에 표시 (딜레이 제거)
-                if (newState.getCurrentTetromino() != null) {
-                    boardRenderer.drawBoardSync(newState);
-                }
-                // Next Queue 즉시 업데이트
                 if (newState.getNextQueue() != null && newState.getNextQueue().length > 0) {
                     boardRenderer.drawNextPiece(newState.getNextQueue()[0]);
                 }
-                // Hold 즉시 업데이트
                 if (oldState.getHeldPiece() != newState.getHeldPiece() || oldState.getHeldItemType() != newState.getHeldItemType()) {
                     boardRenderer.drawHoldPiece(newState.getHeldPiece(), newState.getHeldItemType());
                 }
@@ -202,8 +202,11 @@ public abstract class BaseGameController {
                 checkGameState(oldState, newState);
             };
 
-            // 라인 클리어 또는 아이템 효과 애니메이션 처리 (UI 전용, 게임 로직 차단 없음)
+            // 라인 클리어 또는 아이템 효과 애니메이션 처리 (UI 전용)
             if (shouldAnimate) {
+                // Flag on: signal game loop to skip gravity ticks during animation
+                setAnimating(true);
+                System.out.println("🎞️ [UI] Animation start (line/item). Gravity paused");
                 // Performance optimized: silent animation execution
                 
                 // ✅ 딜레이 제거: 새 테트로미노를 애니메이션 시작과 동시에 즉시 표시
@@ -232,6 +235,8 @@ public abstract class BaseGameController {
                         PauseTransition step2Delay = new PauseTransition(Duration.millis(UIConstants.LINE_CLEAR_ANIMATION_MS));
                         step2Delay.setOnFinished(event2 -> {
                             uiUpdateTask.run();
+                            setAnimating(false);
+                            System.out.println("✅ [UI] Animation end. Gravity resumed");
                         });
                         step2Delay.play();
                     });
@@ -253,6 +258,8 @@ public abstract class BaseGameController {
                     PauseTransition step2Delay = new PauseTransition(Duration.millis(UIConstants.LINE_CLEAR_ANIMATION_MS));
                     step2Delay.setOnFinished(event -> {
                         uiUpdateTask.run();
+                        setAnimating(false);
+                        System.out.println("✅ [UI] Animation end. Gravity resumed");
                     });
                     step2Delay.play();
                 }
