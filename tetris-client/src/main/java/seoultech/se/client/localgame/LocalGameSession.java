@@ -37,6 +37,7 @@ public class LocalGameSession {
             playerGenerators.put(playerId, generator);
 
             GameState initialState = new GameState(10, 20);
+            initialState.setLinesUntilNextItem(gameModeConfig.getLinesPerItem()); // 아이템 등장까지 남은 라인 수 초기화
             spawnNextBlock(initialState, playerId);
 
             playerStates.put(playerId, initialState);
@@ -56,6 +57,15 @@ public class LocalGameSession {
         state.setCurrentX((state.getBoardWidth() - state.getCurrentTetromino().getCurrentShape()[0].length) / 2);
         state.setCurrentY(0);
         state.setHoldUsedThisTurn(false);
+
+        // 아이템 적용
+        if (state.getNextBlockItemType() != null) {
+            state.setCurrentItemType(state.getNextBlockItemType());
+            state.setNextBlockItemType(null); // 사용했으므로 초기화
+        } else {
+            state.setCurrentItemType(null);
+        }
+
 
         // 2. Next Queue 업데이트
         List<TetrominoType> previewTypes = generator.preview(state.getNextQueue().length);

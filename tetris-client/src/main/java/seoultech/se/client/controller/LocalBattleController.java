@@ -19,6 +19,9 @@ import seoultech.se.client.ui.BoardRenderer;
 import seoultech.se.client.util.ColorMapper;
 import seoultech.se.core.GameState;
 import seoultech.se.core.config.GameModeConfig;
+import seoultech.se.core.config.GameplayType;
+import seoultech.se.core.engine.ArcadeGameEngine;
+import seoultech.se.core.engine.ClassicGameEngine;
 import seoultech.se.core.engine.GameEngine;
 import seoultech.se.core.model.enumType.RotationDirection;
 
@@ -34,10 +37,6 @@ public class LocalBattleController {
     @FXML private GridPane p2HoldGridPane, p2BoardGridPane, p2NextGridPane;
     @FXML private Label p2ScoreLabel, p2LinesLabel, p2GameOverLabel;
     @FXML private VBox pauseOverlay;
-
-
-    @Autowired
-    private GameEngine gameEngine;
 
     @Autowired
     private NavigationService navigationService;
@@ -88,8 +87,14 @@ public class LocalBattleController {
             for (int x = 0; x < width; x++) {
                 Rectangle cell = new Rectangle(cellSize, cellSize, ColorMapper.getEmptyCellColor());
                 cell.setStroke(ColorMapper.getCellBorderColor());
+                
+                // Wrap the Rectangle in a StackPane for item overlays
+                javafx.scene.layout.StackPane cellPane = new javafx.scene.layout.StackPane();
+                cellPane.getChildren().add(cell);
+                cellPane.setAlignment(javafx.geometry.Pos.CENTER);
+                
+                gridPane.add(cellPane, x, y);
                 cells[y][x] = cell;
-                gridPane.add(cell, x, y);
             }
         }
         return cells;
@@ -98,6 +103,14 @@ public class LocalBattleController {
 
     public void initGame(GameModeConfig config) {
         System.out.println("🎮 Initializing Local Battle game with mode: " + config.getGameplayType());
+
+        GameEngine gameEngine;
+        if (config.getGameplayType() == GameplayType.ARCADE) {
+            gameEngine = new ArcadeGameEngine(config);
+        } else {
+            gameEngine = new ClassicGameEngine(config);
+        }
+
         this.localGameSession = new LocalGameSession(gameEngine, config);
         localGameSession.addPlayer("P1");
         localGameSession.addPlayer("P2");
