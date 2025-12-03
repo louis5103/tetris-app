@@ -335,4 +335,20 @@ public class MultiGameController extends BaseGameController {
         // gameOverReason이 "BLOCK_OUT"이면 확실히 패배
         return "BLOCK_OUT".equals(state.getGameOverReason()) || "LOCK_OUT".equals(state.getGameOverReason());
     }
+
+    /**
+     * P2P 게임 결과 처리 (외부 호출)
+     */
+    public void handleP2PGameResult(boolean isWinner) {
+        System.out.println("🏆 [MultiGameController] P2P Result: " + (isWinner ? "WIN" : "LOSE"));
+        if (gameOverLabel != null) gameOverLabel.setVisible(true);
+        
+        String title = isWinner ? "YOU WIN" : "YOU LOSE";
+        long finalScore = boardController.getGameState().getScore();
+        
+        boolean isItemMode = gameModeConfig != null && gameModeConfig.isItemSystemEnabled();
+        popupManager.showGameOverPopup(finalScore, isItemMode, settingsService.getCurrentDifficulty(), title);
+        
+        cleanup();
+    }
 }

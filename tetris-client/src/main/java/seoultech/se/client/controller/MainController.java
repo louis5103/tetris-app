@@ -699,18 +699,18 @@ public class MainController extends BaseController {
                         System.err.println("❌ [MainController] myState is NULL!");
                         return;
                     }
-                    System.out.println("   └ myState details: currentTetromino=" + (myState.getCurrentTetromino() != null) + 
-                        ", x=" + myState.getCurrentX() + ", y=" + myState.getCurrentY());
+                    // System.out.println("   └ myState details: currentTetromino=" + (myState.getCurrentTetromino() != null) + 
+                    //    ", x=" + myState.getCurrentX() + ", y=" + myState.getCurrentY());
                     
                     // NetworkGameService가 이미 JavaFX 스레드에서 호출하므로 직접 실행
                     GameState oldState = gameViewController.getBoardController().getGameState();
                     gameViewController.getBoardController().setGameState(myState);
                     // MultiGameController의 updateUI 사용 (전체 렌더링 로직)
                     gameViewController.updateUI(oldState, myState);
-                    System.out.println("✅ [MainController] UI updated with myState");
+                    // System.out.println("✅ [MainController] UI updated with myState");
                 },
                 opponentState -> {
-                    System.out.println("👥 [MainController " + (isHost ? "Host" : "Guest") + "] Opponent state callback triggered!");
+                    // System.out.println("👥 [MainController " + (isHost ? "Host" : "Guest") + "] Opponent state callback triggered!");
                     if (opponentState == null) {
                         System.err.println("❌ [MainController] opponentState is NULL!");
                         return;
@@ -718,7 +718,7 @@ public class MainController extends BaseController {
                     
                     // NetworkGameService가 이미 JavaFX 스레드에서 호출하므로 직접 실행
                     gameViewController.getOpponentBoardView().update(opponentState);
-                    System.out.println("✅ [MainController] Opponent view updated");
+                    // System.out.println("✅ [MainController] Opponent view updated");
                 },
                 unused -> {
                     System.out.println("✅ [MainController] P2P Game Started callback!");
@@ -728,6 +728,10 @@ public class MainController extends BaseController {
                     // 여기서는 UI만 활성화 (이미 JavaFX 스레드에서 호출됨)
                     gameViewController.startGame(); // 키보드 포커스 설정 및 UI 활성화
                     System.out.println("🔍 [MainController] startGame() call completed");
+                },
+                isWinner -> {
+                     System.out.println("🏁 [MainController] P2P Game Result: " + isWinner);
+                     gameViewController.handleP2PGameResult(isWinner);
                 }
             );
 

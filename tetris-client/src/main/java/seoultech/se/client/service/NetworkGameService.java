@@ -59,6 +59,7 @@ public class NetworkGameService {
     // 콜백 (UI 업데이트용)
     private Consumer<GameState> onMyStateUpdate;
     private Consumer<GameState> onOpponentStateUpdate;
+    private Consumer<Boolean> onGameResult; // true=Win, false=Lose
 
     private Consumer<Void> onGameStart;
     private volatile boolean isConnected = false;
@@ -66,11 +67,12 @@ public class NetworkGameService {
     /**
      * P2P 게임 시작 (대기 상태 진입)
      */
-    public void startP2PGame(boolean isHost, Consumer<GameState> onMyStateUpdate, Consumer<GameState> onOpponentStateUpdate, Consumer<Void> onGameStart) {
+    public void startP2PGame(boolean isHost, Consumer<GameState> onMyStateUpdate, Consumer<GameState> onOpponentStateUpdate, Consumer<Void> onGameStart, Consumer<Boolean> onGameResult) {
         this.isHost = isHost;
         this.onMyStateUpdate = onMyStateUpdate;
         this.onOpponentStateUpdate = onOpponentStateUpdate;
         this.onGameStart = onGameStart;
+        this.onGameResult = onGameResult;
         this.isRunning = true;
         this.isConnected = false;
         
@@ -162,7 +164,14 @@ public class NetworkGameService {
                 processStateUpdate(state);
             } else if ("GAME_OVER".equals(packet.getType())) {
                 System.out.println("💀 [P2P] GAME_OVER packet received from opponent");
-                handleOpponentGameOver();
+                if (packet.getIsWinner() != null) {
+                    boolean amIWinner = packet.getIsWinner();
+                    Platform.runLater(() -> {
+                        if (onGameResult != null) onGameResult.accept(amIWinner);
+                    });
+                } else {
+                    handleOpponentGameOver();
+                }
             } else {
                 System.out.println("⚠️ [P2P] Unhandled packet - Type: " + packet.getType() + ", isHost: " + isHost + ", isConnected: " + isConnected);
             }
@@ -333,8 +342,21 @@ public class NetworkGameService {
         // 게임 오버 체크 (블록이 스폰 위치에서 충돌하는 경우)
         if (state.isGameOver()) {
             System.out.println("💀 [P2P] Game Over for " + (isHostPlayer ? "Host" : "Guest"));
-            // 상대방에게 GAME_OVER 패킷 전송
-            sendGameOver();
+            
+            if (isHostPlayer) {
+                // Host가 죽음 -> Host 패배, Guest 승리
+                sendGameResult(true); // Guest에게 "너 이김" 전송
+                Platform.runLater(() -> {
+                    if (onGameResult != null) onGameResult.accept(false); // 나(Host)는 패배
+                });
+            } else {
+                // Guest가 죽음 -> Guest 패배, Host 승리
+                sendGameResult(false); // Guest에게 "너 짐" 전송
+                Platform.runLater(() -> {
+                    if (onGameResult != null) onGameResult.accept(true); // 나(Host)는 승리
+                });
+            }
+            isRunning = false;
         }
     }
     
@@ -470,14 +492,15 @@ public class NetworkGameService {
     }
     
     /**
-     * 게임 오버 패킷 전송
+     * 게임 오버 결과 전송
      */
-    private void sendGameOver() {
+    private void sendGameResult(boolean isWinnerForRecipient) {
         p2pService.sendPacket(P2PPacket.builder()
             .type("GAME_OVER")
             .gameOver(true)
+            .isWinner(isWinnerForRecipient)
             .build());
-        System.out.println("💀 [P2P] Sent GAME_OVER packet to opponent");
+        System.out.println("💀 [P2P] Sent GAME_OVER packet (Winner=" + isWinnerForRecipient + ") to opponent");
     }
     
     /**
