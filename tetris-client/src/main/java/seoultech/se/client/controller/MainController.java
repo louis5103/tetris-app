@@ -7,6 +7,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
 
+import javafx.animation.ScaleTransition;
+import javafx.util.Duration;
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
@@ -15,6 +17,8 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.text.Text;
 import javafx.scene.layout.HBox;
 import javafx.scene.media.Media;
 import javafx.scene.media.MediaPlayer;
@@ -49,6 +53,8 @@ public class MainController extends BaseController {
     @Autowired
     private NavigationService navigationService;
 
+    @FXML
+    private Label titleLabel;
     @FXML
     private HBox singlePlayMenuBox;
     @FXML
@@ -124,6 +130,19 @@ public class MainController extends BaseController {
         super.initialize();
         System.out.println("✅ MainController initialized with Spring DI");
         System.out.println("📊 Service Status: " + gameService.getStatus());
+
+        // 타이틀 애니메이션 효과 (Scale Pulse)
+        if (titleLabel != null) {
+            ScaleTransition scaleTransition = new ScaleTransition(Duration.seconds(1), titleLabel);
+            scaleTransition.setFromX(1.0);
+            scaleTransition.setFromY(1.0);
+            scaleTransition.setToX(1.2);
+            scaleTransition.setToY(1.2);
+            scaleTransition.setCycleCount(ScaleTransition.INDEFINITE);
+            scaleTransition.setAutoReverse(true);
+            scaleTransition.play();
+            System.out.println("✨ Title animation started");
+        }
 
         // 배경 음악 재생
         try {
