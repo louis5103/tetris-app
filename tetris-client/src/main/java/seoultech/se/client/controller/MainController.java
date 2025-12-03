@@ -1,6 +1,7 @@
 package seoultech.se.client.controller;
 
 import java.io.IOException;
+import java.net.URL;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
@@ -15,6 +16,8 @@ import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.layout.HBox;
+import javafx.scene.media.Media;
+import javafx.scene.media.MediaPlayer;
 import javafx.stage.Stage;
 import seoultech.se.backend.service.GameService;
 import seoultech.se.client.TetrisApplication;
@@ -96,6 +99,7 @@ public class MainController extends BaseController {
 
     private Button[] buttons;
     private int currentButtonIndex = 0;
+    private MediaPlayer mediaPlayer;
     
     @Autowired
     private SettingsService settingsService;
@@ -120,6 +124,25 @@ public class MainController extends BaseController {
         super.initialize();
         System.out.println("✅ MainController initialized with Spring DI");
         System.out.println("📊 Service Status: " + gameService.getStatus());
+
+        // 배경 음악 재생
+        try {
+            if (mediaPlayer == null) {
+                URL resource = getClass().getResource("/Tetris - Bradinsky.mp3");
+                if (resource != null) {
+                    Media media = new Media(resource.toString());
+                    mediaPlayer = new MediaPlayer(media);
+                    mediaPlayer.setCycleCount(MediaPlayer.INDEFINITE);
+                    mediaPlayer.play();
+                    System.out.println("🎵 Background music started");
+                } else {
+                    System.err.println("❌ Could not find music file: /Tetris - Bradinsky.mp3");
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("❌ Error playing music: " + e.getMessage());
+            e.printStackTrace();
+        }
 
         // 초기에는 하위 메뉴들 숨김
         setSinglePlayMenuVisibility(false);
@@ -282,11 +305,22 @@ public class MainController extends BaseController {
     }
 
     /**
+     * 배경 음악 중지
+     */
+    public void stopBackgroundMusic() {
+        if (mediaPlayer != null) {
+            mediaPlayer.stop();
+            System.out.println("🔇 Background music stopped");
+        }
+    }
+
+    /**
      * 설정 버튼 액션 - 기존 설정 화면으로 이동
      * (키 매핑, 커스터마이징 등)
      */
     public void handleSettingsButtonAction(ActionEvent event) throws IOException {
         System.out.println("⚙️ Settings button clicked");
+        stopBackgroundMusic();
         navigationService.navigateTo("/view/setting-view.fxml");
     }
 
@@ -758,6 +792,7 @@ public class MainController extends BaseController {
 
     private void performGameTransition(boolean isHost, seoultech.se.client.service.NetworkGameService existingNetService) {
         try {
+            stopBackgroundMusic();
             ApplicationContext context = ApplicationContextProvider.getApplicationContext();
 
             // 먼저 컨트롤러를 생성
@@ -990,6 +1025,7 @@ public class MainController extends BaseController {
 
     private void startLocalBattle(GameplayType gameplayType, String modeName) {
         try {
+            stopBackgroundMusic();
             Stage stage = (Stage) rootPane.getScene().getWindow();
             if (stage == null) {
                 System.err.println("❌ Cannot get Stage from rootPane");
@@ -1054,6 +1090,7 @@ public class MainController extends BaseController {
      */
     private void startGameWithGameplayType(ActionEvent event, GameplayType gameplayType, boolean isMultiplayer, String modeName) {
         try {
+            stopBackgroundMusic();
             // 1단계: 현재 Stage 가져오기 (rootPane을 통해 안전하게 가져오기)
             Stage stage = (Stage) rootPane.getScene().getWindow();
             if (stage == null) {
@@ -1124,6 +1161,7 @@ public class MainController extends BaseController {
      */
     public void handleScoreButtonAction() throws IOException {
         System.out.println("🏆 Score button clicked");
+        stopBackgroundMusic();
         navigationService.navigateTo("/view/score-board.fxml");
     }
 
