@@ -7,11 +7,13 @@ import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
+import javafx.scene.layout.VBox;
 import javafx.scene.shape.Rectangle;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import seoultech.se.client.localgame.LocalGameSession;
 import seoultech.se.client.localgame.LocalGameStatus;
+import seoultech.se.client.service.NavigationService;
 import seoultech.se.core.GameState;
 import seoultech.se.core.config.GameModeConfig;
 import seoultech.se.core.engine.GameEngine;
@@ -21,6 +23,7 @@ import seoultech.se.core.model.enumType.Color;
 import seoultech.se.core.model.enumType.RotationDirection;
 import seoultech.se.core.model.enumType.TetrominoType;
 
+import java.io.IOException;
 import java.util.EnumMap;
 import java.util.Map;
 
@@ -33,15 +36,22 @@ public class LocalBattleController {
     @FXML private Label p1ScoreLabel, p1LinesLabel, p1GameOverLabel;
     @FXML private GridPane p2HoldGridPane, p2BoardGridPane, p2NextGridPane;
     @FXML private Label p2ScoreLabel, p2LinesLabel, p2GameOverLabel;
+    @FXML private VBox pauseOverlay;
+
 
     @Autowired
     private GameEngine gameEngine;
+
+    @Autowired
+    private NavigationService navigationService;
 
     private LocalGameSession localGameSession;
     private AnimationTimer gameLoop;
 
     private Rectangle[][] p1Cells;
     private Rectangle[][] p2Cells;
+
+    private boolean isPaused = false;
 
     private long lastGravityUpdateTime = 0;
     private static final long GRAVITY_UPDATE_INTERVAL_MS = 500; // 0.5초마다 중력 적용
@@ -53,6 +63,7 @@ public class LocalBattleController {
         initializeColorMap();
         p1Cells = initializeBoard(p1BoardGridPane, 10, 20);
         p2Cells = initializeBoard(p2BoardGridPane, 10, 20);
+        pauseOverlay.setVisible(false);
 
         rootPane.sceneProperty().addListener((obs, oldScene, newScene) -> {
             if (newScene != null) {
@@ -115,7 +126,7 @@ public class LocalBattleController {
     }
     
     private void onGameLoopTick() {
-        if (localGameSession == null) return;
+        if (localGameSession == null || isPaused) return;
         LocalGameStatus status;
         status = localGameSession.applyGravity("P1");
         status = localGameSession.applyGravity("P2");
@@ -124,10 +135,18 @@ public class LocalBattleController {
     
     private void handleKeyEvent(KeyEvent event) {
         if (localGameSession == null) return;
+        KeyCode code = event.getCode();
+
+        if (code == KeyCode.P) {
+            togglePause();
+            event.consume();
+            return;
+        }
+
+        if (isPaused) return;
 
         LocalGameStatus status = null;
         seoultech.se.core.command.GameCommand command = null;
-        KeyCode code = event.getCode();
 
         // Player 1 Controls (WASD + C/Space)
         if (code == KeyCode.W) {
@@ -137,7 +156,7 @@ public class LocalBattleController {
             command = new seoultech.se.core.command.MoveCommand(seoultech.se.core.command.Direction.LEFT);
             status = localGameSession.processCommand("P1", command);
         } else if (code == KeyCode.S) {
-            command = new seoultech.se.core.command.MoveCommand(seoultech.se.core.command.Direction.DOWN);
+            command = new seoultech.se.core.command.MoveCommand(seoultech.se.core.command.Direction.DOWN, true);
             status = localGameSession.processCommand("P1", command);
         } else if (code == KeyCode.D) {
             command = new seoultech.se.core.command.MoveCommand(seoultech.se.core.command.Direction.RIGHT);
@@ -158,7 +177,7 @@ public class LocalBattleController {
             command = new seoultech.se.core.command.MoveCommand(seoultech.se.core.command.Direction.LEFT);
             status = localGameSession.processCommand("P2", command);
         } else if (code == KeyCode.DOWN) {
-            command = new seoultech.se.core.command.MoveCommand(seoultech.se.core.command.Direction.DOWN);
+            command = new seoultech.se.core.command.MoveCommand(seoultech.se.core.command.Direction.DOWN, true);
             status = localGameSession.processCommand("P2", command);
         } else if (code == KeyCode.RIGHT) {
             command = new seoultech.se.core.command.MoveCommand(seoultech.se.core.command.Direction.RIGHT);
@@ -174,6 +193,43 @@ public class LocalBattleController {
         if (status != null) {
             updateUI(status);
             event.consume();
+        }
+    }
+
+    private void togglePause() {
+        isPaused = !isPaused;
+        if (isPaused) {
+            gameLoop.stop();
+            pauseOverlay.setVisible(true);
+            // Optionally, send PauseCommand to session if state needs to be aware
+            localGameSession.processCommand("P1", new seoultech.se.core.command.PauseCommand());
+            localGameSession.processCommand("P2", new seoultech.se.core.command.PauseCommand());
+        } else {
+            gameLoop.start();
+            pauseOverlay.setVisible(false);
+            rootPane.requestFocus(); // Return focus to the game pane
+            // Optionally, send ResumeCommand
+            localGameSession.processCommand("P1", new seoultech.se.core.command.ResumeCommand());
+            localGameSession.processCommand("P2", new seoultech.se.core.command.ResumeCommand());
+        }
+    }
+
+    @FXML
+    public void handleResume() {
+        if (isPaused) {
+            togglePause();
+        }
+    }
+
+    @FXML
+    public void handleQuit() {
+        if (gameLoop != null) {
+            gameLoop.stop();
+        }
+        try {
+            navigationService.navigateTo("/view/main-view.fxml");
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 
@@ -213,7 +269,6 @@ public class LocalBattleController {
         int boardHeight = state.getBoardHeight();
         int boardWidth = state.getBoardWidth();
         
-        // 1. Create a temporary grid of colors from the locked pieces
         Color[][] finalBoard = new Color[boardHeight][boardWidth];
         Cell[][] grid = state.getGrid();
         for (int y = 0; y < boardHeight; y++) {
@@ -222,7 +277,6 @@ public class LocalBattleController {
             }
         }
 
-        // 2. Stamp the current moving piece onto the temporary grid using pivot logic
         Tetromino piece = state.getCurrentTetromino();
         if (piece != null) {
             int[][] shape = piece.getCurrentShape();
@@ -244,7 +298,6 @@ public class LocalBattleController {
             }
         }
 
-        // 3. Update the UI from the final grid
         for (int y = 0; y < boardHeight; y++) {
             for (int x = 0; x < boardWidth; x++) {
                 cells[y][x].setFill(colorMap.get(finalBoard[y][x]));

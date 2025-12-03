@@ -361,7 +361,7 @@ public class GameState {
 
             for (int col = 0; col < boardWidth; col++) {
                 if (col == emptyColumn) {
-                    grid[line][col] = null; // 빈 칸
+                    grid[line][col] = Cell.empty(); // 빈 칸
                 } else {
                     // 회색 방해 블록 (GRAY 색상)
                     grid[line][col] = Cell.of(seoultech.se.core.model.enumType.Color.GRAY, true);

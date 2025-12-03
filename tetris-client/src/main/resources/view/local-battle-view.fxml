@@ -2,99 +2,115 @@
 
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Label?>
+<?import javafx.scene.control.Button?>
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.GridPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
 
-<BorderPane fx:id="rootPane"
-            xmlns="http://javafx.com/javafx/21" 
-            xmlns:fx="http://javafx.com/fxml/1" 
-            styleClass="game-background"
-            stylesheets="@../css/application.css, @../css/game-view.css">
-    
-    <top>
-        <Label text="LOCAL BATTLE" styleClass="game-title" alignment="CENTER" />
-    </top>
-    
-    <center>
-        <HBox styleClass="game-main-container" alignment="CENTER" spacing="20" BorderPane.alignment="CENTER">
-            
-            <!-- Player 1 Game Area -->
-            <VBox alignment="CENTER" spacing="10">
-                <Label text="PLAYER 1" styleClass="info-label-title" />
-                <HBox alignment="CENTER" spacing="10">
-                    <!-- P1 Hold -->
-                    <VBox styleClass="hold-container" alignment="TOP_CENTER">
-                        <Label text="HOLD" styleClass="info-label-title" alignment="CENTER"/>
-                        <GridPane fx:id="p1HoldGridPane" styleClass="preview-board" alignment="CENTER" />
-                    </VBox>
-                    
-                    <!-- P1 Game Board -->
-                    <StackPane fx:id="p1GameStackPane">
-                        <GridPane fx:id="p1BoardGridPane" styleClass="game-board" focusTraversable="true" alignment="CENTER" />
-                         <Label fx:id="p1GameOverLabel" text="GAME OVER" styleClass="game-over-label" StackPane.alignment="CENTER" visible="false"/>
-                    </StackPane>
-                    
-                    <!-- P1 Info -->
-                    <VBox styleClass="info-panel" alignment="TOP_CENTER">
-                        <VBox styleClass="info-section" alignment="CENTER">
-                            <Label text="NEXT" styleClass="info-label-title" alignment="CENTER"/>
-                            <GridPane fx:id="p1NextGridPane" styleClass="preview-board" alignment="CENTER" />
-                        </VBox>
-                        <VBox styleClass="info-section" alignment="CENTER">
-                            <Label text="SCORE" styleClass="info-label-title" alignment="CENTER"/>
-                            <Label fx:id="p1ScoreLabel" text="0" styleClass="info-label-value" alignment="CENTER"/>
-                        </VBox>
-                        <VBox styleClass="info-section" alignment="CENTER">
-                            <Label text="LINES" styleClass="info-label-title" alignment="CENTER"/>
-                            <Label fx:id="p1LinesLabel" text="0" styleClass="info-label-value" alignment="CENTER"/>
-                        </VBox>
-                    </VBox>
-                </HBox>
-            </VBox>
+<StackPane xmlns="http://javafx.com/javafx/21" 
+           xmlns:fx="http://javafx.com/fxml/1"
+           stylesheets="@../css/application.css, @../css/game-view.css, @../css/pause-pop.css">
 
-            <!-- Separator -->
-            <VBox prefWidth="5" style="-fx-background-color: #cccccc;"/>
+    <BorderPane fx:id="rootPane" styleClass="game-background">
+        
+        <top>
+            <Label text="LOCAL BATTLE" styleClass="game-title" alignment="CENTER" />
+        </top>
+        
+        <center>
+            <HBox styleClass="game-main-container" alignment="CENTER" spacing="20" BorderPane.alignment="CENTER">
+                
+                <!-- Player 1 Game Area -->
+                <VBox alignment="CENTER" spacing="10">
+                    <Label text="PLAYER 1" styleClass="info-label-title" />
+                    <HBox alignment="CENTER" spacing="10">
+                        <!-- P1 Hold -->
+                        <VBox styleClass="hold-container" alignment="TOP_CENTER">
+                            <Label text="HOLD" styleClass="info-label-title" alignment="CENTER"/>
+                            <GridPane fx:id="p1HoldGridPane" styleClass="preview-board" alignment="CENTER" />
+                        </VBox>
+                        
+                        <!-- P1 Game Board -->
+                        <StackPane fx:id="p1GameStackPane">
+                            <GridPane fx:id="p1BoardGridPane" styleClass="game-board" focusTraversable="true" alignment="CENTER" />
+                             <Label fx:id="p1GameOverLabel" text="GAME OVER" styleClass="game-over-label" StackPane.alignment="CENTER" visible="false"/>
+                        </StackPane>
+                        
+                        <!-- P1 Info -->
+                        <VBox styleClass="info-panel" alignment="TOP_CENTER">
+                            <VBox styleClass="info-section" alignment="CENTER">
+                                <Label text="NEXT" styleClass="info-label-title" alignment="CENTER"/>
+                                <GridPane fx:id="p1NextGridPane" styleClass="preview-board" alignment="CENTER" />
+                            </VBox>
+                            <VBox styleClass="info-section" alignment="CENTER">
+                                <Label text="SCORE" styleClass="info-label-title" alignment="CENTER"/>
+                                <Label fx:id="p1ScoreLabel" text="0" styleClass="info-label-value" alignment="CENTER"/>
+                            </VBox>
+                            <VBox styleClass="info-section" alignment="CENTER">
+                                <Label text="LINES" styleClass="info-label-title" alignment="CENTER"/>
+                                <Label fx:id="p1LinesLabel" text="0" styleClass="info-label-value" alignment="CENTER"/>
+                            </VBox>
+                        </VBox>
+                    </HBox>
+                </VBox>
 
-            <!-- Player 2 Game Area -->
-            <VBox alignment="CENTER" spacing="10">
-                <Label text="PLAYER 2" styleClass="info-label-title" />
-                <HBox alignment="CENTER" spacing="10">
-                    <!-- P2 Hold -->
-                    <VBox styleClass="hold-container" alignment="TOP_CENTER">
-                        <Label text="HOLD" styleClass="info-label-title" alignment="CENTER"/>
-                        <GridPane fx:id="p2HoldGridPane" styleClass="preview-board" alignment="CENTER" />
-                    </VBox>
-                    
-                    <!-- P2 Game Board -->
-                    <StackPane fx:id="p2GameStackPane">
-                        <GridPane fx:id="p2BoardGridPane" styleClass="game-board" focusTraversable="true" alignment="CENTER" />
-                        <Label fx:id="p2GameOverLabel" text="GAME OVER" styleClass="game-over-label" StackPane.alignment="CENTER" visible="false"/>
-                    </StackPane>
-                    
-                    <!-- P2 Info -->
-                    <VBox styleClass="info-panel" alignment="TOP_CENTER">
-                        <VBox styleClass="info-section" alignment="CENTER">
-                            <Label text="NEXT" styleClass="info-label-title" alignment="CENTER"/>
-                            <GridPane fx:id="p2NextGridPane" styleClass="preview-board" alignment="CENTER" />
+                <!-- Separator -->
+                <VBox prefWidth="5" style="-fx-background-color: #cccccc;"/>
+
+                <!-- Player 2 Game Area -->
+                <VBox alignment="CENTER" spacing="10">
+                    <Label text="PLAYER 2" styleClass="info-label-title" />
+                    <HBox alignment="CENTER" spacing="10">
+                        <!-- P2 Hold -->
+                        <VBox styleClass="hold-container" alignment="TOP_CENTER">
+                            <Label text="HOLD" styleClass="info-label-title" alignment="CENTER"/>
+                            <GridPane fx:id="p2HoldGridPane" styleClass="preview-board" alignment="CENTER" />
                         </VBox>
-                        <VBox styleClass="info-section" alignment="CENTER">
-                            <Label text="SCORE" styleClass="info-label-title" alignment="CENTER"/>
-                            <Label fx:id="p2ScoreLabel" text="0" styleClass="info-label-value" alignment="CENTER"/>
+                        
+                        <!-- P2 Game Board -->
+                        <StackPane fx:id="p2GameStackPane">
+                            <GridPane fx:id="p2BoardGridPane" styleClass="game-board" focusTraversable="true" alignment="CENTER" />
+                            <Label fx:id="p2GameOverLabel" text="GAME OVER" styleClass="game-over-label" StackPane.alignment="CENTER" visible="false"/>
+                        </StackPane>
+                        
+                        <!-- P2 Info -->
+                        <VBox styleClass="info-panel" alignment="TOP_CENTER">
+                            <VBox styleClass="info-section" alignment="CENTER">
+                                <Label text="NEXT" styleClass="info-label-title" alignment="CENTER"/>
+                                <GridPane fx:id="p2NextGridPane" styleClass="preview-board" alignment="CENTER" />
+                            </VBox>
+                            <VBox styleClass="info-section" alignment="CENTER">
+                                <Label text="SCORE" styleClass="info-label-title" alignment="CENTER"/>
+                                <Label fx:id="p2ScoreLabel" text="0" styleClass="info-label-value" alignment="CENTER"/>
+                            </VBox>
+                            <VBox styleClass="info-section" alignment="CENTER">
+                                <Label text="LINES" styleClass="info-label-title" alignment="CENTER"/>
+                                <Label fx:id="p2LinesLabel" text="0" styleClass="info-label-value" alignment="CENTER"/>
+                            </VBox>
                         </VBox>
-                        <VBox styleClass="info-section" alignment="CENTER">
-                            <Label text="LINES" styleClass="info-label-title" alignment="CENTER"/>
-                            <Label fx:id="p2LinesLabel" text="0" styleClass="info-label-value" alignment="CENTER"/>
-                        </VBox>
-                    </VBox>
-                </HBox>
-            </VBox>
-        </HBox>
-    </center>
+                    </HBox>
+                </VBox>
+            </HBox>
+        </center>
+    </BorderPane>
 
     <!-- Common popups like Pause, Game Over, etc. can be added here -->
-    <StackPane fx:id="commonPopupPane" alignment="CENTER" />
-    
-</BorderPane>
+    <StackPane fx:id="commonPopupPane" alignment="CENTER">
+        <!-- Pause 팝업 오버레이 (평소에는 숨김) -->
+        <VBox fx:id="pauseOverlay" 
+              alignment="CENTER" 
+              styleClass="popup-overlay"
+              visible="false"
+              mouseTransparent="false"
+              StackPane.alignment="CENTER">
+            <VBox alignment="CENTER" styleClass="popup-container">
+                <Label text="PAUSED" styleClass="popup-title"/>
+                <Button text="Resume" styleClass="menu-button-middle" onAction="#handleResume"/>
+                <Button text="Quit" styleClass="menu-button-middle" onAction="#handleQuit"/>
+            </VBox>
+        </VBox>
+    </StackPane>
+
+</StackPane>

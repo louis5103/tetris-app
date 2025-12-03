@@ -66,6 +66,19 @@ public class LocalGameSession {
 
     public LocalGameStatus processCommand(String playerId, seoultech.se.core.command.GameCommand command) {
         synchronized (lock) {
+            // Pause/Resume는 모든 플레이어에게 적용
+            if (command.getType() == seoultech.se.core.command.CommandType.PAUSE || 
+                command.getType() == seoultech.se.core.command.CommandType.RESUME) {
+                
+                for (String pId : playerStates.keySet()) {
+                    GameState s = playerStates.get(pId);
+                    if (s != null) {
+                        playerStates.put(pId, gameEngine.executeCommand(command, s));
+                    }
+                }
+                return new LocalGameStatus(playerStates.get("P1"), playerStates.get("P2"));
+            }
+
             GameState currentState = playerStates.get(playerId);
             if (currentState == null || currentState.isGameOver()) {
                 return new LocalGameStatus(playerStates.get("P1"), playerStates.get("P2"));
