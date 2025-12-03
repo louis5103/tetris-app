@@ -63,6 +63,8 @@ public class NetworkGameService {
     private Consumer<Boolean> onGameResult; // true=Win, false=Lose
 
     private Consumer<Void> onGameStart;
+    private Consumer<Void> onPlayerMatched; // 플레이어 매칭 완료 콜백
+    private Consumer<Integer> onCountdownUpdate; // 카운트다운 업데이트 콜백
     private volatile boolean isConnected = false;
 
     /**
@@ -76,10 +78,10 @@ public class NetworkGameService {
         this.onGameResult = onGameResult;
         this.isRunning = true;
         this.isConnected = false;
-        
+
         // 1. 패킷 수신 리스너 설정
         p2pService.setOnPacketReceived(this::handlePacket);
-        
+
         if (isHost) {
             System.out.println("👑 [P2P] HOST waiting for connection...");
             initializeHostGame();
@@ -89,6 +91,20 @@ public class NetworkGameService {
             // Guest는 HANDSHAKE 전송
             sendHandshake();
         }
+    }
+
+    /**
+     * 매칭 완료 콜백 설정
+     */
+    public void setOnPlayerMatched(Consumer<Void> onPlayerMatched) {
+        this.onPlayerMatched = onPlayerMatched;
+    }
+
+    /**
+     * 카운트다운 업데이트 콜백 설정
+     */
+    public void setOnCountdownUpdate(Consumer<Integer> onCountdownUpdate) {
+        this.onCountdownUpdate = onCountdownUpdate;
     }
 
     private void sendHandshake() {
@@ -109,7 +125,7 @@ public class NetworkGameService {
         if ("HANDSHAKE".equals(packet.getType())) {
             if (isHost && !isConnected) {
                 System.out.println("✅ [P2P] Handshake received from Guest!");
-                
+
                 // 릴레이 모드가 아니면 Guest의 실제 UDP 포트로 재연결
                 if (!p2pService.isRelayMode() && packet.getUdpPort() != null) {
                     String guestIp = p2pService.getOpponentIp();
@@ -125,12 +141,15 @@ public class NetworkGameService {
                 }
                 isConnected = true;
                 sendHandshake(); // ACK with Host's UDP port
-                startGameLoop();
-                // 즉시 초기 상태 전송
-                broadcastState();
+
+                // 매칭 완료 알림
+                notifyPlayerMatched();
+
+                // 3초 카운트다운 시작 (Host가 제어)
+                startCountdown();
             } else if (!isHost && !isConnected) {
                 System.out.println("✅ [P2P] Handshake received from Host!");
-                
+
                 // 릴레이 모드가 아니면 Host의 실제 UDP 포트로 재연결
                 if (!p2pService.isRelayMode() && packet.getUdpPort() != null) {
                     String hostIp = p2pService.getOpponentIp();
@@ -145,8 +164,27 @@ public class NetworkGameService {
                     System.out.println("🔄 [Relay] Already connected via relay server - skipping reconnect");
                 }
                 isConnected = true;
-                notifyGameStart();
-                System.out.println("🎮 [P2P Guest] Waiting for initial STATE from Host...");
+
+                // 매칭 완료 알림
+                notifyPlayerMatched();
+
+                System.out.println("🎮 [P2P Guest] Waiting for countdown from Host...");
+            }
+        } else if ("COUNTDOWN".equals(packet.getType())) {
+            // 카운트다운 패킷 수신 (Guest만 처리)
+            if (!isHost && packet.getCountdown() != null) {
+                int count = packet.getCountdown();
+                System.out.println("⏱️ [P2P Guest] Countdown received: " + count);
+
+                // UI 업데이트
+                if (onCountdownUpdate != null) {
+                    Platform.runLater(() -> onCountdownUpdate.accept(count));
+                }
+
+                // 카운트다운 0이면 게임 시작
+                if (count == 0) {
+                    notifyGameStart();
+                }
             }
         } else if (isConnected) {
             if ("INPUT".equals(packet.getType()) && isHost) {
@@ -198,6 +236,70 @@ public class NetworkGameService {
         } else {
             System.out.println("⚠️ [P2P] Packet ignored - not connected yet");
         }
+    }
+
+    /**
+     * 플레이어 매칭 완료 알림
+     */
+    private void notifyPlayerMatched() {
+        if (onPlayerMatched != null) {
+            Platform.runLater(() -> onPlayerMatched.accept(null));
+        }
+    }
+
+    /**
+     * 카운트다운 시작 (Host만 실행)
+     */
+    private void startCountdown() {
+        if (!isHost) return;
+
+        System.out.println("⏱️ [P2P Host] Starting countdown...");
+        new Thread(() -> {
+            try {
+                for (int i = 3; i > 0; i--) {
+                    final int count = i;
+                    System.out.println("⏱️ [P2P Host] Countdown: " + count);
+
+                    // Host UI 업데이트
+                    if (onCountdownUpdate != null) {
+                        Platform.runLater(() -> onCountdownUpdate.accept(count));
+                    }
+
+                    // Guest에게 카운트다운 전송
+                    sendCountdown(count);
+
+                    Thread.sleep(1000);
+                }
+
+                // 카운트다운 0 (START!)
+                System.out.println("⏱️ [P2P Host] Countdown: 0 (START!)");
+                if (onCountdownUpdate != null) {
+                    Platform.runLater(() -> onCountdownUpdate.accept(0));
+                }
+                sendCountdown(0);
+
+                Thread.sleep(500); // 짧은 대기 후 게임 시작
+
+                // 게임 시작
+                startGameLoop();
+                broadcastState(); // 초기 상태 전송
+
+            } catch (InterruptedException e) {
+                System.err.println("❌ [P2P Host] Countdown interrupted");
+            }
+        }).start();
+    }
+
+    /**
+     * 카운트다운 패킷 전송 (Host -> Guest)
+     */
+    private void sendCountdown(int count) {
+        P2PPacket packet = P2PPacket.builder()
+                .type("COUNTDOWN")
+                .countdown(count)
+                .build();
+        p2pService.sendPacket(packet);
+        System.out.println("📤 [P2P Host] Sent countdown: " + count);
     }
 
     private void startGameLoop() {
@@ -557,6 +659,20 @@ public class NetworkGameService {
         }
     }
     
+    /**
+     * 게임 상태 업데이트 콜백 재설정 (게임 화면 전환 시 사용)
+     */
+    public void updateCallbacks(Consumer<GameState> onMyStateUpdate,
+                                 Consumer<GameState> onOpponentStateUpdate,
+                                 Consumer<Void> onGameStart,
+                                 Consumer<Boolean> onGameResult) {
+        this.onMyStateUpdate = onMyStateUpdate;
+        this.onOpponentStateUpdate = onOpponentStateUpdate;
+        this.onGameStart = onGameStart;
+        this.onGameResult = onGameResult;
+        System.out.println("🔄 [NetworkGameService] Callbacks updated");
+    }
+
     public void stop() {
         isRunning = false;
         p2pService.close();

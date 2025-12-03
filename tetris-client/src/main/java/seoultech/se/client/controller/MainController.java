@@ -667,16 +667,106 @@ public class MainController extends BaseController {
     }
 
     private void transitionToP2PGame(boolean isHost) {
+        // 릴레이 모드인 경우 매칭 대기 팝업 표시
+        if (p2pService != null && p2pService.isRelayMode()) {
+            showMatchingWaitPopupAndTransition(isHost);
+        } else {
+            // 직접 P2P 모드는 바로 게임 화면으로 전환
+            performGameTransition(isHost, null);
+        }
+    }
+
+    private void showMatchingWaitPopupAndTransition(boolean isHost) {
+        try {
+            seoultech.se.client.ui.MatchingWaitPopup matchingPopup = new seoultech.se.client.ui.MatchingWaitPopup();
+
+            // 세션 정보 설정
+            String sessionId = "relay-session"; // 실제 세션 ID로 교체 필요
+            matchingPopup.setSessionInfo(sessionId, isHost ? "HOST" : "GUEST");
+
+            Stage popupStage = new Stage();
+            Scene popupScene = new Scene(matchingPopup);
+            popupStage.setScene(popupScene);
+            popupStage.setTitle("Waiting for Player...");
+            popupStage.setResizable(false);
+            popupStage.initOwner(rootPane.getScene().getWindow());
+            popupStage.initModality(javafx.stage.Modality.WINDOW_MODAL);
+
+            // 취소 버튼 처리
+            matchingPopup.setOnCancel(() -> {
+                popupStage.close();
+                if (p2pService != null) {
+                    p2pService.close();
+                }
+                System.out.println("❌ [MainController] Matching cancelled by user");
+            });
+
+            popupStage.show();
+
+            // NetworkGameService 설정 및 게임 시작 준비
+            ApplicationContext context = ApplicationContextProvider.getApplicationContext();
+            seoultech.se.client.service.NetworkGameService netService = context.getBean(seoultech.se.client.service.NetworkGameService.class);
+
+            // 매칭 완료 콜백 설정
+            netService.setOnPlayerMatched(unused -> {
+                if (!matchingPopup.isCancelled()) {
+                    matchingPopup.onPlayerMatched();
+                }
+            });
+
+            // 카운트다운 업데이트 콜백 설정
+            netService.setOnCountdownUpdate(count -> {
+                if (!matchingPopup.isCancelled()) {
+                    matchingPopup.updateCountdown(count);
+
+                    // 카운트다운 0이면 팝업 닫고 게임 화면으로 전환
+                    if (count == 0) {
+                        Platform.runLater(() -> {
+                            try {
+                                Thread.sleep(500); // "START!" 메시지 표시 시간
+                                popupStage.close();
+                                performGameTransition(isHost, netService);
+                            } catch (InterruptedException e) {
+                                e.printStackTrace();
+                            }
+                        });
+                    }
+                }
+            });
+
+            // P2P 게임 시작 (대기 상태) - 임시 콜백 설정
+            netService.startP2PGame(isHost,
+                myState -> {
+                    System.out.println("🎮 [Matching] My state callback (waiting stage)");
+                },
+                opponentState -> {
+                    System.out.println("👥 [Matching] Opponent state callback (waiting stage)");
+                },
+                unused -> {
+                    System.out.println("✅ [Matching] Game start callback (waiting stage)");
+                },
+                isWinner -> {
+                    System.out.println("🏁 [Matching] Game result callback (waiting stage)");
+                }
+            );
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.err.println("❌ [MainController] Failed to show matching popup: " + e.getMessage());
+        }
+    }
+
+    private void performGameTransition(boolean isHost, seoultech.se.client.service.NetworkGameService existingNetService) {
         try {
             ApplicationContext context = ApplicationContextProvider.getApplicationContext();
-            
+
             // 먼저 컨트롤러를 생성
             MultiGameController gameViewController = context.getBean(MultiGameController.class);
-            
+
             FXMLLoader loader = new FXMLLoader(
                 TetrisApplication.class.getResource("/view/game-view.fxml")
             );
-            
+
             // 생성된 컨트롤러를 설정
             loader.setController(gameViewController);
             Parent gameRoot = loader.load();
@@ -684,71 +774,91 @@ public class MainController extends BaseController {
             seoultech.se.core.config.GameModeConfig config = seoultech.se.core.config.GameModeConfig.createDefaultClassic();
             gameViewController.initGame(config);
 
-            seoultech.se.client.service.NetworkGameService netService = context.getBean(seoultech.se.client.service.NetworkGameService.class);
-            
+            seoultech.se.client.service.NetworkGameService netService = existingNetService != null ?
+                existingNetService : context.getBean(seoultech.se.client.service.NetworkGameService.class);
+
             // P2P 모드 초기화
             gameViewController.initP2PMode(netService, isHost);
-            
-            // P2P 게임 시작 (콜백에서 상태 업데이트)
-            // 주의: NetworkGameService에서 이미 Platform.runLater()로 감싸서 호출하므로
-            // 여기서는 Platform.runLater()를 사용하지 않음 (이중 호출 방지)
-            netService.startP2PGame(isHost, 
-                myState -> {
-                    System.out.println("🎮 [MainController " + (isHost ? "Host" : "Guest") + "] My state callback triggered!");
-                    if (myState == null) {
-                        System.err.println("❌ [MainController] myState is NULL!");
-                        return;
+
+            // 콜백 설정 (기존 NetworkGameService가 있든 없든 콜백 설정 필요)
+            if (existingNetService != null) {
+                // 기존 서비스의 콜백만 재설정
+                netService.updateCallbacks(
+                    myState -> {
+                        System.out.println("🎮 [MainController " + (isHost ? "Host" : "Guest") + "] My state callback triggered!");
+                        if (myState == null) {
+                            System.err.println("❌ [MainController] myState is NULL!");
+                            return;
+                        }
+
+                        // NetworkGameService가 이미 JavaFX 스레드에서 호출하므로 직접 실행
+                        GameState oldState = gameViewController.getBoardController().getGameState();
+                        gameViewController.getBoardController().setGameState(myState);
+                        gameViewController.updateUI(oldState, myState);
+                    },
+                    opponentState -> {
+                        if (opponentState == null) {
+                            System.err.println("❌ [MainController] opponentState is NULL!");
+                            return;
+                        }
+                        gameViewController.getOpponentBoardView().update(opponentState);
+                    },
+                    unused -> {
+                        System.out.println("✅ [MainController] P2P Game Started callback!");
+                        gameViewController.startGame();
+                    },
+                    isWinner -> {
+                         System.out.println("🏁 [MainController] P2P Game Result: " + isWinner);
+                         gameViewController.handleP2PGameResult(isWinner);
                     }
-                    // System.out.println("   └ myState details: currentTetromino=" + (myState.getCurrentTetromino() != null) + 
-                    //    ", x=" + myState.getCurrentX() + ", y=" + myState.getCurrentY());
-                    
-                    // NetworkGameService가 이미 JavaFX 스레드에서 호출하므로 직접 실행
-                    GameState oldState = gameViewController.getBoardController().getGameState();
-                    gameViewController.getBoardController().setGameState(myState);
-                    // MultiGameController의 updateUI 사용 (전체 렌더링 로직)
-                    gameViewController.updateUI(oldState, myState);
-                    // System.out.println("✅ [MainController] UI updated with myState");
-                },
-                opponentState -> {
-                    // System.out.println("👥 [MainController " + (isHost ? "Host" : "Guest") + "] Opponent state callback triggered!");
-                    if (opponentState == null) {
-                        System.err.println("❌ [MainController] opponentState is NULL!");
-                        return;
+                );
+            } else {
+                // 새로운 서비스 시작
+                netService.startP2PGame(isHost,
+                    myState -> {
+                        System.out.println("🎮 [MainController " + (isHost ? "Host" : "Guest") + "] My state callback triggered!");
+                        if (myState == null) {
+                            System.err.println("❌ [MainController] myState is NULL!");
+                            return;
+                        }
+
+                        // NetworkGameService가 이미 JavaFX 스레드에서 호출하므로 직접 실행
+                        GameState oldState = gameViewController.getBoardController().getGameState();
+                        gameViewController.getBoardController().setGameState(myState);
+                        gameViewController.updateUI(oldState, myState);
+                    },
+                    opponentState -> {
+                        if (opponentState == null) {
+                            System.err.println("❌ [MainController] opponentState is NULL!");
+                            return;
+                        }
+                        gameViewController.getOpponentBoardView().update(opponentState);
+                    },
+                    unused -> {
+                        System.out.println("✅ [MainController] P2P Game Started callback!");
+                        gameViewController.startGame();
+                    },
+                    isWinner -> {
+                         System.out.println("🏁 [MainController] P2P Game Result: " + isWinner);
+                         gameViewController.handleP2PGameResult(isWinner);
                     }
-                    
-                    // NetworkGameService가 이미 JavaFX 스레드에서 호출하므로 직접 실행
-                    gameViewController.getOpponentBoardView().update(opponentState);
-                    // System.out.println("✅ [MainController] Opponent view updated");
-                },
-                unused -> {
-                    System.out.println("✅ [MainController] P2P Game Started callback!");
-                    System.out.println("🔍 [MainController] About to call startGame() on gameViewController...");
-                    System.out.println("🔍 [MainController] gameViewController is null? " + (gameViewController == null));
-                    // P2P 모드에서는 NetworkGameService가 게임 로직을 관리하므로
-                    // 여기서는 UI만 활성화 (이미 JavaFX 스레드에서 호출됨)
-                    gameViewController.startGame(); // 키보드 포커스 설정 및 UI 활성화
-                    System.out.println("🔍 [MainController] startGame() call completed");
-                },
-                isWinner -> {
-                     System.out.println("🏁 [MainController] P2P Game Result: " + isWinner);
-                     gameViewController.handleP2PGameResult(isWinner);
-                }
-            );
+                );
+            }
 
             Stage stage = (Stage) rootPane.getScene().getWindow();
             Scene gameScene = new Scene(gameRoot);
             stage.setScene(gameScene);
-            stage.setTitle("Tetris - P2P Direct (" + (isHost ? "HOST" : "GUEST") + ")");
-            
+            stage.setTitle("Tetris - P2P " + (p2pService.isRelayMode() ? "Relay" : "Direct") + " (" + (isHost ? "HOST" : "GUEST") + ")");
+
             settingsService.applyScreenSizeClass();
             stage.sizeToScene();
-            
+
             // Scene이 완전히 렌더링된 후 포커스 재요청
             Platform.runLater(() -> {
                 Platform.runLater(() -> { // 이중 runLater로 확실한 지연
                     System.out.println("🎯 [MainController] Requesting focus after scene loaded...");
                     gameViewController.getBoardGridPane().requestFocus();
-                    
+
                     boolean hasFocus = gameViewController.getBoardGridPane().isFocused();
                     System.out.println("🎯 [MainController] Final focus check: " + hasFocus);
                 });
