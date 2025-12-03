@@ -191,6 +191,7 @@ public class LocalBattleController {
             updateUI(status);
             event.consume();
         }
+        rootPane.requestFocus();
     }
 
     private void togglePause() {
