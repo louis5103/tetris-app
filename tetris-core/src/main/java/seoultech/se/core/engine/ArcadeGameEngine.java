@@ -615,6 +615,8 @@ public class ArcadeGameEngine extends ClassicGameEngine {
                 newState.setLastLinesCleared(fullRows.size());
                 newState.setLastScoreEarned(score);
                 newState.setLastIsPerfectClear(isPerfectClear);
+                // 👍 Arcade 모드에서도 일반 라인 클리어 수를 누적 (누락되어 카운터가 증가하지 않던 문제 수정)
+                newState.addLinesCleared(fullRows.size());
                 System.out.println("   Score for " + fullRows.size() + " full rows: " + score);
             } else {
                 newState.setLastLinesCleared(0);
