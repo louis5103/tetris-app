@@ -64,7 +64,6 @@ public class Tetromino {
     // Method to rotate the tetromino clockwise
     @Deprecated
     public void rotate() {
-        if (type == TetrominoType.O) return ;
 
         int height = this.currentShape.length;
         int width = this.currentShape[0].length;
@@ -96,7 +95,6 @@ public class Tetromino {
 
     // Method to get a new Tetromino instance with rotated shape
     public Tetromino getRotatedInstance(RotationDirection direction) {
-        if (this.type == TetrominoType.O) return this;
 
         // ✅ 아이템 마커 인덱스 보존
         Tetromino rotatedTetromino = new Tetromino(this.type, this.itemMarkerBlockIndex);

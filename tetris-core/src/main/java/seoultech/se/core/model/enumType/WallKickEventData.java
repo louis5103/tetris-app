@@ -39,6 +39,9 @@ public enum WallKickEventData {
     private final int[][] offsets;
 
     public static int[][] getKickData(TetrominoType type, RotationState from, RotationState to) {
+        if (type == TetrominoType.O) {
+            return new int[][]{{0, 0}};
+        }
         RotationTransition transition = new RotationTransition(from, to);
         WallKickEventData data = (type == TetrominoType.I) ? I_KICKS.get(transition) : JLSTZ_KICKS.get(transition);
         return (data != null) ? data.getOffsets() : new int[][]{{0, 0}};
