@@ -159,4 +159,16 @@ public class LocalGameSession {
     public GameState getStateForPlayer(String playerId) {
         return playerStates.get(playerId);
     }
+
+    public LocalGameStatus timeUp() {
+        synchronized (lock) {
+            for (String pId : playerStates.keySet()) {
+                GameState s = playerStates.get(pId);
+                if (s != null) {
+                    s.setGameOver(true);
+                }
+            }
+            return new LocalGameStatus(playerStates.get("P1"), playerStates.get("P2"));
+        }
+    }
 }

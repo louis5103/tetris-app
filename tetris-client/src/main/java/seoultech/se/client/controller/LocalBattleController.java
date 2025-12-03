@@ -1,5 +1,11 @@
 package seoultech.se.client.controller;
 
+import javafx.animation.Animation;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
+import javafx.beans.binding.Bindings;
+import javafx.beans.property.IntegerProperty;
+import javafx.beans.property.SimpleIntegerProperty;
 import javafx.animation.AnimationTimer;
 import javafx.fxml.FXML;
 import javafx.scene.control.Label;
@@ -24,6 +30,8 @@ import seoultech.se.core.engine.ArcadeGameEngine;
 import seoultech.se.core.engine.ClassicGameEngine;
 import seoultech.se.core.engine.GameEngine;
 import seoultech.se.core.model.enumType.RotationDirection;
+import javafx.util.Duration;
+
 
 import java.io.IOException;
 
@@ -37,6 +45,8 @@ public class LocalBattleController {
     @FXML private GridPane p2HoldGridPane, p2BoardGridPane, p2NextGridPane;
     @FXML private Label p2ScoreLabel, p2LinesLabel, p2GameOverLabel;
     @FXML private VBox pauseOverlay;
+    @FXML private Label timerLabel;
+
 
     @Autowired
     private NavigationService navigationService;
@@ -57,6 +67,10 @@ public class LocalBattleController {
     private long lastGravityUpdateTime = 0;
     private static final long GRAVITY_UPDATE_INTERVAL_MS = 500; // 0.5초마다 중력 적용
 
+    private Timeline timer;
+    private IntegerProperty timeSeconds;
+
+
     public void initialize() {
         System.out.println("✅ LocalBattleController initialized.");
         p1Cells = initializeBoard(p1BoardGridPane, 10, 20, 20);
@@ -72,6 +86,8 @@ public class LocalBattleController {
         p2BoardRenderer = new BoardRenderer(p2Cells, p2HoldCells, p2NextCells, settingsService.getColorBlindMode());
 
         pauseOverlay.setVisible(false);
+        timerLabel.setVisible(false);
+
 
         rootPane.sceneProperty().addListener((obs, oldScene, newScene) -> {
             if (newScene != null) {
@@ -115,9 +131,37 @@ public class LocalBattleController {
         localGameSession.addPlayer("P1");
         localGameSession.addPlayer("P2");
 
+        if (config.getGameplayType() == GameplayType.TIME_ATTACK) {
+            setupTimer(config.getTimeLimitSeconds());
+        }
+
+
         // 초기 UI 그리기
         updateUI(new LocalGameStatus(localGameSession.getStateForPlayer("P1"), localGameSession.getStateForPlayer("P2")));
     }
+
+    private void setupTimer(int timeLimit) {
+        timeSeconds = new SimpleIntegerProperty(timeLimit);
+        timerLabel.textProperty().bind(Bindings.createStringBinding(() -> {
+            int total = timeSeconds.get();
+            int minutes = total / 60;
+            int seconds = total % 60;
+            return String.format("%d:%02d", minutes, seconds);
+        }, timeSeconds));
+
+        timerLabel.setVisible(true);
+
+        timer = new Timeline(new KeyFrame(Duration.seconds(1), event -> {
+            timeSeconds.set(timeSeconds.get() - 1);
+            if (timeSeconds.get() <= 0) {
+                timer.stop();
+                LocalGameStatus finalStatus = localGameSession.timeUp();
+                updateUI(finalStatus);
+            }
+        }));
+        timer.setCycleCount(Animation.INDEFINITE);
+    }
+
 
     public void startGame() {
         System.out.println("🚀 Starting Local Battle game.");
@@ -211,12 +255,14 @@ public class LocalBattleController {
         isPaused = !isPaused;
         if (isPaused) {
             gameLoop.stop();
+            if (timer != null) timer.pause();
             pauseOverlay.setVisible(true);
             // Optionally, send PauseCommand to session if state needs to be aware
             localGameSession.processCommand("P1", new seoultech.se.core.command.PauseCommand());
             localGameSession.processCommand("P2", new seoultech.se.core.command.PauseCommand());
         } else {
             gameLoop.start();
+            if (timer != null) timer.play();
             pauseOverlay.setVisible(false);
             rootPane.requestFocus(); // Return focus to the game pane
             // Optionally, send ResumeCommand
@@ -236,6 +282,9 @@ public class LocalBattleController {
     public void handleQuit() {
         if (gameLoop != null) {
             gameLoop.stop();
+        }
+        if (timer != null) {
+            timer.stop();
         }
         try {
             navigationService.navigateTo("/view/main-view.fxml");
@@ -273,6 +322,9 @@ public class LocalBattleController {
         
         if (p1State != null && p2State != null && p1State.isGameOver() && p2State.isGameOver() && gameLoop != null) {
             gameLoop.stop();
+            if (timer != null) {
+                timer.stop();
+            }
         }
     }
 }

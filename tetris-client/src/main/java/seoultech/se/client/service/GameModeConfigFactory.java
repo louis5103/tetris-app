@@ -82,6 +82,10 @@ public class GameModeConfigFactory {
     
     @Value("${tetris.modes.arcade.maxLockResets}")
     private int arcadeMaxLockResets;
+
+    // ========== Time Attack 설정 ==========
+    @Value("${tetris.modes.time-attack.timeLimitSeconds}")
+    private int timeAttackTimeLimitSeconds;
     
     // ========== Arcade Item 설정 ==========
     @Value("${tetris.modes.arcade.item.linesPerItem}")
@@ -198,6 +202,7 @@ public class GameModeConfigFactory {
         return GameModeConfig.builder()
             .gameplayType(GameplayType.TIME_ATTACK)
             .difficulty(difficulty)
+            .timeLimitSeconds(timeAttackTimeLimitSeconds)
             
             // 회전 시스템
             .srsEnabled(classicSrsEnabled)

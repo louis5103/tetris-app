@@ -16,7 +16,10 @@
     <BorderPane fx:id="rootPane" styleClass="game-background">
         
         <top>
-            <Label text="LOCAL BATTLE" styleClass="game-title" alignment="CENTER" />
+            <VBox alignment="CENTER" spacing="5">
+                <Label text="LOCAL BATTLE" styleClass="game-title" alignment="CENTER" />
+                <Label fx:id="timerLabel" text="3:00" styleClass="info-label-title" visible="false" />
+            </VBox>
         </top>
         
         <center>
