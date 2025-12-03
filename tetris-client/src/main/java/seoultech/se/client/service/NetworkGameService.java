@@ -2,6 +2,7 @@ package seoultech.se.client.service;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
@@ -383,9 +384,14 @@ public class NetworkGameService {
 
         // Next Queue 업데이트 (표시용)
         TetrominoType[] queue = state.getNextQueue();
-        // TetrominoGenerator는 peekNext 메서드가 없으므로 간단히 기본값으로 설정
-        for (int i = 0; i < queue.length; i++) {
-            queue[i] = TetrominoType.I; // 기본값
+        // TetrominoGenerator의 preview 메서드를 사용하여 다음 블록들을 미리 확인
+        List<TetrominoType> upcomingBlocks = generator.preview(queue.length);
+        for (int i = 0; i < queue.length && i < upcomingBlocks.size(); i++) {
+            queue[i] = upcomingBlocks.get(i);
+        }
+        // 남은 슬롯이 있으면 기본값으로 채움 (일반적으로 발생하지 않음)
+        for (int i = upcomingBlocks.size(); i < queue.length; i++) {
+            queue[i] = TetrominoType.I;
         }
         
         // 게임 오버 체크 (블록이 스폰 위치에서 충돌하는 경우)
