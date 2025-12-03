@@ -51,7 +51,7 @@ public class LocalBattleController {
     private Rectangle[][] p1Cells;
     private Rectangle[][] p2Cells;
 
-    private boolean isPaused = false;
+    private boolean isPaused = true;
 
     private long lastGravityUpdateTime = 0;
     private static final long GRAVITY_UPDATE_INTERVAL_MS = 500; // 0.5초마다 중력 적용
@@ -121,8 +121,8 @@ public class LocalBattleController {
                 }
             }
         };
-        gameLoop.start();
         rootPane.requestFocus();
+        togglePause();
     }
     
     private void onGameLoopTick() {
