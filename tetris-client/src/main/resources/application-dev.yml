@@ -22,9 +22,6 @@ spring:
   application:
     name: Tetris Desktop Game
   
-  profiles:
-    active: desktop-client
-  
   # Banner 설정
   main:
     banner-mode: console
@@ -36,17 +33,27 @@ spring:
     basename: messages
     encoding: UTF-8
   
-  # JPA 설정 - desktop-client 프로필에서 MySQL 설정으로 오버라이드됨
+  # --- MySQL Settings for Local Development ---
+  datasource:
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3307}/${DB_NAME:tetris_dev}?useSSL=false&serverTimezone=Asia/Seoul&allowPublicKeyRetrieval=true
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: ${DB_USERNAME:team9}
+    password: ${DB_PASSWORD:sexy-tetris}
+
+  # --- JPA & Hibernate Settings for MySQL ---
   jpa:
+    database-platform: org.hibernate.dialect.MySQL8Dialect
     hibernate:
       ddl-auto: update
-    show-sql: false
+    show-sql: true
     properties:
       hibernate:
         format_sql: true
   
-  # 데이터베이스 설정은 application-desktop-client.properties에서 관리
-  # (MySQL 사용 - docker-compose.yml 참고)
+  # SQL 초기화 비활성화 (MySQL은 이미 데이터가 있음)
+  sql:
+    init:
+      mode: never
 
 # =============================================================================
 # JavaFX 설정

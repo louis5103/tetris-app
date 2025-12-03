@@ -55,11 +55,16 @@ public class TetrisApplication extends Application {
         System.setProperty("java.awt.headless", "false");
         System.setProperty("spring.main.web-application-type", "none");
 
-        // desktop-client 프로필 명시적 설정
+        // 프로파일 설정: 시스템 프로퍼티 우선, 없으면 desktop-client
+        String activeProfile = System.getProperty("spring.profiles.active");
+        if (activeProfile == null || activeProfile.isEmpty()) {
+            activeProfile = "desktop-client";
+        }
+        
         SpringApplication app = new SpringApplication(TetrisApplication.class);
-        app.setAdditionalProfiles("desktop-client");
+        app.setAdditionalProfiles(activeProfile);
         springContext = app.run();
-        System.out.println("✅ Spring Boot context initialized with JavaFX (profile: desktop-client)");
+        System.out.println("✅ Spring Boot context initialized with JavaFX (profile: " + activeProfile + ")");
     }
 
     /**

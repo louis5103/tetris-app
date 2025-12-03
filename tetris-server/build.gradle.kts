@@ -82,6 +82,12 @@ tasks.jar {
     enabled = true
 }
 
+// bootRun 설정 (로컬 개발용 - dev 프로파일, MySQL 사용)
+tasks.named<org.springframework.boot.gradle.tasks.run.BootRun>("bootRun") {
+    systemProperty("spring.profiles.active", "dev")
+    systemProperty("server.port", "8090")
+}
+
 // bootJar 빌드 설정
 tasks.bootJar {
     archiveBaseName.set("tetris-server-standalone")
