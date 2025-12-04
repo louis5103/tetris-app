@@ -95,11 +95,14 @@ public class SignupController extends BaseController {
                     Media media = new Media(resource.toString());
                     mediaPlayer = new MediaPlayer(media);
                     mediaPlayer.setCycleCount(MediaPlayer.INDEFINITE);
-                    mediaPlayer.play();
-                    System.out.println("🎵 Background music started in Signup View");
                 } else {
                     System.err.println("❌ Could not find music file: /Tetris - Bradinsky.mp3");
                 }
+            }
+            
+            if (mediaPlayer != null) {
+                mediaPlayer.play();
+                System.out.println("🎵 Background music started in Signup View");
             }
         } catch (Exception e) {
             System.err.println("❌ Error playing music: " + e.getMessage());
