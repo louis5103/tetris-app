@@ -144,13 +144,13 @@ public abstract class BaseGameController {
     protected void startMusic() {
         try {
             if (mediaPlayer == null) {
-                URL resource = getClass().getResource("/Tetris - Bradinsky.mp3");
+                URL resource = getClass().getResource("/04 Tetris BGM 2.mp3");
                 if (resource != null) {
                     Media media = new Media(resource.toString());
                     mediaPlayer = new MediaPlayer(media);
                     mediaPlayer.setCycleCount(MediaPlayer.INDEFINITE);
                 } else {
-                    System.err.println("❌ Could not find music file: /Tetris - Bradinsky.mp3");
+                    System.err.println("❌ Could not find music file: /04 Tetris BGM 2.mp3");
                 }
             }
             
