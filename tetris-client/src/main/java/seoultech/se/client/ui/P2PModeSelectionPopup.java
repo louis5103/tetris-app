@@ -3,11 +3,13 @@ package seoultech.se.client.ui;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.RadioButton;
 import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleGroup;
 import javafx.scene.layout.VBox;
+import seoultech.se.core.model.enumType.Difficulty;
 
 public final class P2PModeSelectionPopup extends VBox {
 
@@ -26,18 +28,24 @@ public final class P2PModeSelectionPopup extends VBox {
     private TextField sessionIdField;
     private VBox relaySettingsBox;
 
+    // 난이도 선택
+    private ComboBox<String> difficultyComboBox;
+
     public P2PModeSelectionPopup() {
         this.setAlignment(Pos.CENTER);
         this.setSpacing(15);
         this.setPadding(new Insets(20));
         this.setStyle("-fx-background-color: rgba(0, 0, 0, 0.9); -fx-background-radius: 10; -fx-border-color: white; -fx-border-radius: 10;");
-        this.setPrefSize(500, 550);
+        this.setPrefSize(500, 600);
 
         Label titleLabel = new Label("P2P CONNECTION MODE");
         titleLabel.setStyle("-fx-text-fill: white; -fx-font-size: 24px; -fx-font-weight: bold;");
 
         // 연결 모드 선택
         VBox modeSelectionBox = createModeSelectionBox();
+
+        // 난이도 선택
+        VBox difficultyBox = createDifficultyBox();
         
         // 릴레이 서버 설정 (릴레이 모드 선택 시만 표시)
         relaySettingsBox = createRelaySettingsBox();
@@ -91,7 +99,7 @@ public final class P2PModeSelectionPopup extends VBox {
             if (onCancel != null) onCancel.run();
         });
 
-        this.getChildren().addAll(titleLabel, modeSelectionBox, relaySettingsBox, hostBox, connectBox, cancelButton);
+        this.getChildren().addAll(titleLabel, modeSelectionBox, difficultyBox, relaySettingsBox, hostBox, connectBox, cancelButton);
     }
     
     private VBox createModeSelectionBox() {
@@ -121,6 +129,22 @@ public final class P2PModeSelectionPopup extends VBox {
         });
         
         box.getChildren().addAll(label, directModeRadio, relayModeRadio);
+        return box;
+    }
+
+    private VBox createDifficultyBox() {
+        VBox box = new VBox(10);
+        box.setAlignment(Pos.CENTER);
+        
+        Label label = new Label("DIFFICULTY");
+        label.setStyle("-fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: bold;");
+        
+        difficultyComboBox = new ComboBox<>();
+        difficultyComboBox.getItems().addAll("EASY", "NORMAL", "HARD");
+        difficultyComboBox.setValue("NORMAL");
+        difficultyComboBox.setStyle("-fx-pref-width: 200px;");
+        
+        box.getChildren().addAll(label, difficultyComboBox);
         return box;
     }
     
@@ -193,5 +217,9 @@ public final class P2PModeSelectionPopup extends VBox {
     
     public String getSessionId() {
         return sessionIdField.getText();
+    }
+
+    public Difficulty getSelectedDifficulty() {
+        return Difficulty.valueOf(difficultyComboBox.getValue());
     }
 }
