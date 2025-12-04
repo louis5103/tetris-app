@@ -1,6 +1,7 @@
 package seoultech.se.client.controller;
 
 import java.io.IOException;
+import java.net.URL;
 
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -12,6 +13,8 @@ import javafx.scene.control.Label;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.media.Media;
+import javafx.scene.media.MediaPlayer;
 import javafx.scene.shape.Rectangle;
 import javafx.util.Duration;
 import seoultech.se.backend.score.ScoreService;
@@ -81,6 +84,8 @@ public abstract class BaseGameController {
 
     // Animation state flag to coordinate with game loop
     private volatile boolean isAnimating = false;
+    
+    protected MediaPlayer mediaPlayer;
 
     public final boolean isAnimating() { return isAnimating; }
     protected final void setAnimating(boolean animating) { this.isAnimating = animating; }
@@ -131,7 +136,39 @@ public abstract class BaseGameController {
         gameInfoManager.updateAll(gameState);
         setupKeyboardControls();
         
+        startMusic();
+
         onInitComplete();
+    }
+
+    protected void startMusic() {
+        try {
+            if (mediaPlayer == null) {
+                URL resource = getClass().getResource("/Tetris - Bradinsky.mp3");
+                if (resource != null) {
+                    Media media = new Media(resource.toString());
+                    mediaPlayer = new MediaPlayer(media);
+                    mediaPlayer.setCycleCount(MediaPlayer.INDEFINITE);
+                } else {
+                    System.err.println("❌ Could not find music file: /Tetris - Bradinsky.mp3");
+                }
+            }
+            
+            if (mediaPlayer != null) {
+                mediaPlayer.play();
+                System.out.println("🎵 Game background music started");
+            }
+        } catch (Exception e) {
+            System.err.println("❌ Error playing game music: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    protected void stopMusic() {
+        if (mediaPlayer != null) {
+            mediaPlayer.stop();
+            System.out.println("🔇 Game background music stopped");
+        }
     }
 
     protected abstract void onInitComplete(); // 초기화 완료 후크
