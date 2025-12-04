@@ -24,7 +24,8 @@ javafx {
     version = "21"
     modules = listOf(
         "javafx.controls",
-        "javafx.fxml"
+        "javafx.fxml",
+        "javafx.media"
     )
 }
 

@@ -15,6 +15,8 @@ import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.VBox;
+import javafx.scene.media.Media;
+import javafx.scene.media.MediaPlayer;
 import javafx.scene.shape.Rectangle;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -35,6 +37,7 @@ import javafx.util.Duration;
 
 
 import java.io.IOException;
+import java.net.URL;
 
 @Component
 public class LocalBattleController {
@@ -70,6 +73,8 @@ public class LocalBattleController {
 
     private Timeline timer;
     private IntegerProperty timeSeconds;
+    
+    private MediaPlayer mediaPlayer;
 
 
     public void initialize() {
@@ -136,9 +141,40 @@ public class LocalBattleController {
             setupTimer(config.getTimeLimitSeconds());
         }
 
+        startMusic();
 
         // 초기 UI 그리기
         updateUI(new LocalGameStatus(localGameSession.getStateForPlayer("P1"), localGameSession.getStateForPlayer("P2")));
+    }
+    
+    private void startMusic() {
+        try {
+            if (mediaPlayer == null) {
+                URL resource = getClass().getResource("/04 Tetris BGM 2.mp3");
+                if (resource != null) {
+                    Media media = new Media(resource.toString());
+                    mediaPlayer = new MediaPlayer(media);
+                    mediaPlayer.setCycleCount(MediaPlayer.INDEFINITE);
+                } else {
+                    System.err.println("❌ Could not find music file: /04 Tetris BGM 2.mp3");
+                }
+            }
+            
+            if (mediaPlayer != null) {
+                mediaPlayer.play();
+                System.out.println("🎵 LocalBattle music started");
+            }
+        } catch (Exception e) {
+            System.err.println("❌ Error playing LocalBattle music: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    private void stopMusic() {
+        if (mediaPlayer != null) {
+            mediaPlayer.stop();
+            System.out.println("🔇 LocalBattle music stopped");
+        }
     }
 
     private void setupTimer(int timeLimit) {
@@ -281,6 +317,7 @@ public class LocalBattleController {
 
     @FXML
     public void handleQuit() {
+        stopMusic();
         if (gameLoop != null) {
             gameLoop.stop();
         }

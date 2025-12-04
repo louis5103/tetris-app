@@ -1,18 +1,24 @@
 package seoultech.se.client.controller;
 
 import java.io.IOException;
+import java.net.URL;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import javafx.animation.ScaleTransition;
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
+import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
+import javafx.scene.media.Media;
+import javafx.scene.media.MediaPlayer;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Text;
+import javafx.util.Duration;
 import seoultech.se.client.dto.SignupRequest;
 import seoultech.se.client.dto.SignupResponse;
 import seoultech.se.client.service.NavigationService;
@@ -35,6 +41,9 @@ public class SignupController extends BaseController {
     private UserApiService userApiService;
 
     @FXML
+    private Label titleLabel;
+
+    @FXML
     private TextField nameField;
 
     @FXML
@@ -52,6 +61,8 @@ public class SignupController extends BaseController {
     @FXML
     private Button backButton;
 
+    private MediaPlayer mediaPlayer;
+
     @FXML
     @Override
     public void initialize() {
@@ -61,6 +72,51 @@ public class SignupController extends BaseController {
         if (statusText != null) {
             statusText.setText("");
             statusText.setVisible(false);
+        }
+
+        // 타이틀 애니메이션 효과 (Scale Pulse)
+        if (titleLabel != null) {
+            ScaleTransition scaleTransition = new ScaleTransition(Duration.seconds(1), titleLabel);
+            scaleTransition.setFromX(1.0);
+            scaleTransition.setFromY(1.0);
+            scaleTransition.setToX(1.2);
+            scaleTransition.setToY(1.2);
+            scaleTransition.setCycleCount(ScaleTransition.INDEFINITE);
+            scaleTransition.setAutoReverse(true);
+            scaleTransition.play();
+            System.out.println("✨ Title animation started in Signup View");
+        }
+
+        // 배경 음악 재생
+        try {
+            if (mediaPlayer == null) {
+                URL resource = getClass().getResource("/Tetris - Bradinsky.mp3");
+                if (resource != null) {
+                    Media media = new Media(resource.toString());
+                    mediaPlayer = new MediaPlayer(media);
+                    mediaPlayer.setCycleCount(MediaPlayer.INDEFINITE);
+                } else {
+                    System.err.println("❌ Could not find music file: /Tetris - Bradinsky.mp3");
+                }
+            }
+            
+            if (mediaPlayer != null) {
+                mediaPlayer.play();
+                System.out.println("🎵 Background music started in Signup View");
+            }
+        } catch (Exception e) {
+            System.err.println("❌ Error playing music: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * 배경 음악 중지
+     */
+    public void stopBackgroundMusic() {
+        if (mediaPlayer != null) {
+            mediaPlayer.stop();
+            System.out.println("🔇 Background music stopped in Signup View");
         }
     }
 
@@ -106,6 +162,7 @@ public class SignupController extends BaseController {
                             Thread.sleep(1000);
                             Platform.runLater(() -> {
                                 try {
+                                    stopBackgroundMusic(); // 음악 중지
                                     navigationService.navigateTo("/view/login-view.fxml");
                                 } catch (IOException e) {
                                     System.err.println("❌ login-view 로드 실패: " + e.getMessage());
@@ -144,6 +201,7 @@ public class SignupController extends BaseController {
     public void handleBack(ActionEvent event) {
         try {
             System.out.println("🔙 로그인 화면으로 돌아가기");
+            stopBackgroundMusic(); // 음악 중지
             navigationService.navigateTo("/view/login-view.fxml");
             System.out.println("✅ login-view로 이동 완료");
         } catch (IOException e) {

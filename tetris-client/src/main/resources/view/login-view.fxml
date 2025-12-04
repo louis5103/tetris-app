@@ -15,7 +15,7 @@
       fx:controller="seoultech.se.client.controller.LoginController">
     
     <!-- TETRIS 로고 -->
-    <Label text="TETRIS" styleClass="title-label"/>
+    <Label fx:id="titleLabel" text="TETRIS" styleClass="title-label"/>
     <!-- 상단 로그인 라벨 -->
     <Label text="LOGIN" styleClass="auth-title"/>
     

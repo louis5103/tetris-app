@@ -52,6 +52,7 @@ public class SingleGameController extends BaseGameController {
     @Override
     public void cleanup() {
         System.out.println("🧹 [SingleGameController] Cleanup");
+        stopMusic(); // 배경 음악 중지
         if (gameLoopManager != null) {
             gameLoopManager.stop();
             gameLoopManager = null;

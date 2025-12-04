@@ -45,6 +45,9 @@ public class MultiplayerModeSelectionController extends BaseController {
     @Autowired
     private seoultech.se.client.controller.P2PModeSelectionController p2pController; // P2P Controller 주입
 
+    @Autowired
+    private MainController mainController;
+
     @Autowired(required = false)
     private seoultech.se.client.service.AuthService authService;
 
@@ -121,6 +124,10 @@ public class MultiplayerModeSelectionController extends BaseController {
 
             // 팝업 닫기
             popupStage.close();
+            
+            if (mainController != null) {
+                mainController.stopBackgroundMusic();
+            }
 
             // 백그라운드에서 매칭 서비스 시작
             if (matchingService != null) {

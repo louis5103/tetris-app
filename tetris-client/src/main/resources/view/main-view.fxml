@@ -8,6 +8,8 @@
 <?import javafx.scene.layout.Region?>
 <?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.Pane?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.text.Text?>
 
 <StackPane stylesheets="@../css/application.css, @../css/main-view.css" 
            xmlns="http://javafx.com/javafx/21" 
@@ -17,6 +19,9 @@
 <BorderPane fx:id="rootPane">
     <top>
         <Label fx:id="titleLabel" styleClass="title-label" text="TETRIS" BorderPane.alignment="TOP_CENTER">
+            <BorderPane.margin>
+                <Insets top="50.0" />
+            </BorderPane.margin>
         </Label>
     </top>
 

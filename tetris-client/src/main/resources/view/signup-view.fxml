@@ -14,7 +14,7 @@
       xmlns:fx="http://javafx.com/fxml/1" 
       fx:controller="seoultech.se.client.controller.SignupController">
     
-    <Label text="TETRIS" styleClass="title-label"/>
+    <Label fx:id="titleLabel" text="TETRIS" styleClass="title-label"/>
     <Label text="SIGN UP" styleClass="auth-title"/>
     
     <VBox styleClass="auth-form">
