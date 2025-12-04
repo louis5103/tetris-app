@@ -246,4 +246,37 @@ public class GameModeConfig {
             ))
             .build();
     }
+
+    /**
+     * P2P 게임을 위한 설정 생성 헬퍼
+     * 
+     * @param type 게임플레이 타입
+     * @param difficulty 난이도
+     * @return P2P용 GameModeConfig
+     */
+    public static GameModeConfig createForP2P(GameplayType type, Difficulty difficulty) {
+        var builder = GameModeConfig.builder()
+            .gameplayType(type)
+            .difficulty(difficulty)
+            .srsEnabled(true)
+            .hardDropEnabled(true)
+            .holdEnabled(true)
+            .ghostPieceEnabled(true);
+
+        if (type == GameplayType.ARCADE) {
+            builder.linesPerItem(10)
+                   .itemAutoUse(true)
+                   .enabledItemTypes(java.util.EnumSet.allOf(ItemType.class));
+        } else {
+            builder.linesPerItem(0)
+                   .itemAutoUse(false)
+                   .enabledItemTypes(Collections.emptySet());
+            
+            if (type == GameplayType.TIME_ATTACK) {
+                builder.timeLimitSeconds(180); // 3분 제한
+            }
+        }
+
+        return builder.build();
+    }
 }
