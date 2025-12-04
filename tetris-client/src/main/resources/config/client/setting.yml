@@ -4,5 +4,5 @@ client:
     colorMode: colorModeDefault
     screenSize: screenSizeM
     stageWidth: 500.0
-    stageHeight: 700.0
+    stageHeight: 600.0
     difficulty: difficultyNormal

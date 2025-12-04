@@ -582,31 +582,8 @@ public class MainController extends BaseController {
      */
     public void handleP2PModeAction(ActionEvent event) {
         System.out.println("🔗 P2P MODE selected");
-        setP2pModeButtonVisibility(false);
-        setP2pModeMenuVisibility(true);
-        
-        // 오버레이 활성화 및 메인 메뉴 버튼 비활성화
-        showOverlay();
-        disableMainMenuButtons();
-        
-        // // p2pModeMenuBox를 오버레이 위로
-        // p2pModeMenuBox.toFront();
-        
-        // 버튼 배열: 오직 P2P 모드 하위 메뉴 버튼들만 포함
-        buttons = new Button[] {
-            p2pServerButton,        // 0
-            p2pClientButton,        // 1
-            p2pBackButton           // 2
-        };
-        
-        // 버튼 이벤트 리스너 재설정
-        setupButtonEventListeners();
-        
-        // 현재 버튼 인덱스를 첫 번째 버튼으로 초기화
-        currentButtonIndex = 0;
-        updateButtonHighlight();
-        
-        System.out.println("🔄 Button navigation updated to show P2P MODE options only");
+        // 바로 P2P 팝업 표시 (Server/Client 선택 단계 생략)
+        showP2PPopup(true);
     }
 
     /**
@@ -641,37 +618,41 @@ public class MainController extends BaseController {
             Stage p2pStage = new Stage();
             Scene scene = new Scene(popup);
             p2pStage.setScene(scene);
-            p2pStage.setTitle(isHostMode ? "P2P Host Setup" : "P2P Connect Setup");
+            p2pStage.setTitle("P2P Setup");
             p2pStage.setResizable(false);
             
             popup.setOnHost(() -> {
                 p2pStage.close();
+                seoultech.se.core.model.enumType.Difficulty difficulty = popup.getSelectedDifficulty();
+                seoultech.se.core.config.GameplayType gameplayType = popup.getSelectedGameplayType();
                 
                 if (popup.isRelayMode()) {
                     // 릴레이 모드 - Host
-                    handleRelayMode(popup, true, true);
+                    handleRelayMode(popup, true, true, difficulty, gameplayType);
                 } else {
                     // 직접 P2P 모드
                     if (p2pController != null) {
                         p2pController.handleHostGame();
-                        transitionToP2PGame(true);
+                        transitionToP2PGame(true, difficulty, gameplayType);
                     }
                 }
             });
             
             popup.setOnConnect(() -> {
                 p2pStage.close();
+                seoultech.se.core.model.enumType.Difficulty difficulty = popup.getSelectedDifficulty();
+                seoultech.se.core.config.GameplayType gameplayType = popup.getSelectedGameplayType();
                 
                 if (popup.isRelayMode()) {
                     // 릴레이 모드 - Guest
-                    handleRelayMode(popup, false, false);
+                    handleRelayMode(popup, false, false, difficulty, gameplayType);
                 } else {
                     // 직접 P2P 모드
                     String ip = popup.getIpAddress();
                     String port = popup.getPort();
                     if (p2pController != null) {
                         p2pController.connectToGame(ip, port);
-                        transitionToP2PGame(false);
+                        transitionToP2PGame(false, difficulty, gameplayType);
                     }
                 }
             });
@@ -689,7 +670,7 @@ public class MainController extends BaseController {
     }
     
     private void handleRelayMode(seoultech.se.client.ui.P2PModeSelectionPopup popup, 
-                                  boolean isHostMode, boolean isHost) {
+                                  boolean isHostMode, boolean isHost, seoultech.se.core.model.enumType.Difficulty difficulty, seoultech.se.core.config.GameplayType gameplayType) {
         String relayServerIp = popup.getRelayServerIp();
         String relayServerPort = popup.getRelayServerPort();
         String sessionId = popup.getSessionId();
@@ -715,24 +696,24 @@ public class MainController extends BaseController {
             }
             
             // 게임 화면으로 전환
-            transitionToP2PGame(isHost);
+            transitionToP2PGame(isHost, difficulty, gameplayType);
             
         } catch (NumberFormatException e) {
             System.err.println("❌ [Relay] Invalid port number: " + relayServerPort);
         }
     }
 
-    private void transitionToP2PGame(boolean isHost) {
+    private void transitionToP2PGame(boolean isHost, seoultech.se.core.model.enumType.Difficulty difficulty, seoultech.se.core.config.GameplayType gameplayType) {
         // 릴레이 모드인 경우 매칭 대기 팝업 표시
         if (p2pService != null && p2pService.isRelayMode()) {
-            showMatchingWaitPopupAndTransition(isHost);
+            showMatchingWaitPopupAndTransition(isHost, difficulty, gameplayType);
         } else {
             // 직접 P2P 모드는 바로 게임 화면으로 전환
-            performGameTransition(isHost, null);
+            performGameTransition(isHost, null, difficulty, gameplayType);
         }
     }
 
-    private void showMatchingWaitPopupAndTransition(boolean isHost) {
+    private void showMatchingWaitPopupAndTransition(boolean isHost, seoultech.se.core.model.enumType.Difficulty difficulty, seoultech.se.core.config.GameplayType gameplayType) {
         try {
             seoultech.se.client.ui.MatchingWaitPopup matchingPopup = new seoultech.se.client.ui.MatchingWaitPopup();
 
@@ -781,7 +762,7 @@ public class MainController extends BaseController {
                             try {
                                 Thread.sleep(500); // "START!" 메시지 표시 시간
                                 popupStage.close();
-                                performGameTransition(isHost, netService);
+                                performGameTransition(isHost, netService, difficulty, gameplayType);
                             } catch (InterruptedException e) {
                                 e.printStackTrace();
                             }
@@ -789,6 +770,8 @@ public class MainController extends BaseController {
                     }
                 }
             });
+
+
 
             // P2P 게임 시작 (대기 상태) - 임시 콜백 설정
             netService.startP2PGame(isHost,
@@ -812,7 +795,8 @@ public class MainController extends BaseController {
         }
     }
 
-    private void performGameTransition(boolean isHost, seoultech.se.client.service.NetworkGameService existingNetService) {
+    private void performGameTransition(boolean isHost, seoultech.se.client.service.NetworkGameService existingNetService, 
+                                       seoultech.se.core.model.enumType.Difficulty difficulty, seoultech.se.core.config.GameplayType gameplayType) {
         try {
             stopBackgroundMusic();
             ApplicationContext context = ApplicationContextProvider.getApplicationContext();
@@ -828,7 +812,9 @@ public class MainController extends BaseController {
             loader.setController(gameViewController);
             Parent gameRoot = loader.load();
 
-            seoultech.se.core.config.GameModeConfig config = seoultech.se.core.config.GameModeConfig.createDefaultClassic();
+            // 선택된 난이도와 게임 모드로 설정 생성
+            seoultech.se.core.config.GameModeConfig config = seoultech.se.core.config.GameModeConfig.createForP2P(gameplayType, difficulty);
+                
             gameViewController.initGame(config);
 
             seoultech.se.client.service.NetworkGameService netService = existingNetService != null ?
