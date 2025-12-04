@@ -152,7 +152,7 @@ public class LocalBattleController {
             if (mediaPlayer == null) {
                 URL resource = getClass().getResource("/04 Tetris BGM 2.mp3");
                 if (resource != null) {
-                    Media media = new Media(resource.toString());
+                    Media media = seoultech.se.client.util.MediaUtils.loadMedia(resource);
                     mediaPlayer = new MediaPlayer(media);
                     mediaPlayer.setCycleCount(MediaPlayer.INDEFINITE);
                 } else {

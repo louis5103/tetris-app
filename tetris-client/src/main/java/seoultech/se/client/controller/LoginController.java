@@ -96,7 +96,7 @@ public class LoginController extends BaseController {
             if (mediaPlayer == null) {
                 URL resource = getClass().getResource("/Tetris - Bradinsky.mp3");
                 if (resource != null) {
-                    Media media = new Media(resource.toString());
+                    Media media = seoultech.se.client.util.MediaUtils.loadMedia(resource);
                     mediaPlayer = new MediaPlayer(media);
                     mediaPlayer.setCycleCount(MediaPlayer.INDEFINITE);
                 } else {
